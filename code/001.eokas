@@ -1,0 +1,3 @@
+import io = eokas.io;
+
+io.out("hello eokas!");

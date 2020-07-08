@@ -1,0 +1,21 @@
+import io = eokas.io;
+
+###
+this is a block comment.
+###
+
+# scope 1
+{
+    let a : int = 10;
+    let b : bool = true;
+    let s : string = "hello eokas!";
+    io.out(a, b, c);
+}
+
+# scope 2
+{
+    var a : int = 10;
+    var b : bool = true;
+    var s : string = "hello eokas!";
+    io.out(a, b, c);
+}

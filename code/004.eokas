@@ -1,0 +1,4 @@
+import io = eokas.io;
+import samples = com.eokas.samples;
+
+samples.print("hello eokas!");

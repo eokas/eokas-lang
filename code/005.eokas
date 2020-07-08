@@ -1,0 +1,25 @@
+import io = eokas.io;
+
+# define a type.
+type A = {
+    id: int;
+    name: string;
+    age: int;
+    cool: bool;
+};
+
+# constant: full
+let a0 : A = A {
+    id: 1,
+    name: "eokas",
+    age: 1,
+    cool: true
+};
+
+# constant: inferred.
+let a1 = A{}
+
+# constant: dynamic inferred.
+let a2 : A = {
+
+}
