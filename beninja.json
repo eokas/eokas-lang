@@ -1,0 +1,39 @@
+{
+    "project": "eokas",
+    "version": "0.0.1",
+    "buildDir": "_build",
+    "installDir": "_install",
+
+    "vars": {
+        "depsDir": "./deps/",
+        "cflags": "-O3 -std=c++17"
+    },
+
+    "targets": [{
+        "name": "eokas",
+        "type": "executable",
+    
+        "cflags": ["${cflags}"],
+
+        "lflags": [],
+
+        "includes": [
+            "-I${depsDir}"
+        ],
+
+        "libraries": [
+            "-L${depsDir}",
+            "-larchaism"
+        ],
+
+        "runtimes": [
+            "@executable_path"
+        ],
+
+        "sources": [
+            "./src/*.cxx"
+        ],
+
+        "copies": []
+    }]
+}

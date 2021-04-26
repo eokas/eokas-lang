@@ -1,3 +1,6 @@
-import io = eokas.io;
 
-io.out("hello eokas!");
+type A = int;
+type B = bool;
+
+var a : A = 10;
+var b : B = true;

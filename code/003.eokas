@@ -1,7 +1,0 @@
-module com.eokas.samples;
-
-import io = eokas.io;
-
-export print = func(str: string)=>void pure {
-    io.out(str);
-}
