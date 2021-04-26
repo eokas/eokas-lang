@@ -36,13 +36,10 @@ enum class ast_node_category_t
 	expr_bool,
 	expr_symbol_ref,
 
-	stmt_echo,
-	stmt_typedef,
-
 	expr_func_def,
 	expr_func_ref,
 
-	expr_ary_def,
+	expr_array_def,
 
 	expr_obj_def,
 	expr_obj_ref,
@@ -50,6 +47,7 @@ enum class ast_node_category_t
 	expr_index_ref,
 	expr_module_ref,
 
+	stmt_echo,
 	stmt_break,
 	stmt_continue,
 	stmt_return,
@@ -57,9 +55,10 @@ enum class ast_node_category_t
 	stmt_while,
 	stmt_for,
 	stmt_block,
-	stmt_symboldef,
 	stmt_assign,
 	stmt_call,
+	stmt_symboldef,
+	stmt_typedef,
 };
 
 enum class ast_unary_oper_t
@@ -135,34 +134,34 @@ struct ast_module_t :public ast_node_t
 
 
 struct ast_type_int_t :public ast_type_t {
-	ast_type_int_t() 
-		: ast_type_t(ast_node_category_t::type_int, nullptr)
+	ast_type_int_t(ast_node_t* parent) 
+		: ast_type_t(ast_node_category_t::type_int, parent)
 	{}
 };
 
 struct ast_type_float_t :public ast_type_t {
-	ast_type_float_t() 
-		: ast_type_t(ast_node_category_t::type_float, nullptr)
+	ast_type_float_t(ast_node_t* parent) 
+		: ast_type_t(ast_node_category_t::type_float, parent)
 	{}
 };
 
 struct ast_type_bool_t :public ast_type_t {
-	ast_type_bool_t() 
-		: ast_type_t(ast_node_category_t::type_bool, nullptr)
+	ast_type_bool_t(ast_node_t* parent) 
+		: ast_type_t(ast_node_category_t::type_bool, parent)
 	{}
 };
 
 struct ast_type_string_t :public ast_type_t {
-	ast_type_string_t() 
-		: ast_type_t(ast_node_category_t::type_string, nullptr)
+	ast_type_string_t(ast_node_t* parent) 
+		: ast_type_t(ast_node_category_t::type_string, parent)
 	{}
 };
 
 struct ast_type_ref_t :public ast_type_t {
 	String name;
 
-	ast_type_ref_t() 
-		: ast_type_t(ast_node_category_t::type_ref, nullptr)
+	ast_type_ref_t(ast_node_t* parent) 
+		: ast_type_t(ast_node_category_t::type_ref, parent)
 		, name("")
 	{}
 };
@@ -278,7 +277,7 @@ struct ast_expr_symbol_ref_t :public ast_expr_t
 
 struct ast_expr_func_def_t :public ast_expr_t
 {
-	std::vector<String> args;
+	std::map<String, ast_type_t*> args;
 	std::vector<ast_stmt_t*> body;
 
 	ast_expr_func_def_t(ast_node_t* parent)
@@ -289,6 +288,7 @@ struct ast_expr_func_def_t :public ast_expr_t
 
 	virtual ~ast_expr_func_def_t()
 	{
+		_DeleteMap(args);
 		_DeleteList(body);
 	}
 };
@@ -311,16 +311,16 @@ struct ast_expr_func_ref_t :public ast_expr_t
 	}
 };
 
-struct ast_expr_ary_def_t :public ast_expr_t
+struct ast_expr_array_def_t :public ast_expr_t
 {
 	std::vector<ast_expr_t*> values;
 
-	ast_expr_ary_def_t(ast_node_t* parent)
-		: ast_expr_t(ast_node_category_t::expr_ary_def, parent)
+	ast_expr_array_def_t(ast_node_t* parent)
+		: ast_expr_t(ast_node_category_t::expr_array_def, parent)
 		, values()
 	{}
 
-	virtual ~ast_expr_ary_def_t()
+	virtual ~ast_expr_array_def_t()
 	{
 		_DeleteList(values);
 	}
@@ -427,23 +427,6 @@ struct ast_stmt_echo_t :public ast_stmt_t
 	virtual ~ast_stmt_echo_t()
 	{
 		_DeleteList(values);
-	}
-};
-
-struct ast_stmt_typedef_t :public ast_stmt_t
-{
-	String name;
-	ast_type_t* value;
-
-	ast_stmt_typedef_t()
-		: ast_stmt_t(ast_node_category_t::stmt_typedef, nullptr)
-		, name("")
-		, value(nullptr)
-	{}
-
-	virtual ~ast_stmt_typedef_t()
-	{
-		_DeletePointer(value);
 	}
 };
 
@@ -590,15 +573,35 @@ struct ast_stmt_assign_t :public ast_stmt_t
 struct ast_stmt_symboldef_t :public ast_stmt_t
 {
 	String name;
+	ast_type_t* type;
 	ast_expr_t* value;
 
 	ast_stmt_symboldef_t(ast_node_t* parent)
 		: ast_stmt_t(ast_node_category_t::stmt_symboldef, parent)
 		, name("")
+		, type(nullptr)
 		, value(nullptr)
 	{}
 
 	virtual ~ast_stmt_symboldef_t()
+	{
+		_DeletePointer(type);
+		_DeletePointer(value);
+	}
+};
+
+struct ast_stmt_typedef_t :public ast_stmt_t
+{
+	String name;
+	ast_type_t* value;
+
+	ast_stmt_typedef_t()
+		: ast_stmt_t(ast_node_category_t::stmt_typedef, nullptr)
+		, name("")
+		, value(nullptr)
+	{}
+
+	virtual ~ast_stmt_typedef_t()
 	{
 		_DeletePointer(value);
 	}

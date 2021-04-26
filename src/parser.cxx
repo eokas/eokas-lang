@@ -15,6 +15,13 @@ public:
 	void clear();
 
 	ast_module_t* parse_module(const char* source);
+
+	ast_type_t* parse_type(ast_node_t* p);
+	ast_type_int_t* parse_type_int(ast_node_t* p);
+	ast_type_float_t* parse_type_float(ast_node_t* p);
+	ast_type_bool_t* parse_type_bool(ast_node_t* p);
+	ast_type_ref_t* parse_type_ref(ast_node_t* p);
+
 	ast_stmt_t* parse_stmt(ast_node_t* p);
 	ast_stmt_echo_t* parse_echo(ast_node_t* p);
 	ast_stmt_continue_t* parse_continue(ast_node_t* p);
@@ -106,6 +113,54 @@ ast_module_t* parser_impl_t::parse_module(const char* source)
 		this->check_token(token_t::Semicolon, false);
 	}
 
+	return node;
+}
+
+ast_type_t* parser_impl_t::parse_type(ast_node_t* p)
+{
+	switch(this->token().type)
+	{
+		case token_t::IntType:
+			return this->parse_type_int(p);
+		case token_t::FloatType:
+			return this->parse_type_float(p);
+		case token_t::BoolType:
+			return this->parse_type_bool(p);
+		case token_t::ID:
+			return this->parse_type_ref(p);
+		default:
+			this->error_token_unexpected();
+			break;
+	}
+	return nullptr;
+}
+
+ast_type_int_t* parser_impl_t::parse_type_int(ast_node_t* p)
+{
+	ast_type_int_t* node = new ast_type_int_t(p);
+	this->next_token(); // ignore 'int'
+	return node;
+}
+
+ast_type_float_t* parser_impl_t::parse_type_float(ast_node_t* p)
+{
+	ast_type_float_t* node = new ast_type_float_t(p);
+	this->next_token(); // ignore 'float'
+	return node;
+}
+
+ast_type_bool_t* parser_impl_t::parse_type_bool(ast_node_t* p)
+{
+	ast_type_bool_t* node = new ast_type_bool_t(p);
+	this->next_token(); // ignore 'bool';
+	return node;
+}
+
+ast_type_ref_t* parser_impl_t::parse_type_ref(ast_node_t* p)
+{
+	ast_type_ref_t* node = new ast_type_ref_t(p);
+	node->name = this->token().value;
+	this->next_token(); // ignore ID
 	return node;
 }
 
@@ -730,12 +785,21 @@ bool parser_impl_t::parse_func_params(ast_expr_func_def_t* node)
 	{
 		if (this->token().type == token_t::RRB)
 			break;
+
 		if (!this->check_token(token_t::ID, true, false))
+			return false;		
+		const String& name = this->token().value;
+		if(node->args.find(name) != node->args.end())
+		{
+			this->error_token_unexpected();
 			return false;
-
-		node->args.push_back(this->token().value);
-
+		}
 		this->next_token();
+
+		ast_type_t* type = this->parse_type(node);
+		if(type == nullptr)
+			return false;
+		node->args[name] = type;
 	} 
 	while (this->check_token(token_t::Comma, false));
 	
@@ -809,7 +873,7 @@ ast_expr_t* parser_impl_t::parse_array_def(ast_node_t* p)
 	if (!this->check_token(token_t::LSB))
 		return nullptr;
 
-	ast_expr_ary_def_t* node = new ast_expr_ary_def_t(p);
+	ast_expr_array_def_t* node = new ast_expr_array_def_t(p);
 
 	do
 	{
