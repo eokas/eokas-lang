@@ -36,12 +36,12 @@ public:
 	ast_stmt_t* parse_stmt_assign_or_call(ast_node_t* p);
 
 	ast_expr_t* parse_expr(ast_node_t* p);
-	ast_expr_t* parse_trinary_expr(ast_node_t* p);
-	ast_expr_t* parse_binary_expr(ast_node_t* p, int priority = 1);
-	ast_expr_t* parse_unary_expr(ast_node_t* p);
+	ast_expr_t* parse_expr_trinary(ast_node_t* p);
+	ast_expr_t* parse_expr_binary(ast_node_t* p, int priority = 1);
+	ast_expr_t* parse_expr_unary(ast_node_t* p);
 
-	ast_expr_t* parse_suffixed_expr(ast_node_t* p);
-	ast_expr_t* parse_primary_expr(ast_node_t* p);
+	ast_expr_t* parse_expr_suffixed(ast_node_t* p);
+	ast_expr_t* parse_expr_primary(ast_node_t* p);
 
 	ast_expr_t* parse_func_def(ast_node_t* p);
 	bool parse_func_params(ast_expr_func_def_t* node);
@@ -533,7 +533,7 @@ ast_stmt_block_t* parser_impl_t::parse_stmt_block(ast_node_t* p)
 
 ast_stmt_t* parser_impl_t::parse_stmt_assign_or_call(ast_node_t* p)
 {
-	ast_expr_t* left = this->parse_suffixed_expr(p);
+	ast_expr_t* left = this->parse_expr_suffixed(p);
 	if (left == nullptr)
 		return nullptr;
 
@@ -561,12 +561,12 @@ ast_stmt_t* parser_impl_t::parse_stmt_assign_or_call(ast_node_t* p)
 
 ast_expr_t* parser_impl_t::parse_expr(ast_node_t* p)
 {
-	return this->parse_trinary_expr(p);
+	return this->parse_expr_trinary(p);
 }
 
-ast_expr_t* parser_impl_t::parse_trinary_expr(ast_node_t* p)
+ast_expr_t* parser_impl_t::parse_expr_trinary(ast_node_t* p)
 {
-	ast_expr_t* binary = this->parse_binary_expr(p, 1);
+	ast_expr_t* binary = this->parse_expr_binary(p, 1);
 	if (binary == nullptr)
 	{
 		_DeletePointer(binary);
@@ -605,17 +605,17 @@ ast_expr_t* parser_impl_t::parse_trinary_expr(ast_node_t* p)
 	return binary;
 }
 
-ast_expr_t* parser_impl_t::parse_binary_expr(ast_node_t* p, int priority)
+ast_expr_t* parser_impl_t::parse_expr_binary(ast_node_t* p, int priority)
 {
 	ast_expr_t* left = nullptr;
 
 	if (priority < (int)ast_binary_oper_t::MaxPriority / 100)
 	{
-		left = this->parse_binary_expr(p, priority + 1);
+		left = this->parse_expr_binary(p, priority + 1);
 	}
 	else
 	{
-		left = this->parse_unary_expr(p);
+		left = this->parse_expr_unary(p);
 	}
 	if (left == nullptr)
 	{
@@ -631,11 +631,11 @@ ast_expr_t* parser_impl_t::parse_binary_expr(ast_node_t* p, int priority)
 		ast_expr_t* right = nullptr;
 		if (priority < (int)ast_binary_oper_t::MaxPriority / 100)
 		{
-			right = this->parse_binary_expr(p, priority + 1);
+			right = this->parse_expr_binary(p, priority + 1);
 		}
 		else
 		{
-			right = this->parse_unary_expr(p);
+			right = this->parse_expr_unary(p);
 		}
 		if (right == nullptr)
 		{
@@ -655,10 +655,10 @@ ast_expr_t* parser_impl_t::parse_binary_expr(ast_node_t* p, int priority)
 }
 
 /*
-unary_expr => value_expr | construct_expr | suffixed_expr
-value_expr => int | float | str | true | false
+expr_unary := expr_value | expr_construct | expr_suffixed
+expr_value := int | float | str | true | false
 */
-ast_expr_t* parser_impl_t::parse_unary_expr(ast_node_t* p)
+ast_expr_t* parser_impl_t::parse_expr_unary(ast_node_t* p)
 {
 	ast_unary_oper_t oper = this->check_unary_oper(false, false);
 
@@ -731,7 +731,7 @@ ast_expr_t* parser_impl_t::parse_unary_expr(ast_node_t* p)
 			break;
 		*/
 	case token_t::ID: case token_t::LRB:
-		right = this->parse_suffixed_expr(p);
+		right = this->parse_expr_suffixed(p);
 		break;
 	default:
 		this->error_token_unexpected();
@@ -750,11 +750,11 @@ ast_expr_t* parser_impl_t::parse_unary_expr(ast_node_t* p)
 }
 
 /*
-suffixed_expr => primary_expr{ '.'ID | ':'ID | '['expr']' | '{'stat_list'}' | proc_args }
+expr_suffixed := expr_primary{ '.'ID | ':'ID | '['expr']' | '{'stat_list'}' | proc_args }
 */
-ast_expr_t* parser_impl_t::parse_suffixed_expr(ast_node_t* p)
+ast_expr_t* parser_impl_t::parse_expr_suffixed(ast_node_t* p)
 {
-	ast_expr_t* primary = this->parse_primary_expr(p);
+	ast_expr_t* primary = this->parse_expr_primary(p);
 	if (primary == nullptr)
 		return nullptr;
 
@@ -795,9 +795,9 @@ ast_expr_t* parser_impl_t::parse_suffixed_expr(ast_node_t* p)
 }
 
 /*
-primary_expr => ID | '(' expr ')'
+expr_primary := ID | '(' expr ')'
 */
-ast_expr_t* parser_impl_t::parse_primary_expr(ast_node_t* p)
+ast_expr_t* parser_impl_t::parse_expr_primary(ast_node_t* p)
 {
 	if (this->check_token(token_t::LRB, false))
 	{
