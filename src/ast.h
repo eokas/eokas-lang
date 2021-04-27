@@ -575,12 +575,14 @@ struct ast_stmt_symboldef_t :public ast_stmt_t
 	String name;
 	ast_type_t* type;
 	ast_expr_t* value;
+	bool variable;
 
 	ast_stmt_symboldef_t(ast_node_t* parent)
 		: ast_stmt_t(ast_node_category_t::stmt_symboldef, parent)
 		, name("")
 		, type(nullptr)
 		, value(nullptr)
+		, variable(false)
 	{}
 
 	virtual ~ast_stmt_symboldef_t()
@@ -595,8 +597,8 @@ struct ast_stmt_typedef_t :public ast_stmt_t
 	String name;
 	ast_type_t* value;
 
-	ast_stmt_typedef_t()
-		: ast_stmt_t(ast_node_category_t::stmt_typedef, nullptr)
+	ast_stmt_typedef_t(ast_node_t* parent)
+		: ast_stmt_t(ast_node_category_t::stmt_typedef, parent)
 		, name("")
 		, value(nullptr)
 	{}

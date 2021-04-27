@@ -23,16 +23,17 @@ public:
 	ast_type_ref_t* parse_type_ref(ast_node_t* p);
 
 	ast_stmt_t* parse_stmt(ast_node_t* p);
-	ast_stmt_echo_t* parse_echo(ast_node_t* p);
-	ast_stmt_continue_t* parse_continue(ast_node_t* p);
-	ast_stmt_break_t* parse_break(ast_node_t* p);
-	ast_stmt_return_t* parse_return(ast_node_t* p);
-	ast_stmt_if_t* parse_if(ast_node_t* p);
-	ast_stmt_while_t* parse_while(ast_node_t* p);
-	ast_stmt_for_t* parse_for(ast_node_t* p);
-	ast_stmt_block_t* parse_block(ast_node_t* p);
-	ast_stmt_symboldef_t* parse_symboldef(ast_node_t* p);
-	ast_stmt_t* parse_assign_or_call(ast_node_t* p);
+	ast_stmt_echo_t* parse_stmt_echo(ast_node_t* p);
+	ast_stmt_typedef_t* parse_stmt_typedef(ast_node_t* p);
+	ast_stmt_symboldef_t* parse_stmt_symboldef(ast_node_t* p);
+	ast_stmt_continue_t* parse_stmt_continue(ast_node_t* p);
+	ast_stmt_break_t* parse_stmt_break(ast_node_t* p);
+	ast_stmt_return_t* parse_stmt_return(ast_node_t* p);
+	ast_stmt_if_t* parse_stmt_if(ast_node_t* p);
+	ast_stmt_while_t* parse_stmt_while(ast_node_t* p);
+	ast_stmt_for_t* parse_stmt_for(ast_node_t* p);
+	ast_stmt_block_t* parse_stmt_block(ast_node_t* p);
+	ast_stmt_t* parse_stmt_assign_or_call(ast_node_t* p);
 
 	ast_expr_t* parse_expr(ast_node_t* p);
 	ast_expr_t* parse_trinary_expr(ast_node_t* p);
@@ -92,7 +93,7 @@ void parser_impl_t::clear()
 {
 	_DeletePointer(this->m_ast);
 	this->m_error.clear();
-	this->m_scanner->clear();	
+	this->m_scanner->clear();
 }
 
 ast_module_t* parser_impl_t::parse_module(const char* source)
@@ -106,7 +107,7 @@ ast_module_t* parser_impl_t::parse_module(const char* source)
 	while (this->token().type != token_t::Eos)
 	{
 		ast_stmt_t* stmt = this->parse_stmt(node);
-		if(stmt == nullptr)
+		if (stmt == nullptr)
 			return nullptr;
 		node->stmts.push_back(stmt);
 
@@ -118,19 +119,19 @@ ast_module_t* parser_impl_t::parse_module(const char* source)
 
 ast_type_t* parser_impl_t::parse_type(ast_node_t* p)
 {
-	switch(this->token().type)
+	switch (this->token().type)
 	{
-		case token_t::IntType:
-			return this->parse_type_int(p);
-		case token_t::FloatType:
-			return this->parse_type_float(p);
-		case token_t::BoolType:
-			return this->parse_type_bool(p);
-		case token_t::ID:
-			return this->parse_type_ref(p);
-		default:
-			this->error_token_unexpected();
-			break;
+	case token_t::IntType:
+		return this->parse_type_int(p);
+	case token_t::FloatType:
+		return this->parse_type_float(p);
+	case token_t::BoolType:
+		return this->parse_type_bool(p);
+	case token_t::ID:
+		return this->parse_type_ref(p);
+	default:
+		this->error_token_unexpected();
+		break;
 	}
 	return nullptr;
 }
@@ -169,40 +170,45 @@ ast_stmt_t* parser_impl_t::parse_stmt(ast_node_t* p)
 	switch (this->token().type)
 	{
 	case token_t::Echo:
-		return this->parse_echo(p);
+		return this->parse_stmt_echo(p);
+	case token_t::Type:
+		return this->parse_stmt_typedef(p);
 	case token_t::Var:
-		return this->parse_symboldef(p);
+		return this->parse_stmt_symboldef(p);
 	case token_t::Continue:
-		return this->parse_continue(p);
+		return this->parse_stmt_continue(p);
 	case token_t::Break:
-		return this->parse_break(p);
+		return this->parse_stmt_break(p);
 	case token_t::Return:
-		return this->parse_return(p);
+		return this->parse_stmt_return(p);
 	case token_t::If:
-		return this->parse_if(p);
+		return this->parse_stmt_if(p);
 	case token_t::While:
-		return this->parse_while(p);
+		return this->parse_stmt_while(p);
 	case token_t::For:
-		return this->parse_for(p);
+		return this->parse_stmt_for(p);
 	case token_t::LCB:
-		return this->parse_block(p);
+		return this->parse_stmt_block(p);
 	default:
 		if (this->token().type == token_t::ID &&
 			this->look_ahead_token().type == token_t::Colon)
 		{
-			return this->parse_symboldef(p);
+			return this->parse_stmt_symboldef(p);
 		}
 		else
 		{
-			return this->parse_assign_or_call(p);
+			return this->parse_stmt_assign_or_call(p);
 		}
 	}
 }
 
-ast_stmt_echo_t* parser_impl_t::parse_echo(ast_node_t* p)
+/**
+ * echo = 'echo' expr (, expr)* ;
+*/
+ast_stmt_echo_t* parser_impl_t::parse_stmt_echo(ast_node_t* p)
 {
 	ast_stmt_echo_t* node = new ast_stmt_echo_t(p);
-	
+
 	this->next_token(); // ignore 'echo'
 	do
 	{
@@ -215,27 +221,125 @@ ast_stmt_echo_t* parser_impl_t::parse_echo(ast_node_t* p)
 		node->values.push_back(e);
 
 		this->check_token(token_t::Comma, false);
-	} 
+	}
 	while (!this->check_token(token_t::Semicolon, false));
 
 	return node;
 }
 
-ast_stmt_continue_t* parser_impl_t::parse_continue(ast_node_t* p)
+/**
+ * typedef := 'type' ID = type;
+*/
+ast_stmt_typedef_t* parser_impl_t::parse_stmt_typedef(ast_node_t* p)
+{
+	ast_stmt_typedef_t* node = new ast_stmt_typedef_t(p);
+
+	this->next_token(); // ignore 'type'
+
+	if (!this->check_token(token_t::ID, true, false))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	node->name = this->token().value;
+
+	this->next_token();
+
+	if (!this->check_token(token_t::Equal, true))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	node->value = this->parse_type(node);
+	if (node->value == nullptr)
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	// ;
+	if(!this->check_token(token_t::Semicolon))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	return node;
+}
+
+/**
+ * symboldef := 'var' | 'val' ID [: type] = expr;
+*/
+ast_stmt_symboldef_t* parser_impl_t::parse_stmt_symboldef(ast_node_t* p)
+{
+	ast_stmt_symboldef_t* node = new ast_stmt_symboldef_t(p);
+
+	bool variable = this->token().type == token_t::Var;
+
+	this->next_token(); // ignore 'var' | 'val'
+
+	if (!this->check_token(token_t::ID, true, false))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	node->name = this->token().value;
+
+	this->next_token();
+
+	// : type
+	if(this->check_token(token_t::Colon, false))
+	{
+		node->type = this->parse_type(p);
+		if(node->type == nullptr)
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+	}
+
+	// = expr
+	if (!this->check_token(token_t::Equal, true))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	node->value = this->parse_expr(node);
+	if (node->value == nullptr)
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	// ;
+	if(!this->check_token(token_t::Semicolon))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	return node;
+}
+
+ast_stmt_continue_t* parser_impl_t::parse_stmt_continue(ast_node_t* p)
 {
 	ast_stmt_continue_t* node = new ast_stmt_continue_t(p);
 	this->next_token();
 	return node;
 }
 
-ast_stmt_break_t* parser_impl_t::parse_break(ast_node_t* p)
+ast_stmt_break_t* parser_impl_t::parse_stmt_break(ast_node_t* p)
 {
 	ast_stmt_break_t* node = new ast_stmt_break_t(p);
 	this->next_token();
 	return node;
 }
 
-ast_stmt_return_t* parser_impl_t::parse_return(ast_node_t* p)
+ast_stmt_return_t* parser_impl_t::parse_stmt_return(ast_node_t* p)
 {
 	ast_stmt_return_t* node = new ast_stmt_return_t(p);
 
@@ -246,7 +350,7 @@ ast_stmt_return_t* parser_impl_t::parse_return(ast_node_t* p)
 	}
 
 	node->value = this->parse_expr(node);
-	if(node->value == nullptr)
+	if (node->value == nullptr)
 	{
 		_DeletePointer(node);
 		return nullptr;
@@ -261,7 +365,7 @@ ast_stmt_return_t* parser_impl_t::parse_return(ast_node_t* p)
 	return node;
 }
 
-ast_stmt_if_t* parser_impl_t::parse_if(ast_node_t* p)
+ast_stmt_if_t* parser_impl_t::parse_stmt_if(ast_node_t* p)
 {
 	ast_stmt_if_t* node = new ast_stmt_if_t(p);
 
@@ -305,7 +409,7 @@ ast_stmt_if_t* parser_impl_t::parse_if(ast_node_t* p)
 	return node;
 }
 
-ast_stmt_while_t* parser_impl_t::parse_while(ast_node_t* p)
+ast_stmt_while_t* parser_impl_t::parse_stmt_while(ast_node_t* p)
 {
 	ast_stmt_while_t* node = new ast_stmt_while_t(p);
 
@@ -339,7 +443,7 @@ ast_stmt_while_t* parser_impl_t::parse_while(ast_node_t* p)
 	return node;
 }
 
-ast_stmt_for_t* parser_impl_t::parse_for(ast_node_t* p)
+ast_stmt_for_t* parser_impl_t::parse_stmt_for(ast_node_t* p)
 {
 	ast_stmt_for_t* node = new ast_stmt_for_t(p);
 
@@ -378,7 +482,7 @@ ast_stmt_for_t* parser_impl_t::parse_for(ast_node_t* p)
 	}
 
 	node->step = this->parse_stmt(node);
-	if(node->step == nullptr)
+	if (node->step == nullptr)
 	{
 		_DeletePointer(node);
 		return nullptr;
@@ -396,11 +500,11 @@ ast_stmt_for_t* parser_impl_t::parse_for(ast_node_t* p)
 		_DeletePointer(node);
 		return nullptr;
 	}
-		
+
 	return node;
 }
 
-ast_stmt_block_t* parser_impl_t::parse_block(ast_node_t* p)
+ast_stmt_block_t* parser_impl_t::parse_stmt_block(ast_node_t* p)
 {
 	ast_stmt_block_t* node = new ast_stmt_block_t(p);
 
@@ -427,37 +531,7 @@ ast_stmt_block_t* parser_impl_t::parse_block(ast_node_t* p)
 	return node;
 }
 
-ast_stmt_symboldef_t* parser_impl_t::parse_symboldef(ast_node_t* p)
-{
-	ast_stmt_symboldef_t* node = new ast_stmt_symboldef_t(p);
-
-	if (!this->check_token(token_t::ID, true, false))
-	{
-		_DeletePointer(node);
-		return nullptr;
-	}
-
-	node->name = this->token().value;
-
-	this->next_token();
-
-	if (!this->check_token(token_t::Colon, true))
-	{
-		_DeletePointer(node);
-		return nullptr;
-	}
-
-	node->value = this->parse_expr(node);
-	if (node->value == nullptr)
-	{
-		_DeletePointer(node);
-		return nullptr;
-	}
-
-	return node;
-}
-
-ast_stmt_t* parser_impl_t::parse_assign_or_call(ast_node_t* p)
+ast_stmt_t* parser_impl_t::parse_stmt_assign_or_call(ast_node_t* p)
 {
 	ast_expr_t* left = this->parse_suffixed_expr(p);
 	if (left == nullptr)
@@ -593,55 +667,55 @@ ast_expr_t* parser_impl_t::parse_unary_expr(ast_node_t* p)
 	token_t& token = this->token();
 	switch (token.type)
 	{
-		case token_t::BInt:
-		{
-			ast_expr_int_t* node = new ast_expr_int_t(p);
-			node->value = String::binstrToValue<inum_t>(token.value);
-			right = node;
-			this->next_token();
-		}
-		break;
+	case token_t::BInt:
+	{
+		ast_expr_int_t* node = new ast_expr_int_t(p);
+		node->value = String::binstrToValue<inum_t>(token.value);
+		right = node;
+		this->next_token();
+	}
+	break;
 	case token_t::XInt:
-		{
-			ast_expr_int_t * node = new ast_expr_int_t(p);
-			node->value = String::hexstrToValue<inum_t>(token.value);
-			right = node;
-			this->next_token();
-		}
-		break;
+	{
+		ast_expr_int_t* node = new ast_expr_int_t(p);
+		node->value = String::hexstrToValue<inum_t>(token.value);
+		right = node;
+		this->next_token();
+	}
+	break;
 	case token_t::DInt:
-		{
-			ast_expr_int_t * node = new ast_expr_int_t(p);
-			node->value = String::stringToValue<inum_t>(token.value);
-			right = node;
-			this->next_token();
-		}
-		break;
+	{
+		ast_expr_int_t* node = new ast_expr_int_t(p);
+		node->value = String::stringToValue<inum_t>(token.value);
+		right = node;
+		this->next_token();
+	}
+	break;
 	case token_t::Float:
-		{
-			ast_expr_float_t * node = new ast_expr_float_t(p);
-			node->value = String::stringToValue<fnum_t>(token.value);
-			right = node;
-			this->next_token();
-		}
-		break;
+	{
+		ast_expr_float_t* node = new ast_expr_float_t(p);
+		node->value = String::stringToValue<fnum_t>(token.value);
+		right = node;
+		this->next_token();
+	}
+	break;
 	case token_t::Str:
-		{
-			ast_expr_str_t* node = new ast_expr_str_t(p);
-			node->value = token.value;
-			right = node;
-			this->next_token();
-		}
-		break;
+	{
+		ast_expr_str_t* node = new ast_expr_str_t(p);
+		node->value = token.value;
+		right = node;
+		this->next_token();
+	}
+	break;
 	case token_t::True:
 	case token_t::False:
-		{
-			ast_expr_bool_t * node = new ast_expr_bool_t(p);
-			node->value = String::stringToValue<bool>(token.value);
-			right = node;
-			this->next_token();
-		}
-		break;
+	{
+		ast_expr_bool_t* node = new ast_expr_bool_t(p);
+		node->value = String::stringToValue<bool>(token.value);
+		right = node;
+		this->next_token();
+	}
+	break;
 	case token_t::Func:
 		right = this->parse_func_def(p);
 		break;
@@ -651,11 +725,11 @@ ast_expr_t* parser_impl_t::parse_unary_expr(ast_node_t* p)
 	case token_t::LCB:
 		right = this->parse_object_def(p, nullptr);
 		break;
-	/*
-	case token_t::Using:
-		right = this->parse_module_ref(p);
-		break;
-	*/
+		/*
+		case token_t::Using:
+			right = this->parse_module_ref(p);
+			break;
+		*/
 	case token_t::ID: case token_t::LRB:
 		right = this->parse_suffixed_expr(p);
 		break;
@@ -687,7 +761,7 @@ ast_expr_t* parser_impl_t::parse_suffixed_expr(ast_node_t* p)
 	for (;;)
 	{
 		ast_expr_t* suffixed = nullptr;
-		
+
 		token_t& token = this->token();
 		switch (token.type)
 		{
@@ -703,7 +777,7 @@ ast_expr_t* parser_impl_t::parse_suffixed_expr(ast_node_t* p)
 		case token_t::LRB: // (
 			suffixed = this->parse_func_call(p, primary);
 			break;
-		
+
 		default: // no suffix
 			return primary;
 		}
@@ -716,7 +790,7 @@ ast_expr_t* parser_impl_t::parse_suffixed_expr(ast_node_t* p)
 
 		primary = suffixed;
 	}
-	
+
 	return primary;
 }
 
@@ -739,7 +813,7 @@ ast_expr_t* parser_impl_t::parse_primary_expr(ast_node_t* p)
 
 		return expr;
 	}
-	
+
 	if (!this->check_token(token_t::ID, true, false))
 		return nullptr;
 
@@ -787,9 +861,9 @@ bool parser_impl_t::parse_func_params(ast_expr_func_def_t* node)
 			break;
 
 		if (!this->check_token(token_t::ID, true, false))
-			return false;		
+			return false;
 		const String& name = this->token().value;
-		if(node->args.find(name) != node->args.end())
+		if (node->args.find(name) != node->args.end())
 		{
 			this->error_token_unexpected();
 			return false;
@@ -797,12 +871,12 @@ bool parser_impl_t::parse_func_params(ast_expr_func_def_t* node)
 		this->next_token();
 
 		ast_type_t* type = this->parse_type(node);
-		if(type == nullptr)
+		if (type == nullptr)
 			return false;
 		node->args[name] = type;
-	} 
+	}
 	while (this->check_token(token_t::Comma, false));
-	
+
 	if (!this->check_token(token_t::RRB))
 		return false;
 
@@ -885,10 +959,10 @@ ast_expr_t* parser_impl_t::parse_array_def(ast_node_t* p)
 			_DeletePointer(node);
 			return nullptr;
 		}
-	} 
+	}
 	while (this->check_token(token_t::Comma, false)
 		|| this->check_token(token_t::Semicolon, false));
-	
+
 	if (!this->check_token(token_t::RSB))
 	{
 		_DeletePointer(node);
@@ -903,7 +977,7 @@ object_def => '{' [object_field {sep object_field} [sep]] '}'
 sep => ',' | ';'
 */
 ast_expr_t* parser_impl_t::parse_object_def(ast_node_t* p, ast_expr_t* base)
-{	
+{
 	ast_expr_obj_def_t* node = new ast_expr_obj_def_t(p);
 	node->base = base;
 	if (base != nullptr)
@@ -926,7 +1000,7 @@ ast_expr_t* parser_impl_t::parse_object_def(ast_node_t* p, ast_expr_t* base)
 			_DeletePointer(node);
 			return nullptr;
 		}
-	} 
+	}
 	while (this->check_token(token_t::Comma, false)
 		|| this->check_token(token_t::Semicolon, false));
 
@@ -947,7 +1021,7 @@ bool parser_impl_t::parse_object_field(ast_expr_obj_def_t* node)
 	if (!this->check_token(token_t::ID, true, false))
 		return false;
 
-	const String key = this->token().value;	
+	const String key = this->token().value;
 	this->next_token();
 
 	token_t& token = this->token();
@@ -1044,7 +1118,7 @@ ast_expr_t* parser_impl_t::parse_module_ref(ast_node_t* p)
 
 	if (!this->check_token(token_t::RRB))
 		return nullptr;
-	
+
 	ast_expr_module_ref_t* node = new ast_expr_module_ref_t(p);
 	node->name = expr;
 
