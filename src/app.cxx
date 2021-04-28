@@ -1,11 +1,12 @@
 
 #include "app.h"
 #include "parser.h"
+#include "coder.h"
 using namespace eokas;
 
 #include <stdio.h>
 
-static void eokas_main(const char* file);
+static void eokas_main(const String& file);
 static void about(void);
 static void help(void);
 static void bad_command(const char* command);
@@ -24,10 +25,11 @@ int main(int argc, char** argv)
     {
         help();
     }
-    else if(!command.startsWith("-"))
+    else if (command.startsWith("-c"))
     {
-        String file = command;
-        eokas_main(file.cstr());
+        String file = args.get(2);
+        printf("file: %s\n", file.cstr());
+        eokas_main(file);
     }
     else
     {
@@ -37,27 +39,40 @@ int main(int argc, char** argv)
     return 0;
 }
 
-static void eokas_main(const char* fileName)
+static void eokas_main(const String& fileName)
 {
-    FileStream stream(fileName, "rb");
-    if (!stream.open())
+    FileStream in(fileName, "rb");
+    if (!in.open())
         return;
-    
-    size_t size = stream.size();
+
+    size_t size = in.size();
     MemoryBuffer buffer(size);
-    stream.read(buffer.data(), buffer.size());
-    stream.close();
-    
+    in.read(buffer.data(), buffer.size());
+    in.close();
+
     String str((const char*)buffer.data(), buffer.size());
-    
+    printf("%s\n", str.cstr());
+
     parser_t parser;
-    ast_module_t* t = parser.parse(str.cstr());
-    if (t == nullptr)
+    ast_module_t* m = parser.parse(str.cstr());
+    printf("module: %x\n", m);
+    if (m == nullptr)
     {
-        String error = parser.error();
+        const String& error = parser.error();
+        printf("ERROR: %s\n", error.cstr());
         return;
     }
-    
+
+    FileStream out("./test.cxx", "wb+");
+    if(!out.open())
+        return;
+
+    printf("begin encode\n");
+    DataStream stream(&out);
+    coder_t coder;
+    coder.encode_module(stream, m);
+    out.close();
+
     // todo: 
 }
 
@@ -87,5 +102,5 @@ static void bad_command(const char* command)
         "You can use the command %s to get the help infomation.\n",
         command,
         "'eokas -?' or 'eokas -help'"
-        );
+    );
 }

@@ -1,6 +1,2 @@
 
 type A = int;
-type B = bool;
-
-var a : A = 10;
-var b : B = true;

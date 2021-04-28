@@ -111,6 +111,7 @@ void scanner_t::next_token()
 
 token_t& scanner_t::token()
 {
+	printf("scanner m_token: %s\n", m_token.value.cstr());
 	return m_token;
 }
 

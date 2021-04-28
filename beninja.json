@@ -6,7 +6,7 @@
 
     "vars": {
         "depsDir": "./deps/",
-        "cflags": "-O3 -std=c++17"
+        "cflags": "-O3 -std=c++14"
     },
 
     "targets": [{

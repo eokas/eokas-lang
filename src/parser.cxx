@@ -106,7 +106,7 @@ ast_module_t* parser_impl_t::parse_module(const char* source)
 			return nullptr;
 		node->stmts.push_back(stmt);
 
-		this->check_token(token_t::Semicolon, false);
+		this->check_token(token_t::Semicolon, true);
 	}
 
 	return node;
@@ -809,7 +809,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_typedef(ast_node_t* p)
 
 	this->next_token();
 
-	if (!this->check_token(token_t::Equal, true))
+	if (!this->check_token(token_t::Assign, true))
 	{
 		_DeletePointer(node);
 		return nullptr;
@@ -817,13 +817,6 @@ ast_stmt_t* parser_impl_t::parse_stmt_typedef(ast_node_t* p)
 
 	node->value = this->parse_type(node);
 	if (node->value == nullptr)
-	{
-		_DeletePointer(node);
-		return nullptr;
-	}
-
-	// ;
-	if (!this->check_token(token_t::Semicolon))
 	{
 		_DeletePointer(node);
 		return nullptr;
@@ -865,7 +858,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_symboldef(ast_node_t* p)
 	}
 
 	// = expr
-	if (!this->check_token(token_t::Equal, true))
+	if (!this->check_token(token_t::Assign, true))
 	{
 		_DeletePointer(node);
 		return nullptr;
@@ -877,14 +870,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_symboldef(ast_node_t* p)
 		_DeletePointer(node);
 		return nullptr;
 	}
-
-	// ;
-	if (!this->check_token(token_t::Semicolon))
-	{
-		_DeletePointer(node);
-		return nullptr;
-	}
-
+	
 	return node;
 }
 
