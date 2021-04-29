@@ -105,8 +105,6 @@ ast_module_t* parser_impl_t::parse_module(const char* source)
 		if (stmt == nullptr)
 			return nullptr;
 		node->stmts.push_back(stmt);
-
-		this->check_token(token_t::Semicolon, true);
 	}
 
 	return node;
@@ -526,14 +524,14 @@ ast_expr_t* parser_impl_t::parse_func_call(ast_node_t* p, ast_expr_t* primary)
 			return nullptr;
 		}
 
-		ast_expr_t* expr = this->parse_expr(node);
-		if (expr == nullptr)
+		ast_expr_t* arg = this->parse_expr(node);
+		if (arg == nullptr)
 		{
 			_DeletePointer(node);
 			return nullptr;
 		}
 
-		node->args.push_back(expr);
+		node->args.push_back(arg);
 	}
 
 	return node;
@@ -822,6 +820,13 @@ ast_stmt_t* parser_impl_t::parse_stmt_typedef(ast_node_t* p)
 		return nullptr;
 	}
 
+	// ;
+	if (!this->check_token(token_t::Semicolon, true))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
 	return node;
 }
 
@@ -870,7 +875,14 @@ ast_stmt_t* parser_impl_t::parse_stmt_symboldef(ast_node_t* p)
 		_DeletePointer(node);
 		return nullptr;
 	}
-	
+
+	// ;
+	if (!this->check_token(token_t::Semicolon, true))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
 	return node;
 }
 
@@ -878,6 +890,14 @@ ast_stmt_t* parser_impl_t::parse_stmt_continue(ast_node_t* p)
 {
 	ast_stmt_continue_t* node = new ast_stmt_continue_t(p);
 	this->next_token();
+
+	// ;
+	if (!this->check_token(token_t::Semicolon, true))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
 	return node;
 }
 
@@ -885,6 +905,14 @@ ast_stmt_t* parser_impl_t::parse_stmt_break(ast_node_t* p)
 {
 	ast_stmt_break_t* node = new ast_stmt_break_t(p);
 	this->next_token();
+
+	// ;
+	if (!this->check_token(token_t::Semicolon, true))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
 	return node;
 }
 
@@ -905,6 +933,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_return(ast_node_t* p)
 		return nullptr;
 	}
 
+	// ;
 	if (!this->check_token(token_t::Semicolon, true))
 	{
 		_DeletePointer(node);
@@ -1086,7 +1115,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_assign_or_call(ast_node_t* p)
 	if (left == nullptr)
 		return nullptr;
 
-	if (this->check_token(token_t::Assign))
+	if (this->check_token(token_t::Assign, false))
 	{
 		ast_stmt_assign_t* node = new ast_stmt_assign_t(p);
 		node->left = left;
@@ -1098,12 +1127,53 @@ ast_stmt_t* parser_impl_t::parse_stmt_assign_or_call(ast_node_t* p)
 			_DeletePointer(node);
 			return nullptr;
 		}
+
+		// ;
+		if (!this->check_token(token_t::Semicolon, true))
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+
 		return node;
 	}
 	else
 	{
+		printf("call \n");
 		ast_stmt_call_t* node = new ast_stmt_call_t(p);
-		node->expr = left;
+		node->func = left;
+		left->parent = node;
+
+		if (!this->check_token(token_t::LRB, true))
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+		printf("check ) false true\n");
+		while (!this->check_token(token_t::RRB, false))
+		{
+			if (!node->args.empty() && !this->check_token(token_t::Comma))
+			{
+				_DeletePointer(node);
+				return nullptr;
+			}
+			printf("check arg");
+			ast_expr_t* arg = this->parse_expr(node);
+			if (arg == nullptr)
+			{
+				_DeletePointer(node);
+				return nullptr;
+			}
+			node->args.push_back(arg);
+		}
+
+		// ;
+		if (!this->check_token(token_t::Semicolon, true))
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+
 		return node;
 	}
 }

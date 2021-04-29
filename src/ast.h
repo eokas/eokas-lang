@@ -134,25 +134,25 @@ struct ast_module_t :public ast_node_t
 
 
 struct ast_type_int_t :public ast_type_t {
-	ast_type_int_t(ast_node_t* parent) 
+	ast_type_int_t(ast_node_t* parent)
 		: ast_type_t(ast_node_category_t::type_int, parent)
 	{}
 };
 
 struct ast_type_float_t :public ast_type_t {
-	ast_type_float_t(ast_node_t* parent) 
+	ast_type_float_t(ast_node_t* parent)
 		: ast_type_t(ast_node_category_t::type_float, parent)
 	{}
 };
 
 struct ast_type_bool_t :public ast_type_t {
-	ast_type_bool_t(ast_node_t* parent) 
+	ast_type_bool_t(ast_node_t* parent)
 		: ast_type_t(ast_node_category_t::type_bool, parent)
 	{}
 };
 
 struct ast_type_string_t :public ast_type_t {
-	ast_type_string_t(ast_node_t* parent) 
+	ast_type_string_t(ast_node_t* parent)
 		: ast_type_t(ast_node_category_t::type_string, parent)
 	{}
 };
@@ -160,7 +160,7 @@ struct ast_type_string_t :public ast_type_t {
 struct ast_type_ref_t :public ast_type_t {
 	String name;
 
-	ast_type_ref_t(ast_node_t* parent) 
+	ast_type_ref_t(ast_node_t* parent)
 		: ast_type_t(ast_node_category_t::type_ref, parent)
 		, name("")
 	{}
@@ -539,16 +539,19 @@ struct ast_stmt_block_t :public ast_stmt_t
 
 struct ast_stmt_call_t :public ast_stmt_t
 {
-	ast_expr_t* expr;
+	ast_expr_t* func;
+	std::vector<ast_expr_t*> args;
 
 	ast_stmt_call_t(ast_node_t* parent)
 		: ast_stmt_t(ast_node_category_t::stmt_call, parent)
-		, expr(nullptr)
+		, func(nullptr)
+		, args()
 	{}
 
 	virtual ~ast_stmt_call_t()
 	{
-		_DeletePointer(expr);
+		_DeletePointer(func);
+		_DeleteList(args);
 	}
 };
 

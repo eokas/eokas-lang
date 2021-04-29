@@ -1,7 +1,2 @@
 
-type A = int;
-type N = float;
-type B = bool;
-
-val a : bool = true;
-var b = 5.0;
+a(3);
