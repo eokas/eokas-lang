@@ -832,7 +832,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_symboldef(ast_node_t* p)
 {
 	ast_stmt_symboldef_t* node = new ast_stmt_symboldef_t(p);
 
-	bool variable = this->token().type == token_t::Var;
+	node->variable = this->token().type == token_t::Var;
 
 	this->next_token(); // ignore 'var' | 'val'
 

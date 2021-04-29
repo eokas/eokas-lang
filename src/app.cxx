@@ -5,6 +5,7 @@
 using namespace eokas;
 
 #include <stdio.h>
+#include <iostream>
 
 static void eokas_main(const String& file);
 static void about(void);
@@ -63,14 +64,13 @@ static void eokas_main(const String& fileName)
         return;
     }
 
-    FileStream out("./test.cxx", "wb+");
+    FileStream out(String::format("%s.cxx", fileName.cstr()), "w+");
     if(!out.open())
         return;
 
     printf("begin encode\n");
-    DataStream stream(&out);
     coder_t coder;
-    coder.encode_module(stream, m);
+    coder.encode_module(out, m);
     out.close();
 
     // todo: 

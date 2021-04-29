@@ -16,8 +16,17 @@ public:
 
     bool encode_type(DataStream& stream, struct ast_type_t* node);
     bool encode_type_int(DataStream& stream, struct ast_type_int_t* node);
+    bool encode_type_float(DataStream& stream, struct ast_type_float_t* node);
+    bool encode_type_bool(DataStream& stream, struct ast_type_bool_t* node);
+    bool encode_type_string(DataStream& stream, struct ast_type_string_t* node);
 
     bool encode_expr(DataStream& stream, struct ast_expr_t* node);
+    bool encode_expr_trinary(DataStream& stream, struct ast_expr_trinary_t* node);
+    bool encode_expr_binary(DataStream& stream, struct ast_expr_binary_t* node);
+    bool encode_expr_unary(DataStream& stream, struct ast_expr_unary_t* node);
+    bool encode_expr_int(DataStream& stream, struct ast_expr_int_t* node);
+    bool encode_expr_float(DataStream& stream, struct ast_expr_float_t* node);
+    bool encode_expr_bool(DataStream& stream, struct ast_expr_bool_t* node);
 
     bool encode_stmt(DataStream& stream, struct ast_stmt_t* node);
     bool encode_stmt_echo(DataStream& stream, struct ast_stmt_echo_t* node);

@@ -43,18 +43,47 @@ bool coder_t::encode_type(DataStream& stream, struct ast_type_t* node)
     {
     case ast_node_category_t::type_int:
         return this->encode_type_int(stream, dynamic_cast<ast_type_int_t*>(node));
+    case ast_node_category_t::type_float:
+        return this->encode_type_float(stream, dynamic_cast<ast_type_float_t*>(node));
+    case ast_node_category_t::type_bool:
+        return this->encode_type_bool(stream, dynamic_cast<ast_type_bool_t*>(node));
+    case ast_node_category_t::type_string:
+        return this->encode_type_string(stream, dynamic_cast<ast_type_string_t*>(node));
+    default:
+        return false;
     }
 
-    return true;
+    return false;
 }
 
 bool coder_t::encode_type_int(DataStream& stream, struct ast_type_int_t* node)
 {
-    if(node == nullptr)
+    if (node == nullptr)
         return false;
+    stream.write("int32_t");
+    return true;
+}
+bool coder_t::encode_type_float(DataStream& stream, struct ast_type_float_t* node)
+{
+    if (node == nullptr)
+        return false;
+    stream.write("float");
+    return true;
+}
 
-    stream.write(String("int32_t"));
-    
+bool coder_t::encode_type_bool(DataStream& stream, struct ast_type_bool_t* node)
+{
+    if (node == nullptr)
+        return false;
+    stream.write("bool");
+    return true;
+}
+
+bool coder_t::encode_type_string(DataStream& stream, struct ast_type_string_t* node)
+{
+    if (node == nullptr)
+        return false;
+    stream.write("char*");
     return true;
 }
 
@@ -63,6 +92,114 @@ bool coder_t::encode_expr(DataStream& stream, struct ast_expr_t* node)
     if (node == nullptr)
         return false;
 
+    switch (node->category)
+    {
+    case ast_node_category_t::expr_trinary:
+        return this->encode_expr_trinary(stream, dynamic_cast<ast_expr_trinary_t*>(node));
+    case ast_node_category_t::expr_binary:
+        return this->encode_expr_binary(stream, dynamic_cast<ast_expr_binary_t*>(node));
+    case ast_node_category_t::expr_unary:
+        return this->encode_expr_unary(stream, dynamic_cast<ast_expr_unary_t*>(node));
+    case ast_node_category_t::expr_int:
+        return this->encode_expr_int(stream, dynamic_cast<ast_expr_int_t*>(node));
+    case ast_node_category_t::expr_float:
+        return this->encode_expr_float(stream, dynamic_cast<ast_expr_float_t*>(node));
+    case ast_node_category_t::expr_bool:
+        return this->encode_expr_bool(stream, dynamic_cast<ast_expr_bool_t*>(node));
+    default:
+        return false;
+    }
+    return false;
+}
+
+bool coder_t::encode_expr_trinary(DataStream& stream, struct ast_expr_trinary_t* node)
+{
+    if (node == nullptr)
+        return false;
+    stream.write("(");
+    if (!this->encode_expr(stream, node->cond))
+        return false;
+    stream.write(" ? ");
+    if (!this->encode_expr(stream, node->branch_true))
+        return false;
+    stream.write(" : ");
+    if (!this->encode_expr(stream, node->branch_false))
+        return false;
+    stream.write(")");
+    return true;
+}
+
+bool coder_t::encode_expr_binary(DataStream& stream, struct ast_expr_binary_t* node)
+{
+    if (node == nullptr)
+        return false;
+
+    stream.write("(");
+
+    if (!this->encode_expr(stream, node->left))
+        return false;
+
+    switch (node->op)
+    {
+    case ast_binary_oper_t::Add:stream.write(" + "); break;
+    case ast_binary_oper_t::Sub:stream.write(" - "); break;
+    case ast_binary_oper_t::Mul:stream.write(" * "); break;
+    case ast_binary_oper_t::Div:stream.write(" / "); break;
+    case ast_binary_oper_t::Mod: stream.write(" % "); break;
+    default:
+        return false;
+    }
+
+    if (!this->encode_expr(stream, node->right))
+        return false;
+
+    stream.write(")");
+
+    return true;
+}
+
+bool coder_t::encode_expr_unary(DataStream& stream, struct ast_expr_unary_t* node)
+{
+    if (node == nullptr)
+        return false;
+
+    stream.write("(");
+
+    switch (node->op)
+    {
+    case ast_unary_oper_t::Pos:stream.write(" + "); break;
+    case ast_unary_oper_t::Neg:stream.write(" - "); break;
+    default:
+        return false;
+    }
+
+    if (!this->encode_expr(stream, node->right))
+        return false;
+
+    stream.write(")");
+}
+
+bool coder_t::encode_expr_int(DataStream& stream, struct ast_expr_int_t* node)
+{
+    if (node == nullptr)
+        return false;
+    stream.write(String::valueToString(node->value));
+    return true;
+}
+
+bool coder_t::encode_expr_float(DataStream& stream, struct ast_expr_float_t* node)
+{
+    if (node == nullptr)
+        return false;
+    stream.write(String::valueToString(node->value));
+    return true;
+}
+
+bool coder_t::encode_expr_bool(DataStream& stream, struct ast_expr_bool_t* node)
+{
+    if (node == nullptr)
+        return false;
+    stream.write(String::valueToString(node->value));
     return true;
 }
 
@@ -131,11 +268,12 @@ bool coder_t::encode_stmt_typedef(DataStream& stream, struct ast_stmt_typedef_t*
         return false;
 
     const String& name = node->name;
-    stream.write(String("using ") + name + " = ");
+    stream.write(String::format("using %s = ", name.cstr()));
     if (!this->encode_type(stream, node->value))
     {
         return false;
     }
+    stream.write(";");
 
     return true;
 }
@@ -144,6 +282,32 @@ bool coder_t::encode_stmt_symboldef(DataStream& stream, struct ast_stmt_symbolde
 {
     if (node == nullptr)
         return false;
+
+    if(! node->variable)
+    {
+        stream.write("const ");
+    }
+
+    if (node->type)
+    {
+        if (!this->encode_type(stream, node->type))
+            return false;
+    }
+    else {
+        stream.write("auto");
+    }
+
+    const String& name = node->name;
+    stream.write(String::format(" %s", name.cstr()));
+
+    if (node->value)
+    {
+        stream.write(" = ");
+        if (!this->encode_expr(stream, node->value))
+            return false;
+    }
+
+    stream.write(";");
 
     return true;
 }
