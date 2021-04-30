@@ -438,7 +438,7 @@ ast_expr_t* parser_impl_t::parse_func_def(ast_node_t* p)
 		_DeletePointer(node);
 		return nullptr;
 	}
-    printf("params parsed.\n");
+
     if(this->check_token(token_t::Colon, false))
     {
         ast_type_t* type = this->parse_type(node);
@@ -448,13 +448,13 @@ ast_expr_t* parser_impl_t::parse_func_def(ast_node_t* p)
             return nullptr;
         }
     }
-    printf("return type parsed.\n");
+
 	if (!this->parse_func_body(node))
 	{
 		_DeletePointer(node);
 		return nullptr;
 	}
-    printf("func body parsed.\n");
+
 	return node;
 }
 
@@ -486,8 +486,7 @@ bool parser_impl_t::parse_func_params(ast_expr_func_def_t* node)
 		ast_type_t* type = this->parse_type(node);
 		if (type == nullptr)
 			return false;
-        
-        printf("=== parse func param: %s \n", name.cstr());
+
 		node->args[name] = type;
 	}
 	while (this->check_token(token_t::Comma, false));

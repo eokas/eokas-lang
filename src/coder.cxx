@@ -237,7 +237,6 @@ bool coder_t::encode_expr_func_def(struct ast_expr_func_def_t* node)
         if(!this->encode_type(pair.second))
             return false;
         const char* name = pair.first.cstr();
-        printf("====== %s === \n", name);
         stream.write(String::format(" %s", name));
     }
     stream.write(")");
