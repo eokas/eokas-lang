@@ -70,7 +70,7 @@ static void eokas_main(const String& fileName)
 
     printf("begin encode\n");
     coder_t coder(out);
-    coder.encode_module(m);
+    coder.encode(m);
     out.close();
 
     // todo: 
