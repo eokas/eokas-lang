@@ -63,7 +63,8 @@ enum class ast_node_category_t
 
 enum class ast_unary_oper_t
 {
-    Pos, Neg, Not, TypeOf, SizeOf,
+    Pos, Neg, Not, Flip,
+    TypeOf, SizeOf,
     Count, Unknown
 };
 

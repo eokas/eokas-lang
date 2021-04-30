@@ -13,7 +13,7 @@ struct token_t
 		If, Else, For, While, Continue, Break, Return,
 		Is, As, True, False,
 		Comma, Semicolon, Colon, Question, At, Pound, Dollar,
-		Add, Sub, Mul, Div, Mod, Exp, Xor,
+		Add, Sub, Mul, Div, Mod, Xor, Flip,
 		LRB, RRB, LSB, RSB, LCB, RCB,
 		And, And2, Or, Or2,
 		Assign, Equal, Not, NEqual, Greater, GEqual, Less, LEqual,

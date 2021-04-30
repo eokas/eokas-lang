@@ -193,6 +193,7 @@ struct coder_cxx_t
         case ast_unary_oper_t::Pos:stream.write(" + "); break;
         case ast_unary_oper_t::Neg:stream.write(" - "); break;
         case ast_unary_oper_t::Not:stream.write(" ! "); break;
+        case ast_unary_oper_t::Flip:stream.write(" ~ "); break;
         default:
             return false;
         }
