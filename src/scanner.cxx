@@ -15,7 +15,7 @@ const char* const token_t::names[] = {
 	"=", "==", "!", "!=", ">", ">=", "<", "<=",
 	">|", "|<",
 	".", "..", "...",
-	"type", "int", "float", "bool",
+	"type", "int", "float", "bool", "string",
 	"<b-int>", "<x-int>", "<d-int>", "<float>", "<string>", "<identifier>", "<eos>"
 };
 

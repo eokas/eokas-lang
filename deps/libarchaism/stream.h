@@ -22,6 +22,10 @@ public:
     virtual size_t write(void* data, size_t size) = 0;
     virtual bool seek(int offset, int origin) = 0; // 0:beg, 1:cur, 2:end
     virtual void flush() = 0;
+
+public:
+    void read(Stream& stream);
+    void write(Stream& stream);
 };
 
 
@@ -44,8 +48,12 @@ public:
     virtual bool seek(int offset, int origin) override; // 0:beg, 1:cur, 2:end
     virtual void flush() override;
 
+public:
+    Stream& target() const;
+    void bind(Stream& target);
+
 private:
-    Stream& target;
+    Stream* mTarget;
 };
 
 

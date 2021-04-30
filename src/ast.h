@@ -33,7 +33,7 @@ enum class ast_node_category_t
     expr_int,
     expr_float,
     expr_bool,
-    expr_str,
+    expr_string,
     expr_symbol_ref,
 
     expr_func_def,
@@ -256,12 +256,12 @@ struct ast_expr_bool_t :public ast_expr_t
     {}
 };
 
-struct ast_expr_str_t :public ast_expr_t
+struct ast_expr_string_t :public ast_expr_t
 {
     String value;
 
-    ast_expr_str_t(ast_node_t* parent)
-        : ast_expr_t(ast_node_category_t::expr_str, parent)
+    ast_expr_string_t(ast_node_t* parent)
+        : ast_expr_t(ast_node_category_t::expr_string, parent)
         , value("")
     {}
 };

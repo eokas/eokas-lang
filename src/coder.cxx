@@ -24,7 +24,6 @@ struct coder_cxx_t
         , counter(0)
     { }
 
-    String h;
     bool encode(struct ast_module_t* m)
     {
         header.open();
@@ -35,13 +34,31 @@ struct coder_cxx_t
         if (!this->encode_module(m))
             return false;
 
+        String h;
+        header.seek(0, 0);
+        stream.bind(header);
+        stream.read(h);
+        printf("H: %s\n", h.cstr());
+
+        String g;
+        global.seek(0, 0);
+        stream.bind(global);
+        stream.read(g);
+        printf("G: %s\n", g.cstr());
+
         String l;
         local.seek(0, 0);
         stream.bind(local);
         stream.read(l);
+        printf("L: %s\n", l.cstr());
 
         stream.bind(base);
+        stream.write(h);
+        stream.write("\n");
+        stream.write(g);
+        stream.write("\n");
         stream.write(l);
+        stream.flush();
 
         return true;
     }
@@ -51,12 +68,13 @@ struct coder_cxx_t
         if (node == nullptr)
             return false;
 
+        stream.write("void module_main()\n{\n");
         for (auto& stmt : node->stmts)
         {
             if (!this->encode_stmt(stmt))
                 return false;
         }
-
+        stream.write("}\n");
         return true;
     }
 
@@ -111,7 +129,7 @@ struct coder_cxx_t
     {
         if (node == nullptr)
             return false;
-        stream.write("char*");
+        stream.write("const char*");
         return true;
     }
 
@@ -142,8 +160,8 @@ struct coder_cxx_t
             return this->encode_expr_float(dynamic_cast<ast_expr_float_t*>(node));
         case ast_node_category_t::expr_bool:
             return this->encode_expr_bool(dynamic_cast<ast_expr_bool_t*>(node));
-        case ast_node_category_t::expr_str:
-            return this->encode_expr_str(dynamic_cast<ast_expr_str_t*>(node));
+        case ast_node_category_t::expr_string:
+            return this->encode_expr_string(dynamic_cast<ast_expr_string_t*>(node));
         case ast_node_category_t::expr_symbol_ref:
             return this->encode_expr_symbol_ref(dynamic_cast<ast_expr_symbol_ref_t*>(node));
         case ast_node_category_t::expr_func_def:
@@ -264,7 +282,7 @@ struct coder_cxx_t
         return true;
     }
 
-    bool encode_expr_str(struct ast_expr_str_t* node)
+    bool encode_expr_string(struct ast_expr_string_t* node)
     {
         if (node == nullptr)
             return false;
@@ -285,6 +303,7 @@ struct coder_cxx_t
         if (node == nullptr)
             return false;
 
+        Stream& oldTarget = stream.target();
         stream.bind(global);
         String globalName = String::format("func_%d", counter++);
         stream.write(String::format("struct %s{ \n", globalName.cstr()));
@@ -299,7 +318,7 @@ struct coder_cxx_t
             const char* name = pair.first.cstr();
             stream.write(String::format(" %s", name));
         }
-        stream.write(")");
+        stream.write(") const");
         if (node->type)
         {
             stream.write("->");
@@ -315,7 +334,7 @@ struct coder_cxx_t
         stream.write("}\n");
         stream.write("};\n");
 
-        stream.bind(local);
+        stream.bind(oldTarget);
         stream.write(String::format("%s()", globalName.cstr()));
 
         return true;
@@ -383,11 +402,12 @@ struct coder_cxx_t
     {
         if (node == nullptr)
             return false;
-        printf("echo\n");
+
+        Stream& oldTarget = stream.target();
         stream.bind(header);
         stream.write("#include <iostream>\n");
 
-        stream.bind(local);
+        stream.bind(oldTarget);
         stream.write("std::cout");
         for (auto& v : node->values)
         {
@@ -399,7 +419,7 @@ struct coder_cxx_t
             stream.write(")");
         }
         stream.write(";\n");
-        printf("end echo\n");
+
         return true;
     }
 

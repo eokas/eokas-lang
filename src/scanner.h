@@ -19,7 +19,7 @@ struct token_t
 		Assign, Equal, Not, NEqual, Greater, GEqual, Less, LEqual,
 		ShiftL, ShiftR,
 		Dot, Dot2, Dot3,
-		Type, IntType, FloatType, BoolType,
+		Type, IntType, FloatType, BoolType, StringType,
 		BInt, XInt, DInt, Float, Str, ID, Eos, 
 		Count, Unknown
 	};

@@ -1,2 +1,6 @@
 
-echo "hello world.";
+val hello = func(x: string) {
+    echo "hello ", x;
+};
+
+hello("world");

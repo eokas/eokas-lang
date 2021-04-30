@@ -20,6 +20,7 @@ public:
 	ast_type_t* parse_type_int(ast_node_t* p);
 	ast_type_t* parse_type_float(ast_node_t* p);
 	ast_type_t* parse_type_bool(ast_node_t* p);
+	ast_type_t* parse_type_string(ast_node_t* p);
 	ast_type_t* parse_type_ref(ast_node_t* p);
 
 	ast_expr_t* parse_expr(ast_node_t* p);
@@ -120,6 +121,8 @@ ast_type_t* parser_impl_t::parse_type(ast_node_t* p)
 		return this->parse_type_float(p);
 	case token_t::BoolType:
 		return this->parse_type_bool(p);
+	case token_t::StringType:
+		return this->parse_type_string(p);
 	case token_t::ID:
 		return this->parse_type_ref(p);
 	default:
@@ -146,6 +149,13 @@ ast_type_t* parser_impl_t::parse_type_float(ast_node_t* p)
 ast_type_t* parser_impl_t::parse_type_bool(ast_node_t* p)
 {
 	ast_type_bool_t* node = new ast_type_bool_t(p);
+	this->next_token(); // ignore 'bool';
+	return node;
+}
+
+ast_type_t* parser_impl_t::parse_type_string(ast_node_t* p)
+{
+	ast_type_string_t* node = new ast_type_string_t(p);
 	this->next_token(); // ignore 'bool';
 	return node;
 }
@@ -300,7 +310,7 @@ ast_expr_t* parser_impl_t::parse_expr_unary(ast_node_t* p)
 	break;
 	case token_t::Str:
 	{
-		ast_expr_str_t* node = new ast_expr_str_t(p);
+		ast_expr_string_t* node = new ast_expr_string_t(p);
 		node->value = token.value;
 		right = node;
 		this->next_token();
