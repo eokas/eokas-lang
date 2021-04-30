@@ -6,13 +6,45 @@ _BeginNamespace(eokas)
 
 struct coder_cxx_t
 {
+    Stream& base;
+
+    MemoryStream header;
+    MemoryStream global;
+    MemoryStream local;
     TextStream stream;
-    std::map<String, bool> headers;
+
+    int counter;
 
     coder_cxx_t(Stream& stream)
-        : stream(TextStream(stream))
-        , headers()
-    {}
+        : base(stream)
+        , header()
+        , global()
+        , local()
+        , stream(local)
+        , counter(0)
+    { }
+
+    String h;
+    bool encode(struct ast_module_t* m)
+    {
+        header.open();
+        global.open();
+        local.open();
+
+        stream.bind(local);
+        if (!this->encode_module(m))
+            return false;
+
+        String l;
+        local.seek(0, 0);
+        stream.bind(local);
+        stream.read(l);
+
+        stream.bind(base);
+        stream.write(l);
+
+        return true;
+    }
 
     bool encode_module(struct ast_module_t* node)
     {
@@ -110,6 +142,8 @@ struct coder_cxx_t
             return this->encode_expr_float(dynamic_cast<ast_expr_float_t*>(node));
         case ast_node_category_t::expr_bool:
             return this->encode_expr_bool(dynamic_cast<ast_expr_bool_t*>(node));
+        case ast_node_category_t::expr_str:
+            return this->encode_expr_str(dynamic_cast<ast_expr_str_t*>(node));
         case ast_node_category_t::expr_symbol_ref:
             return this->encode_expr_symbol_ref(dynamic_cast<ast_expr_symbol_ref_t*>(node));
         case ast_node_category_t::expr_func_def:
@@ -230,6 +264,14 @@ struct coder_cxx_t
         return true;
     }
 
+    bool encode_expr_str(struct ast_expr_str_t* node)
+    {
+        if (node == nullptr)
+            return false;
+        stream.write(String::format("\"%s\"", node->value.cstr()));
+        return true;
+    }
+
     bool encode_expr_symbol_ref(struct ast_expr_symbol_ref_t* node)
     {
         if (node == nullptr)
@@ -243,7 +285,10 @@ struct coder_cxx_t
         if (node == nullptr)
             return false;
 
-        stream.write("[](");
+        stream.bind(global);
+        String globalName = String::format("func_%d", counter++);
+        stream.write(String::format("struct %s{ \n", globalName.cstr()));
+        stream.write("auto operator()(");
         bool first = true;
         for (auto& pair : node->args)
         {
@@ -267,7 +312,11 @@ struct coder_cxx_t
             if (!this->encode_stmt(stmt))
                 return false;
         }
-        stream.write("}");
+        stream.write("}\n");
+        stream.write("};\n");
+
+        stream.bind(local);
+        stream.write(String::format("%s()", globalName.cstr()));
 
         return true;
     }
@@ -334,7 +383,11 @@ struct coder_cxx_t
     {
         if (node == nullptr)
             return false;
+        printf("echo\n");
+        stream.bind(header);
+        stream.write("#include <iostream>\n");
 
+        stream.bind(local);
         stream.write("std::cout");
         for (auto& v : node->values)
         {
@@ -345,9 +398,8 @@ struct coder_cxx_t
             }
             stream.write(")");
         }
-
-        this->headers["<iostream>"] = true;
-
+        stream.write(";\n");
+        printf("end echo\n");
         return true;
     }
 
@@ -538,7 +590,7 @@ coder_t::~coder_t()
 
 bool coder_t::encode(struct ast_module_t* m)
 {
-    return impl->encode_module(m);
+    return impl->encode(m);
 }
 
 _EndNamespace(eokas)
