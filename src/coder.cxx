@@ -56,7 +56,7 @@ bool coder_t::encode_type_int(struct ast_type_int_t* node)
 {
     if (node == nullptr)
         return false;
-    stream.write("int32_t");
+    stream.write("int");
     return true;
 }
 bool coder_t::encode_type_float(struct ast_type_float_t* node)
@@ -110,6 +110,12 @@ bool coder_t::encode_expr(struct ast_expr_t* node)
         return this->encode_expr_float(dynamic_cast<ast_expr_float_t*>(node));
     case ast_node_category_t::expr_bool:
         return this->encode_expr_bool(dynamic_cast<ast_expr_bool_t*>(node));
+    case ast_node_category_t::expr_symbol_ref:
+        return this->encode_expr_symbol_ref(dynamic_cast<ast_expr_symbol_ref_t*>(node));
+    case ast_node_category_t::expr_func_def:
+        return this->encode_expr_func_def(dynamic_cast<ast_expr_func_def_t*>(node));
+    case ast_node_category_t::expr_func_ref:
+        return this->encode_expr_func_ref(dynamic_cast<ast_expr_func_ref_t*>(node));
     default:
         return false;
     }
@@ -217,6 +223,61 @@ bool coder_t::encode_expr_symbol_ref(struct ast_expr_symbol_ref_t* node)
     return true;
 }
 
+bool coder_t::encode_expr_func_def(struct ast_expr_func_def_t* node)
+{
+    if (node == nullptr)
+        return false;
+
+    stream.write("[](");
+    bool first = true;
+    for(auto& pair : node->args)
+    {
+        if(!first)
+            stream.write(", ");
+        if(!this->encode_type(pair.second))
+            return false;
+        const char* name = pair.first.cstr();
+        printf("====== %s === \n", name);
+        stream.write(String::format(" %s", name));
+    }
+    stream.write(")");
+    if(node->type)
+    {
+        stream.write("=>");
+        if(!this->encode_type(node->type))
+            return false;
+    }
+    stream.write("{\n");
+    for(auto& stmt : node->body)
+    {
+        if(!this->encode_stmt(stmt))
+            return false;
+    }
+    stream.write("}");
+
+    return true;
+}
+
+bool coder_t::encode_expr_func_ref(struct ast_expr_func_ref_t* node)
+{
+    if (node == nullptr)
+        return false;
+    if (!this->encode_expr(node->func))
+        return false;
+    stream.write("(");
+    bool first = true;
+    for (auto& arg : node->args)
+    {
+        if (!first)
+            stream.write(", ");
+        first = false;
+        if (!this->encode_expr(arg))
+            return false;
+    }
+    stream.write(")");
+    return true;
+}
+
 bool coder_t::encode_stmt(struct ast_stmt_t* node)
 {
     if (node == nullptr)
@@ -226,10 +287,10 @@ bool coder_t::encode_stmt(struct ast_stmt_t* node)
     {
     case ast_node_category_t::stmt_echo:
         return this->encode_stmt_echo(dynamic_cast<ast_stmt_echo_t*>(node));
-    case ast_node_category_t::stmt_typedef:
-        return this->encode_stmt_typedef(dynamic_cast<ast_stmt_typedef_t*>(node));
-    case ast_node_category_t::stmt_symboldef:
-        return this->encode_stmt_symboldef(dynamic_cast<ast_stmt_symboldef_t*>(node));
+    case ast_node_category_t::stmt_type_def:
+        return this->encode_stmt_type_def(dynamic_cast<ast_stmt_type_def_t*>(node));
+    case ast_node_category_t::stmt_symbol_def:
+        return this->encode_stmt_symbol_def(dynamic_cast<ast_stmt_symbol_def_t*>(node));
     case ast_node_category_t::stmt_break:
         return this->encode_stmt_break(dynamic_cast<ast_stmt_break_t*>(node));
     case ast_node_category_t::stmt_continue:
@@ -276,7 +337,7 @@ bool coder_t::encode_stmt_echo(struct ast_stmt_echo_t* node)
     return true;
 }
 
-bool coder_t::encode_stmt_typedef(struct ast_stmt_typedef_t* node)
+bool coder_t::encode_stmt_type_def(struct ast_stmt_type_def_t* node)
 {
     if (node == nullptr)
         return false;
@@ -292,7 +353,7 @@ bool coder_t::encode_stmt_typedef(struct ast_stmt_typedef_t* node)
     return true;
 }
 
-bool coder_t::encode_stmt_symboldef(struct ast_stmt_symboldef_t* node)
+bool coder_t::encode_stmt_symbol_def(struct ast_stmt_symbol_def_t* node)
 {
     if (node == nullptr)
         return false;
@@ -349,6 +410,7 @@ bool coder_t::encode_stmt_return(struct ast_stmt_return_t* node)
     stream.write("return");
     if (node->value)
     {
+        stream.write(" ");
         if (!this->encode_expr(node->value))
             return false;
     }
@@ -443,18 +505,9 @@ bool coder_t::encode_stmt_call(struct ast_stmt_call_t* node)
 {
     if (node == nullptr)
         return false;
-    if (!this->encode_expr(node->func))
+    if (!this->encode_expr(node->expr))
         return false;
-    stream.write("(");
-    bool first = true;
-    for (auto& arg : node->args)
-    {
-        if (!first)
-            stream.write(", ");
-        if (!this->encode_expr(arg))
-            return false;
-    }
-    stream.write(");\n");
+    stream.write(";\n");
     return true;
 }
 

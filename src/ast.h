@@ -32,8 +32,8 @@ enum class ast_node_category_t
 	expr_unary,
 	expr_int,
 	expr_float,
-	expr_str,
 	expr_bool,
+    expr_str,
 	expr_symbol_ref,
 
 	expr_func_def,
@@ -57,8 +57,8 @@ enum class ast_node_category_t
 	stmt_block,
 	stmt_assign,
 	stmt_call,
-	stmt_symboldef,
-	stmt_typedef,
+	stmt_symbol_def,
+	stmt_type_def,
 };
 
 enum class ast_unary_oper_t
@@ -277,11 +277,13 @@ struct ast_expr_symbol_ref_t :public ast_expr_t
 
 struct ast_expr_func_def_t :public ast_expr_t
 {
+    ast_type_t* type;
 	std::map<String, ast_type_t*> args;
 	std::vector<ast_stmt_t*> body;
 
 	ast_expr_func_def_t(ast_node_t* parent)
 		: ast_expr_t(ast_node_category_t::expr_func_def, parent)
+        , type(nullptr)
 		, args()
 		, body()
 	{}
@@ -539,19 +541,16 @@ struct ast_stmt_block_t :public ast_stmt_t
 
 struct ast_stmt_call_t :public ast_stmt_t
 {
-	ast_expr_t* func;
-	std::vector<ast_expr_t*> args;
+	ast_expr_func_ref_t* expr;
 
 	ast_stmt_call_t(ast_node_t* parent)
 		: ast_stmt_t(ast_node_category_t::stmt_call, parent)
-		, func(nullptr)
-		, args()
+		, expr(nullptr)
 	{}
 
 	virtual ~ast_stmt_call_t()
 	{
-		_DeletePointer(func);
-		_DeleteList(args);
+		_DeletePointer(expr);
 	}
 };
 
@@ -573,40 +572,40 @@ struct ast_stmt_assign_t :public ast_stmt_t
 	}
 };
 
-struct ast_stmt_symboldef_t :public ast_stmt_t
+struct ast_stmt_symbol_def_t :public ast_stmt_t
 {
 	String name;
 	ast_type_t* type;
 	ast_expr_t* value;
 	bool variable;
 
-	ast_stmt_symboldef_t(ast_node_t* parent)
-		: ast_stmt_t(ast_node_category_t::stmt_symboldef, parent)
+	ast_stmt_symbol_def_t(ast_node_t* parent)
+		: ast_stmt_t(ast_node_category_t::stmt_symbol_def, parent)
 		, name("")
 		, type(nullptr)
 		, value(nullptr)
 		, variable(false)
 	{}
 
-	virtual ~ast_stmt_symboldef_t()
+	virtual ~ast_stmt_symbol_def_t()
 	{
 		_DeletePointer(type);
 		_DeletePointer(value);
 	}
 };
 
-struct ast_stmt_typedef_t :public ast_stmt_t
+struct ast_stmt_type_def_t :public ast_stmt_t
 {
 	String name;
 	ast_type_t* value;
 
-	ast_stmt_typedef_t(ast_node_t* parent)
-		: ast_stmt_t(ast_node_category_t::stmt_typedef, parent)
+	ast_stmt_type_def_t(ast_node_t* parent)
+		: ast_stmt_t(ast_node_category_t::stmt_type_def, parent)
 		, name("")
 		, value(nullptr)
 	{}
 
-	virtual ~ast_stmt_typedef_t()
+	virtual ~ast_stmt_type_def_t()
 	{
 		_DeletePointer(value);
 	}

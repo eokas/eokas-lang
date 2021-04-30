@@ -29,11 +29,13 @@ public:
     bool encode_expr_float(struct ast_expr_float_t* node);
     bool encode_expr_bool(struct ast_expr_bool_t* node);
     bool encode_expr_symbol_ref(struct ast_expr_symbol_ref_t* node);
+    bool encode_expr_func_def(struct ast_expr_func_def_t* node);
+    bool encode_expr_func_ref(struct ast_expr_func_ref_t* node);
 
     bool encode_stmt(struct ast_stmt_t* node);
     bool encode_stmt_echo(struct ast_stmt_echo_t* node);
-    bool encode_stmt_typedef(struct ast_stmt_typedef_t* node);
-    bool encode_stmt_symboldef(struct ast_stmt_symboldef_t* node);
+    bool encode_stmt_type_def(struct ast_stmt_type_def_t* node);
+    bool encode_stmt_symbol_def(struct ast_stmt_symbol_def_t* node);
     bool encode_stmt_break(struct ast_stmt_break_t* node);
     bool encode_stmt_continue(struct ast_stmt_continue_t* node);
     bool encode_stmt_return(struct ast_stmt_return_t* node);
