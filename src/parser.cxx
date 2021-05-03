@@ -583,9 +583,9 @@ ast_expr_t* parser_impl_t::parse_array_def(ast_node_t* p)
 			_DeletePointer(node);
 			return nullptr;
 		}
+		node->items.push_back(expr);
 	}
-	while (this->check_token(token_t::Comma, false)
-		|| this->check_token(token_t::Semicolon, false));
+	while (this->check_token(token_t::Comma, false));
 
 	if (!this->check_token(token_t::RSB))
 	{

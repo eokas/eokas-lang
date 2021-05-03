@@ -316,16 +316,16 @@ struct ast_expr_func_ref_t :public ast_expr_t
 
 struct ast_expr_array_def_t :public ast_expr_t
 {
-    std::vector<ast_expr_t*> values;
+    std::vector<ast_expr_t*> items;
 
     ast_expr_array_def_t(ast_node_t* parent)
         : ast_expr_t(ast_node_category_t::expr_array_def, parent)
-        , values()
+        , items()
     {}
 
     virtual ~ast_expr_array_def_t()
     {
-        _DeleteList(values);
+        _DeleteList(items);
     }
 };
 

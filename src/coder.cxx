@@ -109,6 +109,7 @@ struct coder_cxx_t
         stream.write("int");
         return true;
     }
+
     bool encode_type_float(struct ast_type_float_t* node)
     {
         if (node == nullptr)
@@ -168,6 +169,10 @@ struct coder_cxx_t
             return this->encode_expr_func_def(dynamic_cast<ast_expr_func_def_t*>(node));
         case ast_node_category_t::expr_func_ref:
             return this->encode_expr_func_ref(dynamic_cast<ast_expr_func_ref_t*>(node));
+        case ast_node_category_t::expr_array_def:
+            return this->encode_expr_array_def(dynamic_cast<ast_expr_array_def_t*>(node));
+        case ast_node_category_t::expr_index_ref:
+            return this->encode_expr_index_ref(dynamic_cast<ast_expr_index_ref_t*>(node));
         default:
             return false;
         }
@@ -357,6 +362,37 @@ struct coder_cxx_t
                 return false;
         }
         stream.write(")");
+        return true;
+    }
+
+    bool encode_expr_array_def(struct ast_expr_array_def_t* node)
+    {
+        if (node == nullptr)
+            return false;
+        stream.write("{");
+        bool first = true;
+        for (auto& item : node->items)
+        {
+            if (!first)
+                stream.write(", ");
+            first = false;
+            if (!this->encode_expr(item))
+                return false;
+        }
+        stream.write("}");
+        return true;
+    }
+
+    bool encode_expr_index_ref(struct ast_expr_index_ref_t* node)
+    {
+        if (node == nullptr)
+            return false;
+        if(!this->encode_expr(node->obj))
+            return false;
+        stream.write("[");
+        if(!this->encode_expr(node->key))
+            return false;
+        stream.write("]");
         return true;
     }
 
