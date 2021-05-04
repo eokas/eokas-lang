@@ -25,6 +25,7 @@ enum class ast_node_category_t
     type_float,
     type_bool,
     type_string,
+    type_struct,
     type_ref,
 
     expr_trinary,
@@ -99,7 +100,8 @@ struct ast_node_t
     }
 };
 
-struct ast_type_t :public ast_node_t {
+struct ast_type_t :public ast_node_t
+{
     ast_type_t(ast_node_category_t category, ast_node_t* parent)
         : ast_node_t(category, parent)
     {}
@@ -134,31 +136,51 @@ struct ast_module_t :public ast_node_t
 };
 
 
-struct ast_type_int_t :public ast_type_t {
+struct ast_type_int_t :public ast_type_t
+{
     ast_type_int_t(ast_node_t* parent)
         : ast_type_t(ast_node_category_t::type_int, parent)
     {}
 };
 
-struct ast_type_float_t :public ast_type_t {
+struct ast_type_float_t :public ast_type_t
+{
     ast_type_float_t(ast_node_t* parent)
         : ast_type_t(ast_node_category_t::type_float, parent)
     {}
 };
 
-struct ast_type_bool_t :public ast_type_t {
+struct ast_type_bool_t :public ast_type_t
+{
     ast_type_bool_t(ast_node_t* parent)
         : ast_type_t(ast_node_category_t::type_bool, parent)
     {}
 };
 
-struct ast_type_string_t :public ast_type_t {
+struct ast_type_string_t :public ast_type_t
+{
     ast_type_string_t(ast_node_t* parent)
         : ast_type_t(ast_node_category_t::type_string, parent)
     {}
 };
 
-struct ast_type_ref_t :public ast_type_t {
+struct ast_type_struct_t :public ast_type_t
+{
+    std::map<String, ast_type_t*> members;
+
+    ast_type_struct_t(ast_node_t* parent)
+        : ast_type_t(ast_node_category_t::type_struct, parent)
+        , members()
+    {}
+
+    virtual ~ast_type_struct_t()
+    {
+        _DeleteMap(members);
+    }
+};
+
+struct ast_type_ref_t :public ast_type_t
+{
     String name;
 
     ast_type_ref_t(ast_node_t* parent)
@@ -329,41 +351,39 @@ struct ast_expr_array_def_t :public ast_expr_t
     }
 };
 
+struct ast_expr_index_ref_t :public ast_expr_t
+{
+    ast_expr_t* obj;
+    ast_expr_t* key;
+
+    ast_expr_index_ref_t(ast_node_t* parent)
+        : ast_expr_t(ast_node_category_t::expr_index_ref, parent)
+        , obj(nullptr)
+        , key(nullptr)
+    {}
+
+    virtual ~ast_expr_index_ref_t()
+    {
+        _DeletePointer(obj);
+        _DeletePointer(key);
+    }
+};
+
 struct ast_expr_obj_def_t :public ast_expr_t
 {
-    struct field_t
-    {
-        ast_expr_t* value;
-        bool alloc;
-
-        field_t()
-            :value(nullptr), alloc(true)
-        {}
-
-        ~field_t()
-        {
-            _DeletePointer(this->value);
-        }
-
-        void set(ast_expr_t* v, bool a)
-        {
-            this->value = v;
-            this->alloc = a;
-        }
-    };
-
     ast_expr_t* base;
-    std::map<String, field_t> fields;
+    std::map<String, ast_expr_t*> members;
 
     ast_expr_obj_def_t(ast_node_t* parent)
         : ast_expr_t(ast_node_category_t::expr_obj_def, parent)
         , base(nullptr)
-        , fields()
+        , members()
     {}
 
     virtual ~ast_expr_obj_def_t()
     {
         _DeletePointer(base);
+        _DeleteMap(members);
     }
 };
 
@@ -381,24 +401,6 @@ struct ast_expr_obj_ref_t :public ast_expr_t
     virtual ~ast_expr_obj_ref_t()
     {
         _DeletePointer(obj);
-    }
-};
-
-struct ast_expr_index_ref_t :public ast_expr_t
-{
-    ast_expr_t* obj;
-    ast_expr_t* key;
-
-    ast_expr_index_ref_t(ast_node_t* parent)
-        : ast_expr_t(ast_node_category_t::expr_index_ref, parent)
-        , obj(nullptr)
-        , key(nullptr)
-    {}
-
-    virtual ~ast_expr_index_ref_t()
-    {
-        _DeletePointer(obj);
-        _DeletePointer(key);
     }
 };
 

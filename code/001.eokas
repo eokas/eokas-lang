@@ -1,6 +1,4 @@
 
-val hello = func(x: string) {
-    echo "hello ", x;
-};
+val list = [1,2,3];
 
-hello("world");
+echo list[0];
