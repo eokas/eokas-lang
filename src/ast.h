@@ -371,11 +371,13 @@ struct ast_expr_index_ref_t :public ast_expr_t
 
 struct ast_expr_obj_def_t :public ast_expr_t
 {
+    ast_type_t* type;
     ast_expr_t* base;
     std::map<String, ast_expr_t*> members;
 
     ast_expr_obj_def_t(ast_node_t* parent)
         : ast_expr_t(ast_node_category_t::expr_obj_def, parent)
+        , type(nullptr)
         , base(nullptr)
         , members()
     {}

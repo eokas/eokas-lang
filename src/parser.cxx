@@ -21,6 +21,7 @@ public:
 	ast_type_t* parse_type_float(ast_node_t* p);
 	ast_type_t* parse_type_bool(ast_node_t* p);
 	ast_type_t* parse_type_string(ast_node_t* p);
+	ast_type_t* parse_type_struct(ast_node_t* p);
 	ast_type_t* parse_type_ref(ast_node_t* p);
 
 	ast_expr_t* parse_expr(ast_node_t* p);
@@ -34,10 +35,10 @@ public:
 	bool parse_func_body(ast_expr_func_def_t* node);
 	ast_expr_t* parse_func_call(ast_node_t* p, ast_expr_t* primary);
 	ast_expr_t* parse_array_def(ast_node_t* p);
-	ast_expr_t* parse_object_def(ast_node_t* p, ast_expr_t* base);
+	ast_expr_t* parse_index_ref(ast_node_t* p, ast_expr_t* primary);
+	ast_expr_t* parse_object_def(ast_node_t* p, ast_expr_t* primary);
 	bool parse_object_field(ast_expr_obj_def_t* node);
 	ast_expr_t* parse_object_ref(ast_node_t* p, ast_expr_t* primary);
-	ast_expr_t* parse_index_ref(ast_node_t* p, ast_expr_t* primary);
 	ast_expr_t* parse_module_ref(ast_node_t* p);
 
 	ast_stmt_t* parse_stmt(ast_node_t* p);
@@ -157,6 +158,65 @@ ast_type_t* parser_impl_t::parse_type_string(ast_node_t* p)
 {
 	ast_type_string_t* node = new ast_type_string_t(p);
 	this->next_token(); // ignore 'bool';
+	return node;
+}
+
+ast_type_t* parser_impl_t::parse_type_struct(ast_node_t* p)
+{
+	if (!this->check_token(token_t::Struct))
+		return nullptr;
+
+	ast_type_struct_t* node = new ast_type_struct_t(p);
+	if (!this->check_token(token_t::LCB))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	do
+	{
+		if (this->token().type == token_t::RCB)
+			break;
+
+		if (!this->check_token(token_t::ID, true, false))
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+
+		const String name = this->token().value;
+		if (node->members.find(name) != node->members.end())
+		{
+			_DeletePointer(node);
+			this->error_token_unexpected();
+			return nullptr;
+		}
+
+		this->next_token();
+
+		if (!this->check_token(token_t::Colon))
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+
+		ast_type_t* type = this->parse_type(node);
+		if (type == nullptr)
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+
+		node->members[name] = type;
+	}
+	while (this->check_token(token_t::Comma, false));
+
+	if (!this->check_token(token_t::RCB))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
 	return node;
 }
 
@@ -449,15 +509,15 @@ ast_expr_t* parser_impl_t::parse_func_def(ast_node_t* p)
 		return nullptr;
 	}
 
-    if(this->check_token(token_t::Colon, false))
-    {
-        ast_type_t* type = this->parse_type(node);
-        if(type == nullptr)
-        {
-            _DeletePointer(node);
-            return nullptr;
-        }
-    }
+	if (this->check_token(token_t::Colon, false))
+	{
+		ast_type_t* type = this->parse_type(node);
+		if (type == nullptr)
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+	}
 
 	if (!this->parse_func_body(node))
 	{
@@ -490,8 +550,8 @@ bool parser_impl_t::parse_func_params(ast_expr_func_def_t* node)
 		}
 		this->next_token();
 
-        if(!this->check_token(token_t::Colon))
-            return false;
+		if (!this->check_token(token_t::Colon))
+			return false;
 
 		ast_type_t* type = this->parse_type(node);
 		if (type == nullptr)
@@ -514,7 +574,7 @@ bool parser_impl_t::parse_func_body(ast_expr_func_def_t* node)
 {
 	if (!this->check_token(token_t::LCB))
 		return false;
-        
+
 	while (!this->check_token(token_t::RCB, false))
 	{
 		ast_stmt_t* stmt = this->parse_stmt(node);
@@ -597,16 +657,47 @@ ast_expr_t* parser_impl_t::parse_array_def(ast_node_t* p)
 }
 
 /*
-object_def => '{' [object_field {sep object_field} [sep]] '}'
+index_ref => '[' expr ']'
+*/
+ast_expr_t* parser_impl_t::parse_index_ref(ast_node_t* p, ast_expr_t* primary)
+{
+	ast_expr_index_ref_t* node = new ast_expr_index_ref_t(p);
+	node->obj = primary;
+	primary->parent = node;
+
+	if (!this->check_token(token_t::LSB))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	node->key = this->parse_expr(node);
+	if (node->key == nullptr)
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	if (!this->check_token(token_t::RSB))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	return node;
+}
+
+/*
+object_def => [ID] '{' [object_field {sep object_field} [sep]] '}'
 sep => ',' | ';'
 */
-ast_expr_t* parser_impl_t::parse_object_def(ast_node_t* p, ast_expr_t* base)
+ast_expr_t* parser_impl_t::parse_object_def(ast_node_t* p, ast_expr_t* primary)
 {
 	ast_expr_obj_def_t* node = new ast_expr_obj_def_t(p);
-	node->base = base;
-	if (base != nullptr)
+	node->base = primary;
+	if (primary != nullptr)
 	{
-		base->parent = node;
+		primary->parent = node;
 	}
 
 	if (!this->check_token(token_t::LCB))
@@ -625,8 +716,7 @@ ast_expr_t* parser_impl_t::parse_object_def(ast_node_t* p, ast_expr_t* base)
 			return nullptr;
 		}
 	}
-	while (this->check_token(token_t::Comma, false)
-		|| this->check_token(token_t::Semicolon, false));
+	while (this->check_token(token_t::Comma, false));
 
 	if (!this->check_token(token_t::RCB))
 	{
@@ -648,21 +738,17 @@ bool parser_impl_t::parse_object_field(ast_expr_obj_def_t* node)
 	const String key = this->token().value;
 	this->next_token();
 
-	token_t& token = this->token();
-	if (token.type != token_t::Colon &&
-		token.type != token_t::Assign)
+	if (!this->check_token(token_t::Assign, false) &&
+		!this->check_token(token_t::Colon, false))
 	{
-		this->error_token_unexpected();
 		return false;
 	}
-	bool alloc = token.type == token_t::Colon;
-	this->next_token();
 
 	ast_expr_t* expr = this->parse_expr(node);
 	if (expr == nullptr)
 		return false;
 
-	node->fields[key].set(expr, alloc);
+	node->members[key] = expr;
 
 	return true;
 }
@@ -691,37 +777,6 @@ ast_expr_t* parser_impl_t::parse_object_ref(ast_node_t* p, ast_expr_t* primary)
 	node->key = this->token().value;
 
 	this->next_token();
-
-	return node;
-}
-
-/*
-index_ref => '[' expr ']'
-*/
-ast_expr_t* parser_impl_t::parse_index_ref(ast_node_t* p, ast_expr_t* primary)
-{
-	ast_expr_index_ref_t* node = new ast_expr_index_ref_t(p);
-	node->obj = primary;
-	primary->parent = node;
-
-	if (!this->check_token(token_t::LSB))
-	{
-		_DeletePointer(node);
-		return nullptr;
-	}
-
-	node->key = this->parse_expr(node);
-	if (node->key == nullptr)
-	{
-		_DeletePointer(node);
-		return nullptr;
-	}
-
-	if (!this->check_token(token_t::RSB))
-	{
-		_DeletePointer(node);
-		return nullptr;
-	}
 
 	return node;
 }
@@ -1162,7 +1217,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_assign_or_call(ast_node_t* p)
 
 		return node;
 	}
-	else if(left->category == ast_node_category_t::expr_func_ref)
+	else if (left->category == ast_node_category_t::expr_func_ref)
 	{
 		ast_stmt_call_t* node = new ast_stmt_call_t(p);
 		node->expr = dynamic_cast<ast_expr_func_ref_t*>(left);
@@ -1177,12 +1232,12 @@ ast_stmt_t* parser_impl_t::parse_stmt_assign_or_call(ast_node_t* p)
 
 		return node;
 	}
-    else
-    {
-        this->error_token_unexpected();
-        _DeletePointer(left);
-        return nullptr;
-    }
+	else
+	{
+		this->error_token_unexpected();
+		_DeletePointer(left);
+		return nullptr;
+	}
 }
 
 
