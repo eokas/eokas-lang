@@ -1,4 +1,16 @@
+type B = schema {
 
-val list = [1,2,3];
+};
 
-echo list[0];
+type A = struct : B {
+
+};
+
+type B = schema<T> {
+
+};
+
+type A = struct<T> : B<T> {
+
+};
+

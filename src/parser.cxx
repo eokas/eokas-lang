@@ -434,9 +434,6 @@ ast_expr_t* parser_impl_t::parse_expr_suffixed(ast_node_t* p)
 		token_t& token = this->token();
 		switch (token.type)
 		{
-		case token_t::LCB: // {
-			suffixed = this->parse_object_def(p, primary);
-			break;
 		case token_t::Dot: // .
 			suffixed = this->parse_object_ref(p, primary);
 			break;
@@ -446,7 +443,11 @@ ast_expr_t* parser_impl_t::parse_expr_suffixed(ast_node_t* p)
 		case token_t::LRB: // (
 			suffixed = this->parse_func_call(p, primary);
 			break;
-
+		/*
+		case token_t::LCB: // {
+			suffixed = this->parse_object_def(p, primary);
+			break;
+		*/
 		default: // no suffix
 			return primary;
 		}
