@@ -412,16 +412,19 @@ struct ast_stmt_schema_member_t :public ast_stmt_t
 struct ast_stmt_schema_def_t :public ast_stmt_t
 {
     String name;
+    ast_type_ref_t* schema;
     std::map<String, ast_stmt_schema_member_t*> members;
 
     ast_stmt_schema_def_t(ast_node_t* parent)
         : ast_stmt_t(ast_node_category_t::stmt_schema_def, parent)
         , name("")
+        , schema(nullptr)
         , members()
     {}
 
     virtual ~ast_stmt_schema_def_t()
     {
+        _DeletePointer(schema);
         _DeleteMap(members);
     }
 };
@@ -451,16 +454,19 @@ struct ast_stmt_struct_member_t :public ast_stmt_t
 struct ast_stmt_struct_def_t :public ast_stmt_t
 {
     String name;
+    ast_type_ref_t* schema;
     std::map<String, ast_stmt_struct_member_t*> members;
 
     ast_stmt_struct_def_t(ast_node_t* parent)
         : ast_stmt_t(ast_node_category_t::stmt_struct_def, parent)
         , name("")
+        , schema(nullptr)
         , members()
     {}
 
     virtual ~ast_stmt_struct_def_t()
     {
+        _DeletePointer(schema);
         _DeleteMap(members);
     }
 };

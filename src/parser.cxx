@@ -783,11 +783,11 @@ ast_stmt_schema_def_t* parser_impl_t::parse_stmt_schema_def(ast_node_t* p)
 	node->name = this->token().value;
 	this->next_token();
 
-	// :
+	// : schema_ref
 	if (this->check_token(token_t::Colon, false))
 	{
-		ast_type_t* type = this->parse_type_ref(node);
-		if (type == nullptr)
+		node->schema = this->parse_type_ref(node);
+		if (node->schema == nullptr)
 		{
 			_DeletePointer(node);
 			return nullptr;
@@ -911,11 +911,11 @@ ast_stmt_struct_def_t* parser_impl_t::parse_stmt_struct_def(ast_node_t* p)
 	node->name = this->token().value;
 	this->next_token();
 
-	// :
+	// : schema_ref
 	if (this->check_token(token_t::Colon, false))
 	{
-		ast_type_t* type = this->parse_type_ref(node);
-		if (type == nullptr)
+		node->schema = this->parse_type_ref(node);
+		if (node->schema == nullptr)
 		{
 			_DeletePointer(node);
 			return nullptr;
