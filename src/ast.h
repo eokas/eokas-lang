@@ -48,6 +48,7 @@ enum class ast_node_category_t
     stmt_schema_member,
     stmt_struct_def,
     stmt_struct_member,
+    stmt_proc_def,
     stmt_symbol_def,
     stmt_break,
     stmt_continue,
@@ -267,6 +268,7 @@ struct ast_expr_func_def_t :public ast_expr_t
 
     virtual ~ast_expr_func_def_t()
     {
+        _DeletePointer(type);
         _DeleteMap(args);
         _DeleteList(body);
     }
@@ -468,6 +470,26 @@ struct ast_stmt_struct_def_t :public ast_stmt_t
     {
         _DeletePointer(schema);
         _DeleteMap(members);
+    }
+};
+
+struct ast_stmt_proc_def_t :public ast_stmt_t
+{
+    String name;
+    ast_type_t* type;
+    std::map<String, ast_type_t*> args;
+
+    ast_stmt_proc_def_t(ast_node_t* parent)
+        : ast_stmt_t(ast_node_category_t::stmt_proc_def, parent)
+        , name("")
+        , type(nullptr)
+        , args()
+    {}
+
+    virtual ~ast_stmt_proc_def_t()
+    {
+        _DeletePointer(type);
+        _DeleteMap(args);
     }
 };
 

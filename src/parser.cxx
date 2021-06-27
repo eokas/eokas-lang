@@ -41,6 +41,7 @@ public:
 	ast_stmt_schema_member_t* parse_stmt_schema_member(ast_node_t* p);
 	ast_stmt_struct_def_t* parse_stmt_struct_def(ast_node_t* p);
 	ast_stmt_struct_member_t* parse_stmt_struct_member(ast_node_t* p);
+	ast_stmt_proc_def_t* parse_stmt_proc_def(ast_node_t* p);
 	ast_stmt_symbol_def_t* parse_stmt_symbol_def(ast_node_t* p);
 	ast_stmt_t* parse_stmt_continue(ast_node_t* p);
 	ast_stmt_t* parse_stmt_break(ast_node_t* p);
@@ -807,7 +808,7 @@ ast_stmt_schema_def_t* parser_impl_t::parse_stmt_schema_def(ast_node_t* p)
 			break;
 
 		ast_stmt_schema_member_t* member = this->parse_stmt_schema_member(node);
-		if(member == nullptr)
+		if (member == nullptr)
 		{
 			_DeletePointer(node);
 			return nullptr;
@@ -1017,6 +1018,89 @@ ast_stmt_struct_member_t* parser_impl_t::parse_stmt_struct_member(ast_node_t* p)
 	}
 	node->value = this->parse_expr(node);
 	if (node->value == nullptr)
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	// ;
+	if (!this->check_token(token_t::Semicolon, true))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	return node;
+}
+
+/**
+ * proc_def := 'proc' ID '(' [func_params]* ')' ';';
+ * func_params := ID ':' type_ref ','
+*/
+ast_stmt_proc_def_t* parser_impl_t::parse_stmt_proc_def(ast_node_t* p)
+{
+	if (!this->check_token(token_t::Proc))
+		return nullptr;
+
+	ast_stmt_proc_def_t* node = new ast_stmt_proc_def_t(p);
+
+	// ID
+	if (!this->check_token(token_t::ID, true, false))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+	node->name = this->token().value;
+	this->next_token();
+
+	// (
+	if (!this->check_token(token_t::LRB))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	do
+	{
+		if (this->token().type == token_t::RRB)
+			break;
+
+		// ID
+		if (!this->check_token(token_t::ID, true, false))
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+		const String argName = this->token().value;
+		if (node->args.find(argName) != node->args.end())
+		{
+			_DeletePointer(node);
+			this->error_token_unexpected();
+			return nullptr;
+		}
+		this->next_token();
+
+		// :
+		if(!this->check_token(token_t::Colon))
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+
+		// type
+		ast_type_ref_t* argType = this->parse_type_ref(p);
+		if(argType == nullptr)
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+
+		node->args[argName] = argType;
+	}
+	while (this->check_token(token_t::Comma, false));
+
+	// )
+	if (!this->check_token(token_t::RRB))
 	{
 		_DeletePointer(node);
 		return nullptr;
