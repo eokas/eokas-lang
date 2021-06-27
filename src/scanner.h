@@ -9,7 +9,7 @@ struct token_t
 {
 	enum token_type
 	{
-		Echo, Var, Val, Func, Struct,
+		Echo, Var, Val, Func, Schema, Struct,
 		If, Else, For, While, Continue, Break, Return,
 		Is, As, True, False,
 		Comma, Semicolon, Colon, Question, At, Pound, Dollar,
@@ -19,7 +19,6 @@ struct token_t
 		Assign, Equal, Not, NEqual, Greater, GEqual, Less, LEqual,
 		ShiftL, ShiftR,
 		Dot, Dot2, Dot3,
-		Type, IntType, FloatType, BoolType, StringType,
 		BInt, XInt, DInt, Float, Str, ID, Eos, 
 		Count, Unknown
 	};

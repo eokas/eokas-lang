@@ -5,7 +5,7 @@ _BeginNamespace(eokas)
 
 
 const char* const token_t::names[] = {
-	"echo", "var", "val", "func", "struct",
+	"echo", "var", "val", "func", "schema", "struct",
 	"if", "else", "for", "while", "continue", "break", "return",
 	"is", "as", "true", "false",
 	",", ";", ":", "?", "@", "#", "$",
@@ -15,7 +15,6 @@ const char* const token_t::names[] = {
 	"=", "==", "!", "!=", ">", ">=", "<", "<=",
 	">|", "|<",
 	".", "..", "...",
-	"type", "int", "float", "bool", "string",
 	"<b-int>", "<x-int>", "<d-int>", "<float>", "<string>", "<identifier>", "<eos>"
 };
 
