@@ -36,20 +36,20 @@ public:
 	ast_expr_t* parse_module_ref(ast_node_t* p);
 
 	ast_stmt_t* parse_stmt(ast_node_t* p);
-	ast_stmt_t* parse_stmt_echo(ast_node_t* p);
+	ast_stmt_echo_t* parse_stmt_echo(ast_node_t* p);
 	ast_stmt_schema_def_t* parse_stmt_schema_def(ast_node_t* p);
 	ast_stmt_schema_member_t* parse_stmt_schema_member(ast_node_t* p);
 	ast_stmt_struct_def_t* parse_stmt_struct_def(ast_node_t* p);
 	ast_stmt_struct_member_t* parse_stmt_struct_member(ast_node_t* p);
 	ast_stmt_proc_def_t* parse_stmt_proc_def(ast_node_t* p);
 	ast_stmt_symbol_def_t* parse_stmt_symbol_def(ast_node_t* p);
-	ast_stmt_t* parse_stmt_continue(ast_node_t* p);
-	ast_stmt_t* parse_stmt_break(ast_node_t* p);
-	ast_stmt_t* parse_stmt_return(ast_node_t* p);
-	ast_stmt_t* parse_stmt_if(ast_node_t* p);
-	ast_stmt_t* parse_stmt_while(ast_node_t* p);
-	ast_stmt_t* parse_stmt_for(ast_node_t* p);
-	ast_stmt_t* parse_stmt_block(ast_node_t* p);
+	ast_stmt_continue_t* parse_stmt_continue(ast_node_t* p);
+	ast_stmt_break_t* parse_stmt_break(ast_node_t* p);
+	ast_stmt_return_t* parse_stmt_return(ast_node_t* p);
+	ast_stmt_if_t* parse_stmt_if(ast_node_t* p);
+	ast_stmt_while_t* parse_stmt_while(ast_node_t* p);
+	ast_stmt_for_t* parse_stmt_for(ast_node_t* p);
+	ast_stmt_block_t* parse_stmt_block(ast_node_t* p);
 	ast_stmt_t* parse_stmt_assign_or_call(ast_node_t* p);
 
 	void next_token();
@@ -743,7 +743,7 @@ ast_stmt_t* parser_impl_t::parse_stmt(ast_node_t* p)
 /**
  * echo = 'echo' expr (, expr)* ;
 */
-ast_stmt_t* parser_impl_t::parse_stmt_echo(ast_node_t* p)
+ast_stmt_echo_t* parser_impl_t::parse_stmt_echo(ast_node_t* p)
 {
 	ast_stmt_echo_t* node = new ast_stmt_echo_t(p);
 
@@ -845,20 +845,11 @@ ast_stmt_schema_def_t* parser_impl_t::parse_stmt_schema_def(ast_node_t* p)
 }
 
 /**
- * schema_member := 'var' | 'val' ID : type;
+ * schema_member := ID : type;
 */
 ast_stmt_schema_member_t* parser_impl_t::parse_stmt_schema_member(ast_node_t* p)
 {
-	if (!this->check_token(token_t::Var, false, false) &&
-		!this->check_token(token_t::Val, false, false))
-	{
-		return nullptr;
-	}
-
 	ast_stmt_schema_member_t* node = new ast_stmt_schema_member_t(p);
-	node->variable = this->token().type == token_t::Var;
-
-	this->next_token(); // ignore 'var' | 'val'
 
 	if (this->check_token(token_t::ID, true, false))
 	{
@@ -974,18 +965,11 @@ ast_stmt_struct_def_t* parser_impl_t::parse_stmt_struct_def(ast_node_t* p)
 }
 
 /**
- * struct_member := 'var' | 'val' ID [: type] = expr;
+ * struct_member := ID [: type] = expr;
 */
 ast_stmt_struct_member_t* parser_impl_t::parse_stmt_struct_member(ast_node_t* p)
 {
-	if (!this->check_token(token_t::Var, false, false) &&
-		!this->check_token(token_t::Val, false, false))
-	{
-		return nullptr;
-	}
-
 	ast_stmt_struct_member_t* node = new ast_stmt_struct_member_t(p);
-	node->variable = this->token().type == token_t::Var;
 
 	this->next_token(); // ignore 'var' | 'val'
 
@@ -1176,7 +1160,7 @@ ast_stmt_symbol_def_t* parser_impl_t::parse_stmt_symbol_def(ast_node_t* p)
 	return node;
 }
 
-ast_stmt_t* parser_impl_t::parse_stmt_continue(ast_node_t* p)
+ast_stmt_continue_t* parser_impl_t::parse_stmt_continue(ast_node_t* p)
 {
 	ast_stmt_continue_t* node = new ast_stmt_continue_t(p);
 	this->next_token();
@@ -1191,7 +1175,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_continue(ast_node_t* p)
 	return node;
 }
 
-ast_stmt_t* parser_impl_t::parse_stmt_break(ast_node_t* p)
+ast_stmt_break_t* parser_impl_t::parse_stmt_break(ast_node_t* p)
 {
 	ast_stmt_break_t* node = new ast_stmt_break_t(p);
 	this->next_token();
@@ -1206,7 +1190,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_break(ast_node_t* p)
 	return node;
 }
 
-ast_stmt_t* parser_impl_t::parse_stmt_return(ast_node_t* p)
+ast_stmt_return_t* parser_impl_t::parse_stmt_return(ast_node_t* p)
 {
 	ast_stmt_return_t* node = new ast_stmt_return_t(p);
 
@@ -1233,7 +1217,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_return(ast_node_t* p)
 	return node;
 }
 
-ast_stmt_t* parser_impl_t::parse_stmt_if(ast_node_t* p)
+ast_stmt_if_t* parser_impl_t::parse_stmt_if(ast_node_t* p)
 {
 	ast_stmt_if_t* node = new ast_stmt_if_t(p);
 
@@ -1277,7 +1261,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_if(ast_node_t* p)
 	return node;
 }
 
-ast_stmt_t* parser_impl_t::parse_stmt_while(ast_node_t* p)
+ast_stmt_while_t* parser_impl_t::parse_stmt_while(ast_node_t* p)
 {
 	ast_stmt_while_t* node = new ast_stmt_while_t(p);
 
@@ -1311,7 +1295,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_while(ast_node_t* p)
 	return node;
 }
 
-ast_stmt_t* parser_impl_t::parse_stmt_for(ast_node_t* p)
+ast_stmt_for_t* parser_impl_t::parse_stmt_for(ast_node_t* p)
 {
 	ast_stmt_for_t* node = new ast_stmt_for_t(p);
 
@@ -1372,7 +1356,7 @@ ast_stmt_t* parser_impl_t::parse_stmt_for(ast_node_t* p)
 	return node;
 }
 
-ast_stmt_t* parser_impl_t::parse_stmt_block(ast_node_t* p)
+ast_stmt_block_t* parser_impl_t::parse_stmt_block(ast_node_t* p)
 {
 	ast_stmt_block_t* node = new ast_stmt_block_t(p);
 

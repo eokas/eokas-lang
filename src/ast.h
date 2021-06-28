@@ -328,19 +328,17 @@ struct ast_expr_index_ref_t :public ast_expr_t
 struct ast_expr_obj_def_t :public ast_expr_t
 {
     ast_type_t* type;
-    ast_expr_t* base;
     std::map<String, ast_expr_t*> members;
 
     ast_expr_obj_def_t(ast_node_t* parent)
         : ast_expr_t(ast_node_category_t::expr_obj_def, parent)
         , type(nullptr)
-        , base(nullptr)
         , members()
     {}
 
     virtual ~ast_expr_obj_def_t()
     {
-        _DeletePointer(base);
+        _DeletePointer(type);
         _DeleteMap(members);
     }
 };
@@ -396,13 +394,11 @@ struct ast_stmt_schema_member_t :public ast_stmt_t
 {
     String name;
     ast_type_ref_t* type;
-    bool variable;
 
     ast_stmt_schema_member_t(ast_node_t* parent)
         : ast_stmt_t(ast_node_category_t::stmt_schema_member, parent)
         , name("")
         , type(nullptr)
-        , variable(false)
     {}
 
     virtual ~ast_stmt_schema_member_t()
@@ -436,14 +432,12 @@ struct ast_stmt_struct_member_t :public ast_stmt_t
     String name;
     ast_type_ref_t* type;
     ast_expr_t* value;
-    bool variable;
 
     ast_stmt_struct_member_t(ast_node_t* parent)
         : ast_stmt_t(ast_node_category_t::stmt_struct_member, parent)
         , name("")
         , type(nullptr)
         , value(nullptr)
-        , variable(false)
     {}
 
     virtual ~ast_stmt_struct_member_t()
