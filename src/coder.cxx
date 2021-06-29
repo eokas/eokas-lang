@@ -85,14 +85,6 @@ struct coder_cxx_t
 
         switch (node->category)
         {
-        case ast_node_category_t::type_int:
-            return this->encode_type_int(dynamic_cast<ast_type_int_t*>(node));
-        case ast_node_category_t::type_float:
-            return this->encode_type_float(dynamic_cast<ast_type_float_t*>(node));
-        case ast_node_category_t::type_bool:
-            return this->encode_type_bool(dynamic_cast<ast_type_bool_t*>(node));
-        case ast_node_category_t::type_string:
-            return this->encode_type_string(dynamic_cast<ast_type_string_t*>(node));
         case ast_node_category_t::type_ref:
             return this->encode_type_ref(dynamic_cast<ast_type_ref_t*>(node));
         default:
@@ -102,44 +94,26 @@ struct coder_cxx_t
         return false;
     }
 
-    bool encode_type_int(struct ast_type_int_t* node)
-    {
-        if (node == nullptr)
-            return false;
-        stream.write("int");
-        return true;
-    }
-
-    bool encode_type_float(struct ast_type_float_t* node)
-    {
-        if (node == nullptr)
-            return false;
-        stream.write("float");
-        return true;
-    }
-
-    bool encode_type_bool(struct ast_type_bool_t* node)
-    {
-        if (node == nullptr)
-            return false;
-        stream.write("bool");
-        return true;
-    }
-
-    bool encode_type_string(struct ast_type_string_t* node)
-    {
-        if (node == nullptr)
-            return false;
-        stream.write("const char*");
-        return true;
-    }
-
     bool encode_type_ref(struct ast_type_ref_t* node)
     {
         if (node == nullptr)
             return false;
-        stream.write(node->name);
-        return true;
+
+        const String& name = node->name;
+        if (name == "int" ||
+            name == "float" ||
+            name == "bool")
+        {
+            stream.write(node->name);
+            return true;
+        }
+        else if (name == "string")
+        {
+            stream.write("const char*");
+            return true;
+        }
+
+        return false;
     }
 
     bool encode_expr(struct ast_expr_t* node)
@@ -387,10 +361,10 @@ struct coder_cxx_t
     {
         if (node == nullptr)
             return false;
-        if(!this->encode_expr(node->obj))
+        if (!this->encode_expr(node->obj))
             return false;
         stream.write("[");
-        if(!this->encode_expr(node->key))
+        if (!this->encode_expr(node->key))
             return false;
         stream.write("]");
         return true;
@@ -405,8 +379,12 @@ struct coder_cxx_t
         {
         case ast_node_category_t::stmt_echo:
             return this->encode_stmt_echo(dynamic_cast<ast_stmt_echo_t*>(node));
-        case ast_node_category_t::stmt_type_def:
-            return this->encode_stmt_type_def(dynamic_cast<ast_stmt_type_def_t*>(node));
+        case ast_node_category_t::stmt_schema_def:
+            return this->encode_stmt_schema_def(dynamic_cast<ast_stmt_schema_def_t*>(node));
+        case ast_node_category_t::stmt_struct_def:
+            return this->encode_stmt_struct_def(dynamic_cast<ast_stmt_struct_def_t*>(node));
+        case ast_node_category_t::stmt_proc_def:
+            return this->encode_stmt_proc_def(dynamic_cast<ast_stmt_proc_def_t*>(node));
         case ast_node_category_t::stmt_symbol_def:
             return this->encode_stmt_symbol_def(dynamic_cast<ast_stmt_symbol_def_t*>(node));
         case ast_node_category_t::stmt_break:
@@ -459,18 +437,103 @@ struct coder_cxx_t
         return true;
     }
 
-    bool encode_stmt_type_def(struct ast_stmt_type_def_t* node)
+    bool encode_stmt_schema_def(struct ast_stmt_schema_def_t* node)
     {
         if (node == nullptr)
             return false;
 
         const String& name = node->name;
-        stream.write(String::format("using %s = ", name.cstr()));
-        if (!this->encode_type(node->value))
+        stream.write(String::format("struct %s", name.cstr()));
+        if (node->schema != nullptr)
         {
-            return false;
+            stream.write(" : ");
+            if (!this->encode_type(node->schema))
+                return false;
         }
-        stream.write(";\n");
+        stream.write("{\n");
+        for (auto& m : node->members)
+        {
+            auto type = m.second->type;
+            if (!this->encode_type(type))
+                return false;
+            stream.write(" ");
+            stream.write(m.first);
+            stream.write(";\n");
+        }
+        stream.write("};\n");
+
+        return true;
+    }
+
+    bool encode_stmt_struct_def(struct ast_stmt_struct_def_t* node)
+    {
+        if (node == nullptr)
+            return false;
+
+        const String& name = node->name;
+        stream.write(String::format("struct %s", name.cstr()));
+        if (node->schema != nullptr)
+        {
+            stream.write(" : ");
+            if (!this->encode_type(node->schema))
+                return false;
+        }
+        stream.write("{\n");
+        for (auto& m : node->members)
+        {
+            auto type = m.second->type;
+            auto value = m.second->value;
+
+            if (!this->encode_type(type))
+                return false;
+
+            stream.write(" ");
+            stream.write(m.first);
+            if (value != nullptr)
+            {
+                stream.write(" = ");
+                if (!this->encode_expr(value))
+                    return false;
+            }
+            stream.write(";\n");
+        }
+        stream.write("};\n");
+
+        return true;
+    }
+
+    bool encode_stmt_proc_def(struct ast_stmt_proc_def_t* node)
+    {
+        if (node == nullptr)
+            return false;
+
+        Stream& oldTarget = stream.target();
+        stream.bind(global);
+        String globalName = String::format("proc_%d", counter++);
+        stream.write(String::format("struct %s{ \n", globalName.cstr()));
+        stream.write("virtual auto operator()(");
+        bool first = true;
+        for (auto& pair : node->args)
+        {
+            if (!first)
+                stream.write(", ");
+            if (!this->encode_type(pair.second))
+                return false;
+            const char* name = pair.first.cstr();
+            stream.write(String::format(" %s", name));
+        }
+        stream.write(") const");
+        if (node->type)
+        {
+            stream.write("->");
+            if (!this->encode_type(node->type))
+                return false;
+            stream.write("= 0;\n");
+        }
+        stream.write("};\n");
+
+        stream.bind(oldTarget);
+        stream.write(String::format("%s()", globalName.cstr()));
 
         return true;
     }
