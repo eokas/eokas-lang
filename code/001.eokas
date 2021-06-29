@@ -1,16 +1,2 @@
-type B = schema {
 
-};
-
-type A = struct : B {
-
-};
-
-type B = schema<T> {
-
-};
-
-type A = struct<T> : B<T> {
-
-};
 

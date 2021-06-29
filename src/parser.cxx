@@ -27,10 +27,10 @@ public:
 	ast_expr_t* parse_func_def(ast_node_t* p);
 	bool parse_func_params(ast_expr_func_def_t* node);
 	bool parse_func_body(ast_expr_func_def_t* node);
+	ast_expr_t* parse_object_def(ast_node_t* p);
 	ast_expr_t* parse_func_call(ast_node_t* p, ast_expr_t* primary);
 	ast_expr_t* parse_array_def(ast_node_t* p);
 	ast_expr_t* parse_index_ref(ast_node_t* p, ast_expr_t* primary);
-	ast_expr_t* parse_object_def(ast_node_t* p, ast_expr_t* primary);
 	bool parse_object_field(ast_expr_obj_def_t* node);
 	ast_expr_t* parse_object_ref(ast_node_t* p, ast_expr_t* primary);
 	ast_expr_t* parse_module_ref(ast_node_t* p);
@@ -282,17 +282,17 @@ ast_expr_t* parser_impl_t::parse_expr_unary(ast_node_t* p)
 	case token_t::Func:
 		right = this->parse_func_def(p);
 		break;
+	case token_t::Make:
+		right = this->parse_object_def(p);
+		break;
+	/*
+	case token_t::Using:
+		right = this->parse_module_ref(p);
+		break;
+	*/
 	case token_t::LSB:
 		right = this->parse_array_def(p);
 		break;
-	case token_t::LCB:
-		right = this->parse_object_def(p, nullptr);
-		break;
-		/*
-		case token_t::Using:
-			right = this->parse_module_ref(p);
-			break;
-		*/
 	case token_t::ID: case token_t::LRB:
 		right = this->parse_expr_suffixed(p);
 		break;
@@ -337,12 +337,7 @@ ast_expr_t* parser_impl_t::parse_expr_suffixed(ast_node_t* p)
 		case token_t::LRB: // (
 			suffixed = this->parse_func_call(p, primary);
 			break;
-			/*
-			case token_t::LCB: // {
-				suffixed = this->parse_object_def(p, primary);
-				break;
-			*/
-		default: // no suffix
+		default: // no more invalid suffix
 			return primary;
 		}
 
@@ -518,6 +513,51 @@ ast_expr_t* parser_impl_t::parse_func_call(ast_node_t* p, ast_expr_t* primary)
 }
 
 /*
+object_def => 'make' type_ref '{' [object_field {sep object_field} [sep]] '}'
+sep => ',' | ';'
+*/
+ast_expr_t* parser_impl_t::parse_object_def(ast_node_t* p)
+{
+	if(!this->check_token(token_t::Make))
+		return nullptr;
+	
+	ast_expr_obj_def_t* node = new ast_expr_obj_def_t(p);
+	node->type = this->parse_type_ref(node);
+	if (node->type == nullptr)
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	if (!this->check_token(token_t::LCB))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	do
+	{
+		if (this->token().type == token_t::RCB)
+			break;
+		if (!this->parse_object_field(node))
+		{
+			_DeletePointer(node);
+			return nullptr;
+		}
+	}
+	while (this->check_token(token_t::Comma, false));
+
+	if (!this->check_token(token_t::RCB))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	return node;
+}
+
+
+/*
 array_def => '[' [array_field {sep array_field} [sep]] ']'
 sep => ',' | ';'
 */
@@ -574,46 +614,6 @@ ast_expr_t* parser_impl_t::parse_index_ref(ast_node_t* p, ast_expr_t* primary)
 	}
 
 	if (!this->check_token(token_t::RSB))
-	{
-		_DeletePointer(node);
-		return nullptr;
-	}
-
-	return node;
-}
-
-/*
-object_def => [ID] '{' [object_field {sep object_field} [sep]] '}'
-sep => ',' | ';'
-*/
-ast_expr_t* parser_impl_t::parse_object_def(ast_node_t* p, ast_expr_t* primary)
-{
-	ast_expr_obj_def_t* node = new ast_expr_obj_def_t(p);
-	node->base = primary;
-	if (primary != nullptr)
-	{
-		primary->parent = node;
-	}
-
-	if (!this->check_token(token_t::LCB))
-	{
-		_DeletePointer(node);
-		return nullptr;
-	}
-
-	do
-	{
-		if (this->token().type == token_t::RCB)
-			break;
-		if (!this->parse_object_field(node))
-		{
-			_DeletePointer(node);
-			return nullptr;
-		}
-	}
-	while (this->check_token(token_t::Comma, false));
-
-	if (!this->check_token(token_t::RCB))
 	{
 		_DeletePointer(node);
 		return nullptr;
