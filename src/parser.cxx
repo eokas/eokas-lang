@@ -36,7 +36,6 @@ public:
 	ast_expr_t* parse_module_ref(ast_node_t* p);
 
 	ast_stmt_t* parse_stmt(ast_node_t* p);
-	ast_stmt_echo_t* parse_stmt_echo(ast_node_t* p);
 	ast_stmt_schema_def_t* parse_stmt_schema_def(ast_node_t* p);
 	ast_stmt_schema_member_t* parse_stmt_schema_member(ast_node_t* p);
 	ast_stmt_struct_def_t* parse_stmt_struct_def(ast_node_t* p);
@@ -433,7 +432,7 @@ bool parser_impl_t::parse_func_params(ast_expr_func_def_t* node)
 		if (!this->check_token(token_t::ID, true, false))
 			return false;
 		const String name = this->token().value;
-		if (node->args.find(name) != node->args.end())
+		if(node->getArg(name) != nullptr)
 		{
 			this->error_token_unexpected();
 			return false;
@@ -447,7 +446,10 @@ bool parser_impl_t::parse_func_params(ast_expr_func_def_t* node)
 		if (type == nullptr)
 			return false;
 
-		node->args[name] = type;
+		ast_expr_func_def_t::arg_t arg;
+		arg.name = name;
+		arg.type = type;
+		node->args.push_back(arg);
 	}
 	while (this->check_token(token_t::Comma, false));
 
@@ -704,8 +706,6 @@ ast_stmt_t* parser_impl_t::parse_stmt(ast_node_t* p)
 {
 	switch (this->token().type)
 	{
-	case token_t::Echo:
-		return this->parse_stmt_echo(p);
 	case token_t::Schema:
 		return this->parse_stmt_schema_def(p);
 	case token_t::Struct:
@@ -738,31 +738,6 @@ ast_stmt_t* parser_impl_t::parse_stmt(ast_node_t* p)
 			return this->parse_stmt_assign_or_call(p);
 		}
 	}
-}
-
-/**
- * echo = 'echo' expr (, expr)* ;
-*/
-ast_stmt_echo_t* parser_impl_t::parse_stmt_echo(ast_node_t* p)
-{
-	ast_stmt_echo_t* node = new ast_stmt_echo_t(p);
-
-	this->next_token(); // ignore 'echo'
-	do
-	{
-		ast_expr_t* e = this->parse_expr(node);
-		if (e == nullptr)
-		{
-			_DeletePointer(node);
-			return nullptr;
-		}
-		node->values.push_back(e);
-
-		this->check_token(token_t::Comma, false);
-	}
-	while (!this->check_token(token_t::Semicolon, false));
-
-	return node;
 }
 
 /**
