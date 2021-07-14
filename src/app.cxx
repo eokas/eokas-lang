@@ -30,7 +30,13 @@ int main(int argc, char** argv)
     {
         String file = args.get(2);
         printf("file: %s\n", file.cstr());
-        eokas_main(file);
+        try {
+            eokas_main(file);
+        }
+        catch (std::exception& e)
+        {
+            printf("ERROR: %s \n", e.what());
+        }
     }
     else
     {
@@ -64,8 +70,8 @@ static void eokas_main(const String& fileName)
         return;
     }
 
-    FileStream out(String::format("%s.cxx", fileName.cstr()), "w+");
-    if(!out.open())
+    FileStream out(String::format("%s.ll", fileName.cstr()), "w+");
+    if (!out.open())
         return;
 
     printf("begin encode\n");

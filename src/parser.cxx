@@ -111,7 +111,7 @@ ast_module_t* parser_impl_t::parse_module(const char* source)
 
 ast_type_ref_t* parser_impl_t::parse_type_ref(ast_node_t* p)
 {
-	if (this->check_token(token_t::ID, true, false))
+	if (!this->check_token(token_t::ID, true, false))
 		return nullptr;
 
 	ast_type_ref_t* node = new ast_type_ref_t(p);

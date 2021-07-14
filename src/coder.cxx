@@ -2,17 +2,17 @@
 #include "coder.h"
 #include "ast.h"
 
-#include "llvm/ADT/APFloat.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Type.h"
-#include "llvm/IR/Verifier.h"
+#include <llvm/ADT/APFloat.h>
+#include <llvm/ADT/STLExtras.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/Verifier.h>
 
 #include <algorithm>
 #include <cctype>
@@ -143,6 +143,9 @@ struct coder_llvm_t
     {
         if (!this->encode_module(m))
             return false;
+
+        llvm_module->print(llvm::errs(), nullptr);
+
         return true;
     }
 
@@ -153,14 +156,22 @@ struct coder_llvm_t
 
         this->pushScope();
 
-        for(auto& stmt : node->stmts)
+        llvm::FunctionType* funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(*llvm_context), false);
+        this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "@_main", *llvm_module);
+        
+        llvm::BasicBlock* entry = llvm::BasicBlock::Create(*llvm_context, "entry", this->func);
+        llvm_builder->SetInsertPoint(entry);
+
+        for (auto& stmt : node->stmts)
         {
-            if(!this->encode_stmt(stmt))
+            if (!this->encode_stmt(stmt))
                 return false;
         }
 
+        llvm_builder->CreateRetVoid();
+
         this->popScope();
-        
+
         return true;
     }
 
@@ -186,11 +197,19 @@ struct coder_llvm_t
             return nullptr;
 
         const String& name = node->name;
-        if (name == "int") return llvm::Type::getInt32Ty(*llvm_context);
-        if (name == "float") return llvm::Type::getFloatTy(*llvm_context);
+        if (name == "i8") return llvm::Type::getInt8Ty(*llvm_context);
+        if(name == "i16") return llvm::Type::getInt16Ty(*llvm_context);
+        if(name == "i32") return llvm::Type::getInt32Ty(*llvm_context);
+        if(name == "i64") return llvm::Type::getInt64Ty(*llvm_context);
+
+        if (name == "f32") return llvm::Type::getFloatTy(*llvm_context);
+        if (name == "f64") return llvm::Type::getDoubleTy(*llvm_context);
+
         if (name == "bool") return llvm::Type::getInt1Ty(*llvm_context);
 
-        return nullptr;
+        llvm::Type* type = this->scope->getType(name, true);
+
+        return type;
     }
 
     llvm::Value* encode_expr(struct ast_expr_t* node)
@@ -258,7 +277,7 @@ struct coder_llvm_t
 
         llvm_builder->SetInsertPoint(trinary_false);
         llvm::Value* falseV = this->encode_expr(node->branch_false);
-        if(falseV == nullptr)
+        if (falseV == nullptr)
             return nullptr;
         // TODO: set temp var
         llvm_builder->CreateBr(trinary_end);
@@ -352,13 +371,21 @@ struct coder_llvm_t
     {
         if (node == nullptr)
             return nullptr;
-        return llvm::ConstantInt::get(*llvm_context, llvm::APInt(64, node->value));
+        
+        u64_t vals = *((u64_t*)&(node->value));
+        u32_t bits = 8;
+        if(vals > 0xFF) bits = 16;
+        if(vals > 0xFFFF) bits = 32;
+        if(vals > 0xFFFFFFFF) bits = 64;
+
+        return llvm::ConstantInt::get(*llvm_context, llvm::APInt(bits, node->value));
     }
 
     llvm::Value* encode_expr_float(struct ast_expr_float_t* node)
     {
         if (node == nullptr)
             return nullptr;
+
         return llvm::ConstantFP::get(*llvm_context, llvm::APFloat(node->value));
     }
 
@@ -425,8 +452,8 @@ struct coder_llvm_t
 
             for (auto& stmt : node->body)
             {
-                if (!this->encode_stmt(stmt));
-                return nullptr;
+                if (!this->encode_stmt(stmt))
+                    return nullptr;
             }
         }
         this->popScope();
@@ -521,7 +548,7 @@ struct coder_llvm_t
             return false;
 
         const String& name = node->name;
-        
+
 
         return true;
     }
@@ -536,10 +563,10 @@ struct coder_llvm_t
         auto type = llvm::StructType::create(*llvm_context, name.cstr());
 
         std::vector<llvm::Type*> members;
-        for(auto m : node->members)
+        for (auto m : node->members)
         {
             auto memType = this->encode_type(m->type);
-            if(memType == nullptr)
+            if (memType == nullptr)
                 return false;
             members.push_back(memType);
         }
@@ -783,7 +810,7 @@ struct coder_llvm_t
     {
         if (node == nullptr)
             return false;
-        
+
         llvm::Value* left = this->encode_expr(node->left);
         llvm::Value* right = this->encode_expr(node->right);
 
@@ -796,7 +823,10 @@ struct coder_llvm_t
     {
         if (node == nullptr)
             return false;
-        
+
+        if (!this->encode_expr_func_ref(node->expr))
+            return false;
+
         return true;
     }
 };
