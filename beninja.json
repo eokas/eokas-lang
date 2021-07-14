@@ -6,6 +6,7 @@
 
     "vars": {
         "depsDir": "./deps/",
+        "llvmsdk": "~/Documents/SDK/clang+llvm-12.0.0-x86_64-apple-darwin",
         "cflags": "-O3 -std=c++14"
     },
 
@@ -18,11 +19,13 @@
         "lflags": [],
 
         "includes": [
-            "-I${depsDir}"
+            "-I${depsDir}",
+            "-I${llvmsdk/include}"
         ],
 
         "libraries": [
             "-L${depsDir}",
+            "-L${llvmsdk}/lib",
             "-larchaism"
         ],
 

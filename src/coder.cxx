@@ -2,64 +2,147 @@
 #include "coder.h"
 #include "ast.h"
 
+#include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Verifier.h"
+
+#include <algorithm>
+#include <cctype>
+#include <cstdio>
+#include <cstdlib>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
 _BeginNamespace(eokas)
 
-struct coder_cxx_t
+struct scope_llvm_t
+{
+    scope_llvm_t* parent;
+    std::vector<scope_llvm_t*> children;
+
+    std::map<String, llvm::Type*> types;
+    std::map<String, llvm::Value*> symbols;
+
+    scope_llvm_t(scope_llvm_t* parent)
+        : parent(parent)
+        , children()
+        , types()
+        , symbols()
+    {}
+
+    virtual ~scope_llvm_t()
+    {
+        this->parent = nullptr;
+        _DeleteList(this->children);
+        this->types.clear();
+        this->symbols.clear();
+    }
+
+    scope_llvm_t* addChild()
+    {
+        scope_llvm_t* child = new scope_llvm_t(this);
+        this->children.push_back(child);
+        return child;
+    }
+
+    llvm::Type* getType(const String& name, bool lookUp)
+    {
+        if (lookUp)
+        {
+            for (auto scope = this; scope != nullptr; scope = scope->parent)
+            {
+                auto iter = scope->types.find(name);
+                if (iter != scope->types.end())
+                    return iter->second;
+            }
+            return nullptr;
+        }
+        else
+        {
+            auto iter = this->types.find(name);
+            if (iter != this->types.end())
+                return iter->second;
+            return nullptr;
+        }
+    }
+
+    llvm::Value* getSymbol(const String& name, bool lookUp)
+    {
+        if (lookUp)
+        {
+            for (auto scope = this; scope != nullptr; scope = scope->parent)
+            {
+                auto iter = scope->symbols.find(name);
+                if (iter != scope->symbols.end())
+                    return iter->second;
+            }
+            return nullptr;
+        }
+        else
+        {
+            auto iter = this->symbols.find(name);
+            if (iter != this->symbols.end())
+                return iter->second;
+            return nullptr;
+        }
+    }
+};
+
+struct coder_llvm_t
 {
     Stream& base;
 
-    MemoryStream header;
-    MemoryStream global;
-    MemoryStream local;
-    TextStream stream;
+    std::unique_ptr<llvm::LLVMContext> llvm_context;
+    std::unique_ptr<llvm::Module> llvm_module;
+    std::unique_ptr<llvm::IRBuilder<>> llvm_builder;
+    scope_llvm_t* root;
+    scope_llvm_t* scope;
+    llvm::Function* func;
+    llvm::BasicBlock* continuePoint;
+    llvm::BasicBlock* breakPoint;
 
-    int counter;
-
-    coder_cxx_t(Stream& stream)
+    coder_llvm_t(Stream& stream)
         : base(stream)
-        , header()
-        , global()
-        , local()
-        , stream(local)
-        , counter(0)
-    { }
+    {
+        this->llvm_context = std::make_unique<llvm::LLVMContext>();
+        this->llvm_module = std::make_unique<llvm::Module>("eokas", *llvm_context);
+        this->llvm_builder = std::make_unique<llvm::IRBuilder<>>(*llvm_context);
+        this->root = new scope_llvm_t(nullptr);
+        this->scope = this->root;
+        this->func = nullptr;
+        this->continuePoint = nullptr;
+        this->breakPoint = nullptr;
+    }
+
+    virtual ~coder_llvm_t()
+    {
+        _DeletePointer(this->scope);
+    }
+
+    void pushScope()
+    {
+        this->scope = this->scope->addChild();
+    }
+
+    void popScope()
+    {
+        this->scope = this->scope->parent;
+    }
 
     bool encode(struct ast_module_t* m)
     {
-        header.open();
-        global.open();
-        local.open();
-
-        stream.bind(local);
         if (!this->encode_module(m))
             return false;
-
-        String h;
-        header.seek(0, 0);
-        stream.bind(header);
-        stream.read(h);
-        printf("H: %s\n", h.cstr());
-
-        String g;
-        global.seek(0, 0);
-        stream.bind(global);
-        stream.read(g);
-        printf("G: %s\n", g.cstr());
-
-        String l;
-        local.seek(0, 0);
-        stream.bind(local);
-        stream.read(l);
-        printf("L: %s\n", l.cstr());
-
-        stream.bind(base);
-        stream.write(h);
-        stream.write("\n");
-        stream.write(g);
-        stream.write("\n");
-        stream.write(l);
-        stream.flush();
-
         return true;
     }
 
@@ -68,58 +151,52 @@ struct coder_cxx_t
         if (node == nullptr)
             return false;
 
-        stream.write("void module_main()\n{\n");
-        for (auto& stmt : node->stmts)
+        this->pushScope();
+
+        for(auto& stmt : node->stmts)
         {
-            if (!this->encode_stmt(stmt))
+            if(!this->encode_stmt(stmt))
                 return false;
         }
-        stream.write("}\n");
+
+        this->popScope();
+        
         return true;
     }
 
-    bool encode_type(struct ast_type_t* node)
+    llvm::Type* encode_type(struct ast_type_t* node)
     {
         if (node == nullptr)
-            return false;
+            return nullptr;
 
         switch (node->category)
         {
         case ast_node_category_t::type_ref:
             return this->encode_type_ref(dynamic_cast<ast_type_ref_t*>(node));
         default:
-            return false;
+            return nullptr;
         }
 
-        return false;
+        return nullptr;
     }
 
-    bool encode_type_ref(struct ast_type_ref_t* node)
+    llvm::Type* encode_type_ref(struct ast_type_ref_t* node)
     {
         if (node == nullptr)
-            return false;
+            return nullptr;
 
         const String& name = node->name;
-        if (name == "int" ||
-            name == "float" ||
-            name == "bool")
-        {
-            stream.write(node->name);
-            return true;
-        }
-        else if (name == "string")
-        {
-            stream.write("const char*");
-            return true;
-        }
+        if (name == "int") return llvm::Type::getInt32Ty(*llvm_context);
+        if (name == "float") return llvm::Type::getFloatTy(*llvm_context);
+        if (name == "bool") return llvm::Type::getInt1Ty(*llvm_context);
 
-        return false;
+        return nullptr;
     }
 
-    bool encode_expr(struct ast_expr_t* node)
+    llvm::Value* encode_expr(struct ast_expr_t* node)
     {
         if (node == nullptr)
-            return false;
+            return nullptr;
 
         switch (node->category)
         {
@@ -148,226 +225,254 @@ struct coder_cxx_t
         case ast_node_category_t::expr_index_ref:
             return this->encode_expr_index_ref(dynamic_cast<ast_expr_index_ref_t*>(node));
         default:
-            return false;
+            return nullptr;
         }
-        return false;
+        return nullptr;
     }
 
-    bool encode_expr_trinary(struct ast_expr_trinary_t* node)
+    llvm::Value* encode_expr_trinary(struct ast_expr_trinary_t* node)
     {
         if (node == nullptr)
-            return false;
-        stream.write("(");
-        if (!this->encode_expr(node->cond))
-            return false;
-        stream.write(" ? ");
-        if (!this->encode_expr(node->branch_true))
-            return false;
-        stream.write(" : ");
-        if (!this->encode_expr(node->branch_false))
-            return false;
-        stream.write(")");
-        return true;
+            return nullptr;
+
+        llvm::BasicBlock* trinary_begin = llvm::BasicBlock::Create(*llvm_context, "trinary.begin", this->func);
+        llvm::BasicBlock* trinary_true = llvm::BasicBlock::Create(*llvm_context, "trinary.true", this->func);
+        llvm::BasicBlock* trinary_false = llvm::BasicBlock::Create(*llvm_context, "trinary.false", this->func);
+        llvm::BasicBlock* trinary_end = llvm::BasicBlock::Create(*llvm_context, "trinary.end", this->func);
+
+        llvm_builder->SetInsertPoint(trinary_begin);
+
+        // TODO: define a temp var
+
+        llvm::Value* cond = this->encode_expr(node->cond);
+        if (cond == nullptr)
+            return nullptr;
+        llvm_builder->CreateCondBr(cond, trinary_true, trinary_false);
+
+        llvm_builder->SetInsertPoint(trinary_true);
+        llvm::Value* trueV = this->encode_expr(node->branch_true);
+        if (trueV == nullptr)
+            return nullptr;
+        // TODO: set temp var
+        llvm_builder->CreateBr(trinary_end);
+
+        llvm_builder->SetInsertPoint(trinary_false);
+        llvm::Value* falseV = this->encode_expr(node->branch_false);
+        if(falseV == nullptr)
+            return nullptr;
+        // TODO: set temp var
+        llvm_builder->CreateBr(trinary_end);
+
+        llvm_builder->SetInsertPoint(trinary_end);
+
+        // TODO: return temp var
+
+        return nullptr;
     }
 
-    bool encode_expr_binary(struct ast_expr_binary_t* node)
+    llvm::Value* encode_expr_binary(struct ast_expr_binary_t* node)
     {
         if (node == nullptr)
-            return false;
+            return nullptr;
 
-        stream.write("(");
-
-        if (!this->encode_expr(node->left))
-            return false;
+        auto lhs = this->encode_expr(node->left);
+        auto rhs = this->encode_expr(node->right);
+        if (lhs == nullptr || rhs == nullptr)
+            return nullptr;
 
         switch (node->op)
         {
-        case ast_binary_oper_t::Or: stream.write(" || "); break;
-        case ast_binary_oper_t::And: stream.write(" && "); break;
-        case ast_binary_oper_t::Equal: stream.write(" == "); break;
-        case ast_binary_oper_t::NEqual: stream.write(" != "); break;
-        case ast_binary_oper_t::LEqual: stream.write(" <= "); break;
-        case ast_binary_oper_t::GEqual: stream.write(" >= "); break;
-        case ast_binary_oper_t::Less: stream.write(" < "); break;
-        case ast_binary_oper_t::Greater: stream.write(" > "); break;
-        case ast_binary_oper_t::Add:stream.write(" + "); break;
-        case ast_binary_oper_t::Sub:stream.write(" - "); break;
-        case ast_binary_oper_t::Mul:stream.write(" * "); break;
-        case ast_binary_oper_t::Div:stream.write(" / "); break;
-        case ast_binary_oper_t::Mod: stream.write(" % "); break;
-        case ast_binary_oper_t::BitAnd:stream.write(" & "); break;
-        case ast_binary_oper_t::BitOr:stream.write(" | "); break;
-        case ast_binary_oper_t::BitXor:stream.write(" ^ "); break;
-        case ast_binary_oper_t::ShiftL:stream.write(" << "); break;
-        case ast_binary_oper_t::ShiftR:stream.write(" >> "); break;
+        case ast_binary_oper_t::Or:
+            return llvm_builder->CreateOr(lhs, rhs);
+        case ast_binary_oper_t::And:
+            return llvm_builder->CreateAnd(lhs, rhs);
+        case ast_binary_oper_t::Equal:
+            return llvm_builder->CreateICmpEQ(lhs, rhs);
+        case ast_binary_oper_t::NEqual:
+            return llvm_builder->CreateICmpNE(lhs, rhs);
+        case ast_binary_oper_t::LEqual:
+            return llvm_builder->CreateICmpSLE(lhs, rhs);
+        case ast_binary_oper_t::GEqual:
+            return llvm_builder->CreateICmpSGE(lhs, rhs);
+        case ast_binary_oper_t::Less:
+            return llvm_builder->CreateICmpSLT(lhs, rhs);
+        case ast_binary_oper_t::Greater:
+            return llvm_builder->CreateICmpSGT(lhs, rhs);
+        case ast_binary_oper_t::Add:
+            return llvm_builder->CreateAdd(lhs, rhs);
+        case ast_binary_oper_t::Sub:
+            return llvm_builder->CreateSub(lhs, rhs);
+        case ast_binary_oper_t::Mul:
+            return llvm_builder->CreateMul(lhs, rhs);
+        case ast_binary_oper_t::Div:
+            return llvm_builder->CreateSDiv(lhs, rhs);
+        case ast_binary_oper_t::Mod:
+            return nullptr;
+        case ast_binary_oper_t::BitAnd:
+            return nullptr;
+        case ast_binary_oper_t::BitOr:
+            return nullptr;
+        case ast_binary_oper_t::BitXor:
+            return llvm_builder->CreateXor(lhs, rhs);
+        case ast_binary_oper_t::ShiftL:
+            return llvm_builder->CreateShl(lhs, rhs);
+        case ast_binary_oper_t::ShiftR:
+            return llvm_builder->CreateLShr(lhs, rhs);
         default:
-            return false;
+            return nullptr;
         }
-
-        if (!this->encode_expr(node->right))
-            return false;
-
-        stream.write(")");
-
-        return true;
     }
 
-    bool encode_expr_unary(struct ast_expr_unary_t* node)
+    llvm::Value* encode_expr_unary(struct ast_expr_unary_t* node)
     {
         if (node == nullptr)
-            return false;
+            return nullptr;
 
-        stream.write("(");
+        auto rhs = this->encode_expr(node->right);
+        if (rhs == nullptr)
+            return nullptr;
+
 
         switch (node->op)
         {
-        case ast_unary_oper_t::Pos:stream.write(" + "); break;
-        case ast_unary_oper_t::Neg:stream.write(" - "); break;
-        case ast_unary_oper_t::Not:stream.write(" ! "); break;
-        case ast_unary_oper_t::Flip:stream.write(" ~ "); break;
+        case ast_unary_oper_t::Pos:
+            return rhs;
+        case ast_unary_oper_t::Neg:
+            return llvm_builder->CreateNeg(rhs);
+        case ast_unary_oper_t::Not:
+            return llvm_builder->CreateNot(rhs);
+        case ast_unary_oper_t::Flip:
+            return nullptr;
         default:
-            return false;
+            return nullptr;
         }
-
-        if (!this->encode_expr(node->right))
-            return false;
-
-        stream.write(")");
-
-        return true;
     }
 
-    bool encode_expr_int(struct ast_expr_int_t* node)
+    llvm::Value* encode_expr_int(struct ast_expr_int_t* node)
     {
         if (node == nullptr)
-            return false;
-        stream.write(String::valueToString(node->value));
-        return true;
+            return nullptr;
+        return llvm::ConstantInt::get(*llvm_context, llvm::APInt(64, node->value));
     }
 
-    bool encode_expr_float(struct ast_expr_float_t* node)
+    llvm::Value* encode_expr_float(struct ast_expr_float_t* node)
     {
         if (node == nullptr)
-            return false;
-        stream.write(String::valueToString(node->value));
-        return true;
+            return nullptr;
+        return llvm::ConstantFP::get(*llvm_context, llvm::APFloat(node->value));
     }
 
-    bool encode_expr_bool(struct ast_expr_bool_t* node)
+    llvm::Value* encode_expr_bool(struct ast_expr_bool_t* node)
     {
         if (node == nullptr)
-            return false;
-        stream.write(String::valueToString(node->value));
-        return true;
+            return nullptr;
+        return llvm::ConstantInt::getBool(*llvm_context, node->value);
     }
 
-    bool encode_expr_string(struct ast_expr_string_t* node)
+    llvm::Value* encode_expr_string(struct ast_expr_string_t* node)
     {
         if (node == nullptr)
-            return false;
-        stream.write(String::format("\"%s\"", node->value.cstr()));
-        return true;
+            return nullptr;
+        return llvm::ConstantDataArray::getString(*llvm_context, node->value.cstr());
     }
 
-    bool encode_expr_symbol_ref(struct ast_expr_symbol_ref_t* node)
+    llvm::Value* encode_expr_symbol_ref(struct ast_expr_symbol_ref_t* node)
     {
         if (node == nullptr)
-            return false;
-        stream.write(node->name);
-        return true;
+            return nullptr;
+
+        return this->scope->getSymbol(node->name, true);
     }
 
-    bool encode_expr_func_def(struct ast_expr_func_def_t* node)
+    llvm::Value* encode_expr_func_def(struct ast_expr_func_def_t* node)
     {
         if (node == nullptr)
-            return false;
+            return nullptr;
 
-        Stream& oldTarget = stream.target();
-        stream.bind(global);
-        String globalName = String::format("func_%d", counter++);
-        stream.write(String::format("struct %s{ \n", globalName.cstr()));
-        stream.write("auto operator()(");
-        bool first = true;
-        for (auto& pair : node->args)
+        llvm::Type* retType = this->encode_type(node->type);
+
+        std::vector<llvm::Type*> argTypes;
+        for (auto arg : node->args)
         {
-            if (!first)
-                stream.write(", ");
-            if (!this->encode_type(pair.second))
-                return false;
-            const char* name = pair.first.cstr();
-            stream.write(String::format(" %s", name));
+            llvm::Type* argType = this->encode_type(arg.type);
+            if (argType == nullptr)
+                return nullptr;
+            argTypes.push_back(argType);
         }
-        stream.write(") const");
-        if (node->type)
-        {
-            stream.write("->");
-            if (!this->encode_type(node->type))
-                return false;
-        }
-        stream.write("{\n");
-        for (auto& stmt : node->body)
-        {
-            if (!this->encode_stmt(stmt))
-                return false;
-        }
-        stream.write("}\n");
-        stream.write("};\n");
 
-        stream.bind(oldTarget);
-        stream.write(String::format("%s()", globalName.cstr()));
+        llvm::FunctionType* procType = llvm::FunctionType::get(retType, argTypes, false);
+        llvm::Function* func = llvm::Function::Create(procType, llvm::Function::ExternalLinkage, "", *llvm_module);
+        u32_t index = 0;
+        for (auto& arg : func->args())
+        {
+            const char* name = node->args[index++].name.cstr();
+            arg.setName(name);
+        }
 
-        return true;
+        auto oldFunc = this->func;
+        this->func = func;
+        this->pushScope();
+        {
+            llvm::BasicBlock* entry = llvm::BasicBlock::Create(*llvm_context, "entry", func);
+            llvm_builder->SetInsertPoint(entry);
+
+            for (auto& arg : func->args())
+            {
+                const char* name = arg.getName().data();
+                auto pair = std::make_pair(String(name), &arg);
+                this->scope->symbols.insert(pair);
+            }
+
+            for (auto& stmt : node->body)
+            {
+                if (!this->encode_stmt(stmt));
+                return nullptr;
+            }
+        }
+        this->popScope();
+        this->func = oldFunc;
+
+        return func;
     }
 
-    bool encode_expr_func_ref(struct ast_expr_func_ref_t* node)
+    llvm::Value* encode_expr_func_ref(struct ast_expr_func_ref_t* node)
     {
         if (node == nullptr)
-            return false;
-        if (!this->encode_expr(node->func))
-            return false;
-        stream.write("(");
-        bool first = true;
+            return nullptr;
+
+        llvm::Value* funcValue = this->encode_expr(node->func);
+        llvm::Function* func = llvm::cast<llvm::Function>(funcValue);
+        if (func == nullptr)
+            return nullptr;
+        if (func->arg_size() != node->args.size())
+            return nullptr;
+
+        std::vector<llvm::Value*> params;
         for (auto& arg : node->args)
         {
-            if (!first)
-                stream.write(", ");
-            first = false;
-            if (!this->encode_expr(arg))
-                return false;
+            llvm::Value* param = this->encode_expr(arg);
+            if (param == nullptr)
+                return nullptr;
+            params.push_back(param);
         }
-        stream.write(")");
-        return true;
+
+        return llvm_builder->CreateCall(func, params);
     }
 
-    bool encode_expr_array_def(struct ast_expr_array_def_t* node)
+    llvm::Value* encode_expr_array_def(struct ast_expr_array_def_t* node)
     {
         if (node == nullptr)
-            return false;
-        stream.write("{");
-        bool first = true;
-        for (auto& item : node->items)
-        {
-            if (!first)
-                stream.write(", ");
-            first = false;
-            if (!this->encode_expr(item))
-                return false;
-        }
-        stream.write("}");
-        return true;
+            return nullptr;
+
+        return nullptr;
     }
 
-    bool encode_expr_index_ref(struct ast_expr_index_ref_t* node)
+    llvm::Value* encode_expr_index_ref(struct ast_expr_index_ref_t* node)
     {
         if (node == nullptr)
-            return false;
-        if (!this->encode_expr(node->obj))
-            return false;
-        stream.write("[");
-        if (!this->encode_expr(node->key))
-            return false;
-        stream.write("]");
-        return true;
+            return nullptr;
+
+        return nullptr;
     }
 
     bool encode_stmt(struct ast_stmt_t* node)
@@ -377,8 +482,6 @@ struct coder_cxx_t
 
         switch (node->category)
         {
-        case ast_node_category_t::stmt_echo:
-            return this->encode_stmt_echo(dynamic_cast<ast_stmt_echo_t*>(node));
         case ast_node_category_t::stmt_schema_def:
             return this->encode_stmt_schema_def(dynamic_cast<ast_stmt_schema_def_t*>(node));
         case ast_node_category_t::stmt_struct_def:
@@ -412,55 +515,13 @@ struct coder_cxx_t
         return false;
     }
 
-    bool encode_stmt_echo(struct ast_stmt_echo_t* node)
-    {
-        if (node == nullptr)
-            return false;
-
-        Stream& oldTarget = stream.target();
-        stream.bind(header);
-        stream.write("#include <iostream>\n");
-
-        stream.bind(oldTarget);
-        stream.write("std::cout");
-        for (auto& v : node->values)
-        {
-            stream.write("<<(");
-            if (!this->encode_expr(v))
-            {
-                return false;
-            }
-            stream.write(")");
-        }
-        stream.write(";\n");
-
-        return true;
-    }
-
     bool encode_stmt_schema_def(struct ast_stmt_schema_def_t* node)
     {
         if (node == nullptr)
             return false;
 
         const String& name = node->name;
-        stream.write(String::format("struct %s", name.cstr()));
-        if (node->schema != nullptr)
-        {
-            stream.write(" : ");
-            if (!this->encode_type(node->schema))
-                return false;
-        }
-        stream.write("{\n");
-        for (auto& m : node->members)
-        {
-            auto type = m.second->type;
-            if (!this->encode_type(type))
-                return false;
-            stream.write(" ");
-            stream.write(m.first);
-            stream.write(";\n");
-        }
-        stream.write("};\n");
+        
 
         return true;
     }
@@ -471,33 +532,19 @@ struct coder_cxx_t
             return false;
 
         const String& name = node->name;
-        stream.write(String::format("struct %s", name.cstr()));
-        if (node->schema != nullptr)
-        {
-            stream.write(" : ");
-            if (!this->encode_type(node->schema))
-                return false;
-        }
-        stream.write("{\n");
-        for (auto& m : node->members)
-        {
-            auto type = m.second->type;
-            auto value = m.second->value;
 
-            if (!this->encode_type(type))
-                return false;
+        auto type = llvm::StructType::create(*llvm_context, name.cstr());
 
-            stream.write(" ");
-            stream.write(m.first);
-            if (value != nullptr)
-            {
-                stream.write(" = ");
-                if (!this->encode_expr(value))
-                    return false;
-            }
-            stream.write(";\n");
+        std::vector<llvm::Type*> members;
+        for(auto m : node->members)
+        {
+            auto memType = this->encode_type(m->type);
+            if(memType == nullptr)
+                return false;
+            members.push_back(memType);
         }
-        stream.write("};\n");
+
+        type->setBody(members);
 
         return true;
     }
@@ -507,33 +554,23 @@ struct coder_cxx_t
         if (node == nullptr)
             return false;
 
-        Stream& oldTarget = stream.target();
-        stream.bind(global);
-        String globalName = String::format("proc_%d", counter++);
-        stream.write(String::format("struct %s{ \n", globalName.cstr()));
-        stream.write("virtual auto operator()(");
-        bool first = true;
-        for (auto& pair : node->args)
-        {
-            if (!first)
-                stream.write(", ");
-            if (!this->encode_type(pair.second))
-                return false;
-            const char* name = pair.first.cstr();
-            stream.write(String::format(" %s", name));
-        }
-        stream.write(") const");
-        if (node->type)
-        {
-            stream.write("->");
-            if (!this->encode_type(node->type))
-                return false;
-            stream.write("= 0;\n");
-        }
-        stream.write("};\n");
+        if (this->scope->getType(node->name, false) != nullptr)
+            return false;
 
-        stream.bind(oldTarget);
-        stream.write(String::format("%s()", globalName.cstr()));
+        llvm::Type* retType = this->encode_type(node->type);
+
+        std::vector<llvm::Type*> argTypes;
+        for (auto arg : node->args)
+        {
+            llvm::Type* argType = this->encode_type(arg.second);
+            if (argType == nullptr)
+                return false;
+            argTypes.push_back(argType);
+        }
+
+        llvm::FunctionType* procType = llvm::FunctionType::get(retType, argTypes, false);
+
+        this->scope->types[node->name] = procType;
 
         return true;
     }
@@ -543,31 +580,23 @@ struct coder_cxx_t
         if (node == nullptr)
             return false;
 
-        if (!node->variable)
-        {
-            stream.write("const ");
-        }
+        if (this->scope->getSymbol(node->name, false) != nullptr)
+            return false;
 
-        if (node->type)
-        {
-            if (!this->encode_type(node->type))
-                return false;
-        }
-        else {
-            stream.write("auto");
-        }
+        auto type = this->encode_type(node->type);
+        auto value = this->encode_expr(node->value);
+        if (type == nullptr && value == nullptr)
+            return false;
 
-        const String& name = node->name;
-        stream.write(String::format(" %s", name.cstr()));
+        // TODO: 校验类型合法性
+        // 标记类型与值类型是否一致
+        // 值类型是否遵循标记类型
 
-        if (node->value)
-        {
-            stream.write(" = ");
-            if (!this->encode_expr(node->value))
-                return false;
-        }
+        // 不同的类型，需要调用不同的store命令
 
-        stream.write(";\n");
+        auto symbol = llvm_builder->CreateAlloca(type);
+        llvm_builder->CreateStore(value, symbol);
+        scope->symbols.insert(std::make_pair(node->name, symbol));
 
         return true;
     }
@@ -576,7 +605,12 @@ struct coder_cxx_t
     {
         if (node == nullptr)
             return false;
-        stream.write("break;\n");
+
+        if (this->breakPoint == nullptr)
+            return false;
+
+        llvm_builder->CreateBr(this->breakPoint);
+
         return true;
     }
 
@@ -584,7 +618,12 @@ struct coder_cxx_t
     {
         if (node == nullptr)
             return false;
-        stream.write("contine;\n");
+
+        if (this->continuePoint == nullptr)
+            return false;
+
+        llvm_builder->CreateBr(this->continuePoint);
+
         return true;
     }
 
@@ -592,14 +631,12 @@ struct coder_cxx_t
     {
         if (node == nullptr)
             return false;
-        stream.write("return");
-        if (node->value)
-        {
-            stream.write(" ");
-            if (!this->encode_expr(node->value))
-                return false;
-        }
-        stream.write(";\n");
+
+        // TODO: process return void
+
+        llvm::Value* value = this->encode_expr(node->value);
+        llvm_builder->CreateRet(value);
+
         return true;
     }
 
@@ -607,21 +644,33 @@ struct coder_cxx_t
     {
         if (node == nullptr)
             return false;
-        stream.write("if(");
-        if (!this->encode_expr(node->cond))
+
+        llvm::BasicBlock* if_begin = llvm::BasicBlock::Create(*llvm_context, "if.begin", this->func);
+        llvm::BasicBlock* if_true = llvm::BasicBlock::Create(*llvm_context, "if.true", this->func);
+        llvm::BasicBlock* if_false = llvm::BasicBlock::Create(*llvm_context, "if.false", this->func);
+        llvm::BasicBlock* if_end = llvm::BasicBlock::Create(*llvm_context, "if.end", this->func);
+
+        llvm_builder->SetInsertPoint(if_begin);
+        llvm::Value* cond = this->encode_expr(node->cond);
+        if (cond == nullptr)
             return false;
-        stream.write(")\n");
-        if (node->branch_true != nullptr)
-        {
-            if (!this->encode_stmt(node->branch_true))
-                return false;
-        }
+        llvm_builder->CreateCondBr(cond, if_true, if_false);
+
+        llvm_builder->SetInsertPoint(if_true);
+        if (!this->encode_stmt(node->branch_true))
+            return false;
+        llvm_builder->CreateBr(if_end);
+
         if (node->branch_false != nullptr)
         {
-            stream.write("\nelse\n");
+            llvm_builder->SetInsertPoint(if_false);
             if (!this->encode_stmt(node->branch_false))
                 return false;
+            llvm_builder->CreateBr(if_end);
         }
+
+        llvm_builder->SetInsertPoint(if_end);
+
         return true;
     }
 
@@ -630,12 +679,35 @@ struct coder_cxx_t
         if (node == nullptr)
             return false;
 
-        stream.write("while(");
-        if (!this->encode_expr(node->cond))
+        this->pushScope();
+
+        llvm::BasicBlock* while_begin = llvm::BasicBlock::Create(*llvm_context, "while.begin", this->func);
+        llvm::BasicBlock* while_body = llvm::BasicBlock::Create(*llvm_context, "while.body", this->func);
+        llvm::BasicBlock* while_end = llvm::BasicBlock::Create(*llvm_context, "while.end", this->func);
+
+        auto oldContinuePoint = this->continuePoint;
+        auto oldBreakPoint = this->breakPoint;
+
+        this->continuePoint = while_begin;
+        this->breakPoint = while_end;
+
+        llvm_builder->SetInsertPoint(while_begin);
+        llvm::Value* cond = this->encode_expr(node->cond);
+        if (cond == nullptr)
             return false;
-        stream.write(")\n");
+        llvm_builder->CreateCondBr(cond, while_body, while_end);
+
+        llvm_builder->SetInsertPoint(while_body);
         if (!this->encode_stmt(node->body))
             return false;
+        llvm_builder->CreateBr(while_begin);
+
+        llvm_builder->SetInsertPoint(while_end);
+
+        this->continuePoint = oldContinuePoint;
+        this->breakPoint = oldBreakPoint;
+
+        this->popScope();
 
         return true;
     }
@@ -645,17 +717,47 @@ struct coder_cxx_t
         if (node == nullptr)
             return false;
 
-        stream.write("for(");
+        this->pushScope();
+
+        llvm::BasicBlock* for_init = llvm::BasicBlock::Create(*llvm_context, "for.init", this->func);
+        llvm::BasicBlock* for_test = llvm::BasicBlock::Create(*llvm_context, "for.test", this->func);
+        llvm::BasicBlock* for_step = llvm::BasicBlock::Create(*llvm_context, "for.step", this->func);
+        llvm::BasicBlock* for_body = llvm::BasicBlock::Create(*llvm_context, "for.body", this->func);
+        llvm::BasicBlock* for_end = llvm::BasicBlock::Create(*llvm_context, "for.end", this->func);
+
+        auto oldContinuePoint = this->continuePoint;
+        auto oldBreakPoint = this->breakPoint;
+        this->continuePoint = for_step;
+        this->breakPoint = for_end;
+
+        llvm_builder->SetInsertPoint(for_init);
         if (!this->encode_stmt(node->init))
             return false;
-        if (!this->encode_expr(node->cond))
+        llvm_builder->CreateBr(for_test);
+
+        llvm_builder->SetInsertPoint(for_test);
+        llvm::Value* cond = this->encode_expr(node->cond);
+        if (cond == nullptr)
             return false;
-        stream.write("; ");
-        if (!this->encode_stmt(node->step))
-            return false;
-        stream.write(")\n");
+        llvm_builder->CreateCondBr(cond, for_body, for_end);
+
+        llvm_builder->SetInsertPoint(for_body);
         if (!this->encode_stmt(node->body))
             return false;
+        llvm_builder->CreateBr(for_step);
+
+        llvm_builder->SetInsertPoint(for_step);
+        if (!this->encode_stmt(node->step))
+            return false;
+        llvm_builder->CreateBr(for_test);
+
+        llvm_builder->SetInsertPoint(for_end);
+
+        this->continuePoint = oldContinuePoint;
+        this->breakPoint = oldBreakPoint;
+
+        this->popScope();
+
         return true;
     }
 
@@ -663,13 +765,17 @@ struct coder_cxx_t
     {
         if (node == nullptr)
             return false;
-        stream.write("{\n");
+
+        this->pushScope();
+
         for (auto& stmt : node->stmts)
         {
             if (!this->encode_stmt(stmt))
                 return false;
         }
-        stream.write("}\n");
+
+        this->popScope();
+
         return true;
     }
 
@@ -677,12 +783,12 @@ struct coder_cxx_t
     {
         if (node == nullptr)
             return false;
-        if (!this->encode_expr(node->left))
-            return false;
-        stream.write(" = ");
-        if (!this->encode_expr(node->right))
-            return false;
-        stream.write(";\n");
+        
+        llvm::Value* left = this->encode_expr(node->left);
+        llvm::Value* right = this->encode_expr(node->right);
+
+        llvm_builder->CreateStore(right, left);
+
         return true;
     }
 
@@ -690,16 +796,14 @@ struct coder_cxx_t
     {
         if (node == nullptr)
             return false;
-        if (!this->encode_expr(node->expr))
-            return false;
-        stream.write(";\n");
+        
         return true;
     }
 };
 
 
 coder_t::coder_t(Stream& stream)
-    : impl(new coder_cxx_t(stream))
+    : impl(new coder_llvm_t(stream))
 {}
 
 coder_t::~coder_t()

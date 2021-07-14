@@ -15,7 +15,7 @@ public:
     bool encode(struct ast_module_t* node);
 
 private:
-    struct coder_cxx_t* impl;
+    struct coder_llvm_t* impl;
 };
 
 _EndNamespace(eokas)

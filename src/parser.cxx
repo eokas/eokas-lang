@@ -909,7 +909,7 @@ ast_stmt_struct_def_t* parser_impl_t::parse_stmt_struct_def(ast_node_t* p)
 		}
 
 		const String& name = member->name;
-		if (node->members.find(name) != node->members.end())
+		if (node->getMember(name) != nullptr)
 		{
 			_DeletePointer(member);
 			_DeletePointer(node);
@@ -917,8 +917,7 @@ ast_stmt_struct_def_t* parser_impl_t::parse_stmt_struct_def(ast_node_t* p)
 			return nullptr;
 		}
 
-
-		node->members[name] = member;
+		node->members.push_back(member);
 	}
 	while (this->check_token(token_t::Comma, false));
 

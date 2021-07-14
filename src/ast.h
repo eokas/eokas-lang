@@ -43,7 +43,6 @@ enum class ast_node_category_t
     expr_index_ref,
     expr_module_ref,
 
-    stmt_echo,
     stmt_schema_def,
     stmt_schema_member,
     stmt_struct_def,
@@ -255,8 +254,19 @@ struct ast_expr_symbol_ref_t :public ast_expr_t
 
 struct ast_expr_func_def_t :public ast_expr_t
 {
+    struct arg_t 
+    {
+        String name;
+        ast_type_t* type;
+
+        ~arg_t ()
+        {
+            _DeletePointer(type);
+        }
+    };
+
     ast_type_t* type;
-    std::map<String, ast_type_t*> args;
+    std::vector<arg_t> args;
     std::vector<ast_stmt_t*> body;
 
     ast_expr_func_def_t(ast_node_t* parent)
@@ -269,8 +279,18 @@ struct ast_expr_func_def_t :public ast_expr_t
     virtual ~ast_expr_func_def_t()
     {
         _DeletePointer(type);
-        _DeleteMap(args);
+        args.clear();
         _DeleteList(body);
+    }
+
+    const arg_t* getArg(const String& name) const
+    {
+        for(auto& arg : args)
+        {
+            if(arg.name == name)
+                return &arg;
+        }
+        return nullptr;
     }
 };
 
@@ -375,21 +395,6 @@ struct ast_expr_module_ref_t :public ast_expr_t
     }
 };
 
-struct ast_stmt_echo_t :public ast_stmt_t
-{
-    std::vector<ast_expr_t*> values;
-
-    ast_stmt_echo_t(ast_node_t* parent)
-        : ast_stmt_t(ast_node_category_t::stmt_echo, parent)
-        , values()
-    {}
-
-    virtual ~ast_stmt_echo_t()
-    {
-        _DeleteList(values);
-    }
-};
-
 struct ast_stmt_schema_member_t :public ast_stmt_t
 {
     String name;
@@ -451,7 +456,7 @@ struct ast_stmt_struct_def_t :public ast_stmt_t
 {
     String name;
     ast_type_ref_t* schema;
-    std::map<String, ast_stmt_struct_member_t*> members;
+    std::vector<ast_stmt_struct_member_t*> members;
 
     ast_stmt_struct_def_t(ast_node_t* parent)
         : ast_stmt_t(ast_node_category_t::stmt_struct_def, parent)
@@ -463,7 +468,17 @@ struct ast_stmt_struct_def_t :public ast_stmt_t
     virtual ~ast_stmt_struct_def_t()
     {
         _DeletePointer(schema);
-        _DeleteMap(members);
+        _DeleteList(members);
+    }
+
+    ast_stmt_struct_member_t* getMember(const String& name)
+    {
+        for(auto& m : this->members)
+        {
+            if(m->name == name)
+                return m;
+        }
+        return nullptr;
     }
 };
 
