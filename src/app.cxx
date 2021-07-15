@@ -29,7 +29,7 @@ int main(int argc, char** argv)
     else if (command.startsWith("-c"))
     {
         String file = args.get(2);
-        printf("file: %s\n", file.cstr());
+        printf("=> Source file: %s\n", file.cstr());
         try {
             eokas_main(file);
         }
@@ -58,11 +58,14 @@ static void eokas_main(const String& fileName)
     in.close();
 
     String str((const char*)buffer.data(), buffer.size());
-    printf("%s\n", str.cstr());
+    printf("=> Source code:\n");
+    printf("------------------------------------------\n");
+    printf(str.cstr());
+    printf("------------------------------------------\n");
 
     parser_t parser;
     ast_module_t* m = parser.parse(str.cstr());
-    printf("module: %x\n", m);
+    printf("=> Module AST: %x\n", m);
     if (m == nullptr)
     {
         const String& error = parser.error();
@@ -74,9 +77,11 @@ static void eokas_main(const String& fileName)
     if (!out.open())
         return;
 
-    printf("begin encode\n");
+    printf("=> Encode to IR:\n");
+    printf("------------------------------------------\n");
     coder_t coder(out);
     coder.encode(m);
+    printf("------------------------------------------\n");
     out.close();
 
     // todo: 
