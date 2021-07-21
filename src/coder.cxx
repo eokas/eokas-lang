@@ -144,6 +144,7 @@ struct coder_llvm_t
         if (!this->encode_module(m))
             return false;
 
+        // DUMP CODE
         llvm_module->print(llvm::errs(), nullptr);
 
         return true;
@@ -158,7 +159,7 @@ struct coder_llvm_t
 
         llvm::FunctionType* funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(*llvm_context), false);
         this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "@_main", *llvm_module);
-        
+
         llvm::BasicBlock* entry = llvm::BasicBlock::Create(*llvm_context, "entry", this->func);
         llvm_builder->SetInsertPoint(entry);
 
@@ -193,14 +194,18 @@ struct coder_llvm_t
 
     llvm::Type* encode_type_ref(struct ast_type_ref_t* node)
     {
+        printf("--> begin encode type: %s\n", node->name.cstr());
         if (node == nullptr)
+        {
+            printf("--> type node is null. \n");
             return nullptr;
+        }
 
         const String& name = node->name;
         if (name == "i8") return llvm::Type::getInt8Ty(*llvm_context);
-        if(name == "i16") return llvm::Type::getInt16Ty(*llvm_context);
-        if(name == "i32") return llvm::Type::getInt32Ty(*llvm_context);
-        if(name == "i64") return llvm::Type::getInt64Ty(*llvm_context);
+        if (name == "i16") return llvm::Type::getInt16Ty(*llvm_context);
+        if (name == "i32") return llvm::Type::getInt32Ty(*llvm_context);
+        if (name == "i64") return llvm::Type::getInt64Ty(*llvm_context);
 
         if (name == "f32") return llvm::Type::getFloatTy(*llvm_context);
         if (name == "f64") return llvm::Type::getDoubleTy(*llvm_context);
@@ -326,7 +331,7 @@ struct coder_llvm_t
         case ast_binary_oper_t::Div:
             return llvm_builder->CreateSDiv(lhs, rhs);
         case ast_binary_oper_t::Mod:
-            return nullptr;
+            return llvm_builder->CreateSRem(lhs, rhs);
         case ast_binary_oper_t::BitAnd:
             return nullptr;
         case ast_binary_oper_t::BitOr:
@@ -371,12 +376,12 @@ struct coder_llvm_t
     {
         if (node == nullptr)
             return nullptr;
-        
+
         u64_t vals = *((u64_t*)&(node->value));
         u32_t bits = 8;
-        if(vals > 0xFF) bits = 16;
-        if(vals > 0xFFFF) bits = 32;
-        if(vals > 0xFFFFFFFF) bits = 64;
+        if (vals > 0xFF) bits = 16;
+        if (vals > 0xFFFF) bits = 32;
+        if (vals > 0xFFFFFFFF) bits = 64;
 
         return llvm::ConstantInt::get(*llvm_context, llvm::APInt(bits, node->value));
     }
@@ -408,7 +413,11 @@ struct coder_llvm_t
         if (node == nullptr)
             return nullptr;
 
-        return this->scope->getSymbol(node->name, true);
+        auto symbol = this->scope->getSymbol(node->name, true);
+        if (symbol == nullptr)
+            return nullptr;
+
+        return llvm_builder->CreateLoad(symbol);
     }
 
     llvm::Value* encode_expr_func_def(struct ast_expr_func_def_t* node)
@@ -417,7 +426,6 @@ struct coder_llvm_t
             return nullptr;
 
         llvm::Type* retType = this->encode_type(node->type);
-
         std::vector<llvm::Type*> argTypes;
         for (auto arg : node->args)
         {
@@ -437,6 +445,7 @@ struct coder_llvm_t
         }
 
         auto oldFunc = this->func;
+        auto oldIB = llvm_builder->GetInsertBlock();
         this->func = func;
         this->pushScope();
         {
@@ -446,7 +455,9 @@ struct coder_llvm_t
             for (auto& arg : func->args())
             {
                 const char* name = arg.getName().data();
-                auto pair = std::make_pair(String(name), &arg);
+                llvm::Value* ptr = llvm_builder->CreateAlloca(arg.getType());
+                llvm_builder->CreateStore(&arg, ptr);
+                auto pair = std::make_pair(String(name), ptr);
                 this->scope->symbols.insert(pair);
             }
 
@@ -456,8 +467,10 @@ struct coder_llvm_t
                     return nullptr;
             }
         }
+
         this->popScope();
         this->func = oldFunc;
+        llvm_builder->SetInsertPoint(oldIB);
 
         return func;
     }
@@ -612,13 +625,23 @@ struct coder_llvm_t
 
         auto type = this->encode_type(node->type);
         auto value = this->encode_expr(node->value);
-        if (type == nullptr && value == nullptr)
+        if (value == nullptr)
             return false;
 
-        // TODO: 校验类型合法性
-        // 标记类型与值类型是否一致
-        // 值类型是否遵循标记类型
+        auto vtype = value->getType();
+        if (type != nullptr)
+        {
+            if (type->getTypeID() != vtype->getTypeID() && !vtype->canLosslesslyBitCastTo(type))
+            {
+                printf("type '%d' can not cast to type '%d'. \n", vtype->getTypeID(), type->getTypeID());
+                return false;
+            }
+        }
+        else {
+            type = vtype;
+        }
 
+        // TODO: 校验类型合法性, 值类型是否遵循标记类型
         // 不同的类型，需要调用不同的store命令
 
         auto symbol = llvm_builder->CreateAlloca(type);
@@ -659,10 +682,17 @@ struct coder_llvm_t
         if (node == nullptr)
             return false;
 
-        // TODO: process return void
-
-        llvm::Value* value = this->encode_expr(node->value);
-        llvm_builder->CreateRet(value);
+        if (node->value != nullptr)
+        {
+            printf("--> encode return value \n");
+            llvm::Value* value = this->encode_expr(node->value);
+            printf("--> encode return.\n");
+            llvm_builder->CreateRet(value);
+        }
+        else
+        {
+            llvm_builder->CreateRetVoid();
+        }
 
         return true;
     }

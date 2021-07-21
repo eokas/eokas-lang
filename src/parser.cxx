@@ -398,14 +398,17 @@ ast_expr_t* parser_impl_t::parse_func_def(ast_node_t* p)
 		return nullptr;
 	}
 
-	if (this->check_token(token_t::Colon, false))
+	// : ret-type
+	if (!this->check_token(token_t::Colon))
 	{
-		ast_type_t* type = this->parse_type_ref(node);
-		if (type == nullptr)
-		{
-			_DeletePointer(node);
-			return nullptr;
-		}
+		_DeletePointer(node);
+		return nullptr;
+	}
+	node->type = this->parse_type_ref(node);
+	if (node->type == nullptr)
+	{
+		_DeletePointer(node);
+		return nullptr;
 	}
 
 	if (!this->parse_func_body(node))
