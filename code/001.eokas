@@ -1,4 +1,5 @@
 
 struct A {
     var a: i32;
+    var b: bool;
 };

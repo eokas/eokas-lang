@@ -803,7 +803,7 @@ ast_stmt_schema_def_t* parser_impl_t::parse_stmt_schema_def(ast_node_t* p)
 
 		node->members[name] = member;
 	}
-	while (this->check_token(token_t::Comma, false));
+	while (this->check_token(token_t::Semicolon, false));
 
 	// }
 	if (!this->check_token(token_t::RCB))
@@ -847,13 +847,6 @@ ast_stmt_schema_member_t* parser_impl_t::parse_stmt_schema_member(ast_node_t* p)
 	}
 	node->type = this->parse_type_ref(p);
 	if (node->type == nullptr)
-	{
-		_DeletePointer(node);
-		return nullptr;
-	}
-
-	// ;
-	if (!this->check_token(token_t::Semicolon, true))
 	{
 		_DeletePointer(node);
 		return nullptr;
@@ -912,7 +905,7 @@ ast_stmt_struct_def_t* parser_impl_t::parse_stmt_struct_def(ast_node_t* p)
 		}
 
 		const String& name = member->name;
-		if (node->getMember(name) != nullptr)
+		if (node->members.find(name) != node->members.end())
 		{
 			_DeletePointer(member);
 			_DeletePointer(node);
@@ -920,9 +913,9 @@ ast_stmt_struct_def_t* parser_impl_t::parse_stmt_struct_def(ast_node_t* p)
 			return nullptr;
 		}
 
-		node->members.push_back(member);
+		node->members[name] = member;
 	}
-	while (this->check_token(token_t::Comma, false));
+	while (this->check_token(token_t::Semicolon, false));
 
 	// }
 	if (!this->check_token(token_t::RCB))
@@ -932,7 +925,7 @@ ast_stmt_struct_def_t* parser_impl_t::parse_stmt_struct_def(ast_node_t* p)
 	}
 
 	// ;
-	if (!this->check_token(token_t::Semicolon, true))
+	if (!this->check_token(token_t::Semicolon))
 	{
 		_DeletePointer(node);
 		return nullptr;
@@ -980,13 +973,6 @@ ast_stmt_struct_member_t* parser_impl_t::parse_stmt_struct_member(ast_node_t* p)
 			_DeletePointer(node);
 			return nullptr;
 		}
-	}
-
-	// ;
-	if (!this->check_token(token_t::Semicolon, true))
-	{
-		_DeletePointer(node);
-		return nullptr;
 	}
 
 	return node;
