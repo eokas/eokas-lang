@@ -25,37 +25,116 @@
 
 _BeginNamespace(eokas)
 
-struct scope_llvm_t
+struct llvm_type_t
 {
-    scope_llvm_t* parent;
-    std::vector<scope_llvm_t*> children;
+    enum class category_t
+    {
+        Basic,
+        Schema,
+        Struct,
+    };
 
-    std::map<String, llvm::Type*> types;
+    category_t category;
+    String name;
+    llvm::Type* value;
+
+    llvm_type_t(category_t category, const String& name, llvm::Type* value)
+        :category(category)
+        ,name(name)
+        ,value(value)
+    {}
+    virtual ~llvm_type_t()
+    {}
+};
+
+struct llvm_type_basic_t :public llvm_type_t
+{
+    llvm_type_basic_t(const String& name, llvm::Type* value)
+        :llvm_type_t(category_t::Basic, name, value)
+    {}
+};
+
+struct llvm_type_schema_t :public llvm_type_t
+{
+    std::map<String, llvm_type_t*> members;
+
+    llvm_type_schema_t(llvm::LLVMContext& context, const String& name)
+        :llvm_type_t(category_t::Schema, name, llvm::PointerType::get(llvm::StructType::get(context), 0))
+        ,members()
+    {}
+
+    bool match(const std::map<String, llvm_type_t*> body)
+    {
+        for(auto node : this->members)
+        {
+            const String& name = node.first;
+            const llvm_type_t* type = node.second;
+
+            auto iter = body.find(name);
+            if(iter == body.end())
+                return false;
+            if(iter->second->name != type->name)
+                return false;
+        }
+        return true;
+    }
+};
+
+struct llvm_type_struct_t :public llvm_type_t
+{
+    std::map<String, llvm_type_t*> members;
+
+    llvm_type_struct_t(llvm::LLVMContext& context, const String& name)
+        :llvm_type_t(category_t::Schema, name, llvm::PointerType::get(llvm::StructType::get(context), 0))
+        ,members()
+    {}
+};
+
+static bool llvm_type_can_be_cast(llvm_type_t* type1, llvm_type_t* type2)
+{
+    if(type1 == nullptr || type2 == nullptr)
+        return false;
+    if ((type1->category != type2->category) && 
+        (type1->category == llvm_type_t::category_t::Basic || type2->category == llvm_type_t::category_t::Basic))
+    {
+        return false;
+    }
+
+    
+    return true;
+}
+
+struct llvm_scope_t
+{
+    llvm_scope_t* parent;
+    std::vector<llvm_scope_t*> children;
+
+    std::map<String, llvm_type_t*> types;
     std::map<String, llvm::Value*> symbols;
 
-    scope_llvm_t(scope_llvm_t* parent)
+    llvm_scope_t(llvm_scope_t* parent)
         : parent(parent)
         , children()
         , types()
         , symbols()
     {}
 
-    virtual ~scope_llvm_t()
+    virtual ~llvm_scope_t()
     {
         this->parent = nullptr;
         _DeleteList(this->children);
-        this->types.clear();
+        _DeleteMap(this->types);
         this->symbols.clear();
     }
 
-    scope_llvm_t* addChild()
+    llvm_scope_t* addChild()
     {
-        scope_llvm_t* child = new scope_llvm_t(this);
+        llvm_scope_t* child = new llvm_scope_t(this);
         this->children.push_back(child);
         return child;
     }
 
-    llvm::Type* getType(const String& name, bool lookUp)
+    llvm_type_t* getType(const String& name, bool lookUp)
     {
         if (lookUp)
         {
@@ -75,7 +154,7 @@ struct scope_llvm_t
             return nullptr;
         }
     }
-
+    
     llvm::Value* getSymbol(const String& name, bool lookUp)
     {
         if (lookUp)
@@ -98,33 +177,33 @@ struct scope_llvm_t
     }
 };
 
-struct coder_llvm_t
+struct llvm_coder_t
 {
     Stream& base;
 
     std::unique_ptr<llvm::LLVMContext> llvm_context;
     std::unique_ptr<llvm::Module> llvm_module;
     std::unique_ptr<llvm::IRBuilder<>> llvm_builder;
-    scope_llvm_t* root;
-    scope_llvm_t* scope;
+    llvm_scope_t* root;
+    llvm_scope_t* scope;
     llvm::Function* func;
     llvm::BasicBlock* continuePoint;
     llvm::BasicBlock* breakPoint;
 
-    coder_llvm_t(Stream& stream)
+    llvm_coder_t(Stream& stream)
         : base(stream)
     {
         this->llvm_context = std::make_unique<llvm::LLVMContext>();
         this->llvm_module = std::make_unique<llvm::Module>("eokas", *llvm_context);
         this->llvm_builder = std::make_unique<llvm::IRBuilder<>>(*llvm_context);
-        this->root = new scope_llvm_t(nullptr);
+        this->root = new llvm_scope_t(nullptr);
         this->scope = this->root;
         this->func = nullptr;
         this->continuePoint = nullptr;
         this->breakPoint = nullptr;
     }
 
-    virtual ~coder_llvm_t()
+    virtual ~llvm_coder_t()
     {
         _DeletePointer(this->scope);
     }
@@ -157,6 +236,18 @@ struct coder_llvm_t
 
         this->pushScope();
 
+        this->scope->types["i8"] = new llvm_type_basic_t("i8", llvm::Type::getInt8Ty(*llvm_context));
+        this->scope->types["i16"] = new llvm_type_basic_t("i16", llvm::Type::getInt16Ty(*llvm_context));
+        this->scope->types["i32"] = new llvm_type_basic_t("i32", llvm::Type::getInt32Ty(*llvm_context));
+        this->scope->types["i64"] = new llvm_type_basic_t("i64", llvm::Type::getInt64Ty(*llvm_context));
+        this->scope->types["u8"] = new llvm_type_basic_t("u8", llvm::Type::getInt8Ty(*llvm_context));
+        this->scope->types["u16"] = new llvm_type_basic_t("u16", llvm::Type::getInt16Ty(*llvm_context));
+        this->scope->types["u32"] = new llvm_type_basic_t("u32", llvm::Type::getInt32Ty(*llvm_context));
+        this->scope->types["u64"] = new llvm_type_basic_t("u64", llvm::Type::getInt64Ty(*llvm_context));
+        this->scope->types["f32"] = new llvm_type_basic_t("f32", llvm::Type::getFloatTy(*llvm_context));
+        this->scope->types["f64"] = new llvm_type_basic_t("f64", llvm::Type::getDoubleTy(*llvm_context));
+        this->scope->types["bool"] = new llvm_type_basic_t("bool", llvm::Type::getInt1Ty(*llvm_context));
+
         llvm::FunctionType* funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(*llvm_context), false);
         this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "@_main", *llvm_module);
 
@@ -176,7 +267,7 @@ struct coder_llvm_t
         return true;
     }
 
-    llvm::Type* encode_type(struct ast_type_t* node)
+    llvm_type_t* encode_type(struct ast_type_t* node)
     {
         if (node == nullptr)
             return nullptr;
@@ -192,28 +283,16 @@ struct coder_llvm_t
         return nullptr;
     }
 
-    llvm::Type* encode_type_ref(struct ast_type_ref_t* node)
+    llvm_type_t* encode_type_ref(struct ast_type_ref_t* node)
     {
-        printf("--> begin encode type: %s\n", node->name.cstr());
         if (node == nullptr)
         {
-            printf("--> type node is null. \n");
+            printf("type node is null. \n");
             return nullptr;
         }
 
         const String& name = node->name;
-        if (name == "i8") return llvm::Type::getInt8Ty(*llvm_context);
-        if (name == "i16") return llvm::Type::getInt16Ty(*llvm_context);
-        if (name == "i32") return llvm::Type::getInt32Ty(*llvm_context);
-        if (name == "i64") return llvm::Type::getInt64Ty(*llvm_context);
-
-        if (name == "f32") return llvm::Type::getFloatTy(*llvm_context);
-        if (name == "f64") return llvm::Type::getDoubleTy(*llvm_context);
-
-        if (name == "bool") return llvm::Type::getInt1Ty(*llvm_context);
-
-        llvm::Type* type = this->scope->getType(name, true);
-
+        llvm_type_t* type = this->scope->getType(name, true);
         return type;
     }
 
@@ -425,17 +504,20 @@ struct coder_llvm_t
         if (node == nullptr)
             return nullptr;
 
-        llvm::Type* retType = this->encode_type(node->type);
+        llvm_type_t* retType = this->encode_type(node->type);
+        if(retType == nullptr)
+            return nullptr;
+
         std::vector<llvm::Type*> argTypes;
         for (auto arg : node->args)
         {
-            llvm::Type* argType = this->encode_type(arg.type);
+            llvm_type_t* argType = this->encode_type(arg.type);
             if (argType == nullptr)
                 return nullptr;
-            argTypes.push_back(argType);
+            argTypes.push_back(argType->value);
         }
 
-        llvm::FunctionType* procType = llvm::FunctionType::get(retType, argTypes, false);
+        llvm::FunctionType* procType = llvm::FunctionType::get(retType->value, argTypes, false);
         llvm::Function* func = llvm::Function::Create(procType, llvm::Function::ExternalLinkage, "", *llvm_module);
         u32_t index = 0;
         for (auto& arg : func->args())
@@ -557,34 +639,73 @@ struct coder_llvm_t
 
     bool encode_stmt_schema_def(struct ast_stmt_schema_def_t* node)
     {
+        printf("1 \n");
         if (node == nullptr)
             return false;
 
+        printf("2 \n");
         const String& name = node->name;
 
+        printf("3 \n");
+        std::map<String, llvm_type_t*> members;
+        for (auto node : node->members)
+        {
+            auto mem = node.second;
+            printf("4 \n");
+            auto memType = this->encode_type(mem->type);
+            printf("5 \n");
+            if (memType == nullptr)
+                return false;
+            members[mem->name] = memType;
+        }
+        printf("6 \n");
+        auto type = new llvm_type_schema_t(*llvm_context, name);
+        type->members = members;
+        printf("7 schema.members: %d \n", type->members.size());
+
+        this->scope->types.insert(std::make_pair(name, type));
 
         return true;
     }
 
     bool encode_stmt_struct_def(struct ast_stmt_struct_def_t* node)
     {
+        printf("1 \n");
         if (node == nullptr)
             return false;
 
+        printf("2 \n");
         const String& name = node->name;
 
-        auto type = llvm::StructType::create(*llvm_context, name.cstr());
-
-        std::vector<llvm::Type*> members;
-        for (auto m : node->members)
+        printf("3 \n");
+        std::map<String, llvm_type_t*> members;
+        for (auto node : node->members)
         {
-            auto memType = this->encode_type(m->type);
+            auto mem = node.second;
+            printf("4 \n");
+            auto memType = this->encode_type(mem->type);
+            printf("5 \n");
             if (memType == nullptr)
                 return false;
-            members.push_back(memType);
+            members[mem->name] = memType;
+        }
+        printf("6 \n");
+
+        if (node->schema != nullptr)
+        {
+            const String& schemaName = node->schema->name;
+            auto schemaType = dynamic_cast<llvm_type_schema_t*>(this->scope->getType(schemaName, true));
+            if(schemaType == nullptr)
+                return false;
+            
+            if(!schemaType->match(members))
+                return false;
         }
 
-        type->setBody(members);
+        auto type = new llvm_type_struct_t(*llvm_context, name);
+        type->members = members;
+
+        this->scope->types.insert(std::make_pair(name, type));
 
         return true;
     }
@@ -631,20 +752,20 @@ struct coder_llvm_t
         auto vtype = value->getType();
         if (type != nullptr)
         {
-            if (type->getTypeID() != vtype->getTypeID() && !vtype->canLosslesslyBitCastTo(type))
+            if (type->value->getTypeID() != vtype->getTypeID() && !vtype->canLosslesslyBitCastTo(type->value))
             {
-                printf("type '%d' can not cast to type '%d'. \n", vtype->getTypeID(), type->getTypeID());
+                printf("type '%d' can not cast to type '%d'. \n", vtype->getTypeID(), type->value->getTypeID());
                 return false;
             }
         }
         else {
-            type = vtype;
+            type = new llvm_type_basic_t();
         }
 
         // TODO: 校验类型合法性, 值类型是否遵循标记类型
         // 不同的类型，需要调用不同的store命令
 
-        auto symbol = llvm_builder->CreateAlloca(type);
+        auto symbol = llvm_builder->CreateAlloca(type->value);
         llvm_builder->CreateStore(value, symbol);
         scope->symbols.insert(std::make_pair(node->name, symbol));
 
@@ -684,9 +805,7 @@ struct coder_llvm_t
 
         if (node->value != nullptr)
         {
-            printf("--> encode return value \n");
             llvm::Value* value = this->encode_expr(node->value);
-            printf("--> encode return.\n");
             llvm_builder->CreateRet(value);
         }
         else
@@ -863,7 +982,7 @@ struct coder_llvm_t
 
 
 coder_t::coder_t(Stream& stream)
-    : impl(new coder_llvm_t(stream))
+    : impl(new llvm_coder_t(stream))
 {}
 
 coder_t::~coder_t()

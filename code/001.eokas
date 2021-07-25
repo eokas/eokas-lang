@@ -1,4 +1,4 @@
 
-var a = func(a: i32): i32 {
-    return a;
+struct A {
+    var a: i32;
 };
