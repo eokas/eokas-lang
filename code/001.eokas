@@ -1,5 +1,2 @@
 
-struct A {
-    var a: i32;
-    var b: bool;
-};
+var a : array<i32, 1> = [0];

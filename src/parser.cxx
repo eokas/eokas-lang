@@ -522,7 +522,7 @@ ast_expr_t* parser_impl_t::parse_func_def(ast_node_t* p)
 		_DeletePointer(node);
 		return nullptr;
 	}
-	node->type = this->parse_type_ref(node);
+	node->type = this->parse_type(node);
 	if (node->type == nullptr)
 	{
 		_DeletePointer(node);
@@ -563,7 +563,7 @@ bool parser_impl_t::parse_func_params(ast_expr_func_def_t* node)
 		if (!this->check_token(token_t::Colon))
 			return false;
 
-		ast_type_t* type = this->parse_type_ref(node);
+		ast_type_t* type = this->parse_type(node);
 		if (type == nullptr)
 			return false;
 
@@ -963,7 +963,7 @@ ast_stmt_schema_member_t* parser_impl_t::parse_stmt_schema_member(ast_node_t* p)
 		_DeletePointer(node);
 		return nullptr;
 	}
-	node->type = this->parse_type_ref(p);
+	node->type = this->parse_type(p);
 	if (node->type == nullptr)
 	{
 		_DeletePointer(node);
@@ -1074,7 +1074,7 @@ ast_stmt_struct_member_t* parser_impl_t::parse_stmt_struct_member(ast_node_t* p)
 	// : type
 	if (this->check_token(token_t::Colon, false))
 	{
-		node->type = this->parse_type_ref(p);
+		node->type = this->parse_type(p);
 		if (node->type == nullptr)
 		{
 			_DeletePointer(node);
@@ -1151,7 +1151,7 @@ ast_stmt_proc_def_t* parser_impl_t::parse_stmt_proc_def(ast_node_t* p)
 		}
 
 		// type
-		ast_type_ref_t* argType = this->parse_type_ref(p);
+		ast_type_t* argType = this->parse_type(p);
 		if (argType == nullptr)
 		{
 			_DeletePointer(node);
@@ -1208,7 +1208,7 @@ ast_stmt_symbol_def_t* parser_impl_t::parse_stmt_symbol_def(ast_node_t* p)
 	// : type
 	if (this->check_token(token_t::Colon, false))
 	{
-		node->type = this->parse_type_ref(p);
+		node->type = this->parse_type(p);
 		if (node->type == nullptr)
 		{
 			_DeletePointer(node);

@@ -151,7 +151,7 @@ struct ast_type_array_t :public ast_type_t
     u32_t length;
 
     ast_type_array_t(ast_node_t* parent)
-        : ast_type_t(ast_node_category_t::type_ref, parent)
+        : ast_type_t(ast_node_category_t::type_array, parent)
         , elementType(nullptr)
         , length(0)
     {}
@@ -433,7 +433,7 @@ struct ast_expr_module_ref_t :public ast_expr_t
 struct ast_stmt_schema_member_t :public ast_stmt_t
 {
     String name;
-    ast_type_ref_t* type;
+    ast_type_t* type;
 
     ast_stmt_schema_member_t(ast_node_t* parent)
         : ast_stmt_t(ast_node_category_t::stmt_schema_member, parent)
@@ -470,7 +470,7 @@ struct ast_stmt_schema_def_t :public ast_stmt_t
 struct ast_stmt_struct_member_t :public ast_stmt_t
 {
     String name;
-    ast_type_ref_t* type;
+    ast_type_t* type;
     ast_expr_t* value;
 
     ast_stmt_struct_member_t(ast_node_t* parent)
