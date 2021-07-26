@@ -9,7 +9,7 @@ struct token_t
 {
 	enum token_type
 	{
-		Var, Val, Make, Schema, Struct, Proc, Func, 
+		Var, Val, Make, Schema, Struct, Proc, Func, Array,
 		If, Else, For, While, Continue, Break, Return,
 		Is, As, True, False,
 		Comma, Semicolon, Colon, Question, At, Pound, Dollar,

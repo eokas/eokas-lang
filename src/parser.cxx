@@ -16,7 +16,10 @@ public:
 
 	ast_module_t* parse_module(const char* source);
 
+	ast_type_t* parse_type(ast_node_t* p);
 	ast_type_ref_t* parse_type_ref(ast_node_t* p);
+	ast_type_array_t* parse_type_array(ast_node_t* p);
+	ast_type_generic_t* parse_type_generic(ast_node_t* p);
 
 	ast_expr_t* parse_expr(ast_node_t* p);
 	ast_expr_t* parse_expr_trinary(ast_node_t* p);
@@ -109,6 +112,33 @@ ast_module_t* parser_impl_t::parse_module(const char* source)
 	return node;
 }
 
+ast_type_t* parser_impl_t::parse_type(ast_node_t* p)
+{
+	if(this->token().type == token_t::Array)
+	{
+		return this->parse_type_array(p);
+	}
+	else if(this->token().type == token_t::ID)
+	{
+		if(this->look_ahead_token().type == token_t::Less)
+		{
+			return this->parse_type_generic(p);
+		}
+		else
+		{
+			return this->parse_type_ref(p);
+		}
+	}
+	else
+	{
+		this->error_token_unexpected();
+		return nullptr;
+	}
+}
+
+/**
+ * type_ref := ID
+*/
 ast_type_ref_t* parser_impl_t::parse_type_ref(ast_node_t* p)
 {
 	if (!this->check_token(token_t::ID, true, false))
@@ -117,6 +147,94 @@ ast_type_ref_t* parser_impl_t::parse_type_ref(ast_node_t* p)
 	ast_type_ref_t* node = new ast_type_ref_t(p);
 	node->name = this->token().value;
 	this->next_token(); // ignore ID
+
+	return node;
+}
+
+/**
+ * type_array := 'array' '<' type ',' int_num '>';
+*/
+ast_type_array_t* parser_impl_t::parse_type_array(ast_node_t* p)
+{
+	if (!this->check_token(token_t::Array))
+		return nullptr;
+
+	if(!this->check_token(token_t::Less))
+		return nullptr;
+
+	ast_type_array_t* node = new ast_type_array_t(p);
+	node->elementType = this->parse_type(node);
+	if(node->elementType == nullptr)
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	if(!this->check_token(token_t::Comma))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	if(!this->check_token(token_t::DInt, true, false))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	node->length = String::stringToValue<i32_t>(this->token().value);
+	this->next_token(); // ignore length.
+
+	if(!this->check_token(token_t::Greater))
+	{
+		_DeletePointer(node);
+		return nullptr;
+	}
+
+	return node;
+}
+
+/**
+ * type_generic := ID '<' type '>'
+*/
+ast_type_generic_t* parser_impl_t::parse_type_generic(ast_node_t* p)
+{
+	if (!this->check_token(token_t::ID, true, false))
+		return nullptr;
+
+	ast_type_generic_t* node = new ast_type_generic_t(p);
+	node->name = this->token().value;
+	this->next_token(); // ignore ID
+
+	// <
+	if (this->check_token(token_t::Less, false))
+	{
+		// >
+		while (!this->check_token(token_t::Greater, false))
+		{
+			if (!node->args.empty() && !this->check_token(token_t::Comma))
+			{
+				_DeletePointer(node);
+				return nullptr;
+			}
+
+			ast_type_ref_t* arg = this->parse_type_ref(node);
+			if (arg == nullptr)
+			{
+				_DeletePointer(node);
+				return nullptr;
+			}
+
+			node->args.push_back(arg);
+		}
+
+		if (node->args.empty())
+		{
+			this->error("type arguments is empty.");
+			_DeletePointer(node);
+			return nullptr;
+		}
+	}
 
 	return node;
 }

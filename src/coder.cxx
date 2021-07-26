@@ -30,14 +30,16 @@ struct llvm_scope_t
     llvm_scope_t* parent;
     std::vector<llvm_scope_t*> children;
 
-    std::map<String, llvm::Type*> types;
     std::map<String, llvm::Value*> symbols;
+    std::map<String, llvm::Type*> types;
+    std::map<String, ast_type_generic_t*> generics;
 
     llvm_scope_t(llvm_scope_t* parent)
         : parent(parent)
         , children()
-        , types()
         , symbols()
+        , types()
+        , generics()
     {}
 
     virtual ~llvm_scope_t()
@@ -53,6 +55,27 @@ struct llvm_scope_t
         llvm_scope_t* child = new llvm_scope_t(this);
         this->children.push_back(child);
         return child;
+    }
+
+    llvm::Value* getSymbol(const String& name, bool lookUp)
+    {
+        if (lookUp)
+        {
+            for (auto scope = this; scope != nullptr; scope = scope->parent)
+            {
+                auto iter = scope->symbols.find(name);
+                if (iter != scope->symbols.end())
+                    return iter->second;
+            }
+            return nullptr;
+        }
+        else
+        {
+            auto iter = this->symbols.find(name);
+            if (iter != this->symbols.end())
+                return iter->second;
+            return nullptr;
+        }
     }
 
     llvm::Type* getType(const String& name, bool lookUp)
@@ -76,22 +99,22 @@ struct llvm_scope_t
         }
     }
 
-    llvm::Value* getSymbol(const String& name, bool lookUp)
+    ast_type_generic_t* getGeneric(const String& name, bool lookUp)
     {
         if (lookUp)
         {
             for (auto scope = this; scope != nullptr; scope = scope->parent)
             {
-                auto iter = scope->symbols.find(name);
-                if (iter != scope->symbols.end())
+                auto iter = scope->generics.find(name);
+                if (iter != scope->generics.end())
                     return iter->second;
             }
             return nullptr;
         }
         else
         {
-            auto iter = this->symbols.find(name);
-            if (iter != this->symbols.end())
+            auto iter = this->generics.find(name);
+            if (iter != this->generics.end())
                 return iter->second;
             return nullptr;
         }
@@ -197,6 +220,8 @@ struct llvm_coder_t
         {
         case ast_node_category_t::type_ref:
             return this->encode_type_ref(dynamic_cast<ast_type_ref_t*>(node));
+        case ast_node_category_t::type_array:
+            return this->encode_type_array(dynamic_cast<ast_type_array_t*>(node));
         default:
             return nullptr;
         }
@@ -214,6 +239,23 @@ struct llvm_coder_t
 
         const String& name = node->name;
         llvm::Type* type = this->scope->getType(name, true);
+        return type;
+    }
+
+    llvm::Type* encode_type_array(struct ast_type_array_t* node)
+    {
+        if (node == nullptr)
+        {
+            printf("type node is null. \n");
+            return nullptr;
+        }
+
+        llvm::Type* elementType = this->encode_type(node->elementType);
+        if(elementType == nullptr)
+            return nullptr;
+        
+        llvm::Type* type = llvm::ArrayType::get(elementType, node->length);
+
         return type;
     }
 
