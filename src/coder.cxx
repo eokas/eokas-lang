@@ -587,6 +587,20 @@ struct llvm_coder_t
         if (node == nullptr)
             return nullptr;
 
+        auto obj = this->encode_expr(node->obj);
+        auto key = this->encode_expr(node->key);
+        if(obj == nullptr || key == nullptr)
+            return nullptr;
+
+        auto objType = obj->getType();
+        auto keyType = key->getType();
+
+        if(objType->isArrayTy() && keyType->isIntegerTy())
+        {
+            llvm::Value* value = llvm_builder->CreateGEP(obj, key);
+            return value;
+        }
+
         return nullptr;
     }
 
