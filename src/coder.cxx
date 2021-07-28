@@ -251,9 +251,9 @@ struct llvm_coder_t
         }
 
         llvm::Type* elementType = this->encode_type(node->elementType);
-        if(elementType == nullptr)
+        if (elementType == nullptr)
             return nullptr;
-        
+
         llvm::Type* type = llvm::ArrayType::get(elementType, node->length);
 
         return type;
@@ -549,7 +549,37 @@ struct llvm_coder_t
         if (node == nullptr)
             return nullptr;
 
-        return nullptr;
+        printf("1 \n");
+        std::vector<llvm::Constant*> arrayItems;
+        llvm::Type* itemType = nullptr;
+        for (auto item : node->items)
+        {
+            printf("2 \n");
+            auto val = this->encode_expr(item);
+            if (val == nullptr)
+                return nullptr;
+            auto constant = llvm::cast<llvm::Constant>(val);
+            if (constant == nullptr)
+                return nullptr;
+
+            auto thisItemType = constant->getType();
+            if (itemType == nullptr)
+            {
+                itemType = thisItemType;
+            }
+
+            arrayItems.push_back(constant);
+        }
+
+        if (arrayItems.empty() || itemType == nullptr)
+            itemType = llvm::Type::getInt32Ty(*llvm_context);
+
+        printf("3 \n");
+        auto arrayType = llvm::ArrayType::get(itemType, 0);
+        auto arrayValue = llvm::ConstantArray::get(arrayType, arrayItems);
+
+        printf("4 \n");
+        return arrayValue;
     }
 
     llvm::Value* encode_expr_index_ref(struct ast_expr_index_ref_t* node)
@@ -662,7 +692,7 @@ struct llvm_coder_t
 
         auto structType = llvm::StructType::get(*llvm_context);
         structType->setBody(memberTypes);
-        
+
         auto metaData = llvm::ConstantArray::get(metaType, memberNames);
         auto metaSymbol = llvm_builder->CreateAlloca(metaType);
         llvm_builder->CreateStore(metaData, metaSymbol);
