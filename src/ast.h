@@ -39,8 +39,8 @@ enum class ast_node_category_t
 
     expr_array_def,
 
-    expr_obj_def,
-    expr_obj_ref,
+    expr_object_def,
+    expr_object_ref,
 
     expr_index_ref,
     expr_module_ref,
@@ -380,36 +380,36 @@ struct ast_expr_index_ref_t :public ast_expr_t
     }
 };
 
-struct ast_expr_obj_def_t :public ast_expr_t
+struct ast_expr_object_def_t :public ast_expr_t
 {
     ast_type_t* type;
     std::map<String, ast_expr_t*> members;
 
-    ast_expr_obj_def_t(ast_node_t* parent)
-        : ast_expr_t(ast_node_category_t::expr_obj_def, parent)
+    ast_expr_object_def_t(ast_node_t* parent)
+        : ast_expr_t(ast_node_category_t::expr_object_def, parent)
         , type(nullptr)
         , members()
     {}
 
-    virtual ~ast_expr_obj_def_t()
+    virtual ~ast_expr_object_def_t()
     {
         _DeletePointer(type);
         _DeleteMap(members);
     }
 };
 
-struct ast_expr_obj_ref_t :public ast_expr_t
+struct ast_expr_object_ref_t :public ast_expr_t
 {
     ast_expr_t* obj;
     String key;
 
-    ast_expr_obj_ref_t(ast_node_t* parent)
-        : ast_expr_t(ast_node_category_t::expr_obj_ref, parent)
+    ast_expr_object_ref_t(ast_node_t* parent)
+        : ast_expr_t(ast_node_category_t::expr_object_ref, parent)
         , obj(nullptr)
         , key("")
     {}
 
-    virtual ~ast_expr_obj_ref_t()
+    virtual ~ast_expr_object_ref_t()
     {
         _DeletePointer(obj);
     }

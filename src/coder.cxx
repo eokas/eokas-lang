@@ -134,6 +134,8 @@ struct llvm_coder_t
     llvm::BasicBlock* continuePoint;
     llvm::BasicBlock* breakPoint;
 
+    std::map<llvm::Type*, ast_stmt_struct_def_t*> structs;
+
     llvm_coder_t(Stream& stream)
         : base(stream)
     {
@@ -290,6 +292,10 @@ struct llvm_coder_t
             return this->encode_expr_array_def(dynamic_cast<ast_expr_array_def_t*>(node));
         case ast_node_category_t::expr_index_ref:
             return this->encode_expr_index_ref(dynamic_cast<ast_expr_index_ref_t*>(node));
+        case ast_node_category_t::expr_object_def:
+            return this->encode_expr_object_def(dynamic_cast<ast_expr_object_def_t*>(node));
+        case ast_node_category_t::expr_object_ref:
+            return this->encode_expr_object_ref(dynamic_cast<ast_expr_object_ref_t*>(node));
         default:
             return nullptr;
         }
@@ -589,13 +595,91 @@ struct llvm_coder_t
 
         auto obj = this->encode_expr(node->obj);
         auto key = this->encode_expr(node->key);
-        if(obj == nullptr || key == nullptr)
+        if (obj == nullptr || key == nullptr)
             return nullptr;
 
         auto objType = obj->getType();
         auto keyType = key->getType();
 
-        if(objType->isArrayTy() && keyType->isIntegerTy())
+        if (objType->isArrayTy() && keyType->isIntegerTy())
+        {
+            llvm::Value* value = llvm_builder->CreateGEP(obj, key);
+            return value;
+        }
+
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_object_def(struct ast_expr_object_def_t* node)
+    {
+        if (node == nullptr)
+            return nullptr;
+
+        llvm::StructType* structType = llvm::cast<llvm::StructType>(this->encode_type(node->type));
+        if (structType == nullptr)
+            return nullptr;
+        auto iter = this->structs.find(structType);
+        if (iter == this->structs.end())
+            return nullptr;
+        ast_stmt_struct_def_t* structDef = iter->second;
+
+        for (auto& mem : node->members)
+        {
+            if (structDef->members.find(mem.first) == structDef->members.end())
+            {
+                printf("object member '%s' is not defined in struct.", mem.first.cstr());
+                return nullptr;
+            }
+        }
+
+        llvm::Value* malloccall = llvm::CallInst::CreateMalloc(
+            llvm_builder->GetInsertBlock(),
+            llvm::Type::getInt64Ty(*llvm_context),
+            structType,
+            llvm::ConstantExpr::getSizeOf(structType),
+            nullptr, nullptr, ""
+        );
+        llvm::Value* objectValue = llvm_builder->Insert(malloccall);
+
+        llvm::Value* metaSymbol = this->scope->getSymbol(String::format("struct.%s.meta", structDef->name.cstr()), true);
+        llvm::Value* metaValue = llvm_builder->CreateLoad(metaSymbol);
+        llvm::Value* metaPtr = llvm_builder->CreateStructGEP(structType, objectValue, 0, "meta");
+        llvm_builder->CreateStore(metaValue, metaPtr);
+
+        u32_t index = 0;
+        for (auto& mem : structDef->members)
+        {
+            index += 1;
+            auto memNode = node->members.find(mem.first);
+            llvm::Constant* memValue = nullptr;
+            if (memNode != node->members.end())
+            {
+                memValue = llvm::cast<llvm::Constant>(this->encode_expr(memNode->second));
+            }
+            else
+            {
+                memValue = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*llvm_context), llvm::APInt(8, 0));
+            }
+
+            llvm::Value* memPtr = llvm_builder->CreateStructGEP(structType, objectValue, index, mem.first.cstr());
+            llvm_builder->CreateStore(memValue, memPtr);
+        }
+
+        return objectValue;
+    }
+
+    llvm::Value* encode_expr_object_ref(struct ast_expr_object_ref_t* node)
+    {
+        if (node == nullptr)
+            return nullptr;
+
+        auto obj = this->encode_expr(node->obj);
+        auto key = llvm::ConstantDataArray::getString(*llvm_context, node->key.cstr());
+        if (obj == nullptr || key == nullptr)
+            return nullptr;
+
+        auto objType = obj->getType();
+        if (objType->isStructTy())
         {
             llvm::Value* value = llvm_builder->CreateGEP(obj, key);
             return value;
@@ -704,14 +788,19 @@ struct llvm_coder_t
             memberTypes.push_back(memType);
         }
 
-        auto structType = llvm::StructType::get(*llvm_context);
+        String structName = String::format("struct.%s", name.cstr());
+        auto structType = llvm::StructType::create(*llvm_context, structName.cstr());
         structType->setBody(memberTypes);
+        structType->setName(structName.cstr());
 
+        String metaName = String::format("struct.%s.meta", name.cstr());
         auto metaData = llvm::ConstantArray::get(metaType, memberNames);
-        auto metaSymbol = llvm_builder->CreateAlloca(metaType);
+        auto metaSymbol = llvm_builder->CreateAlloca(metaType, nullptr, metaName.cstr());
         llvm_builder->CreateStore(metaData, metaSymbol);
-        this->scope->symbols.insert(std::make_pair(String::format("schema.%s.meta", name.cstr()), metaSymbol));
+        this->scope->symbols.insert(std::make_pair(metaName, metaSymbol));
         this->scope->types.insert(std::make_pair(name, structType));
+
+        this->structs.insert(std::make_pair(structType, node));
 
         return true;
     }

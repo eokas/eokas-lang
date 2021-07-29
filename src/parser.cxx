@@ -34,7 +34,7 @@ public:
 	ast_expr_t* parse_func_call(ast_node_t* p, ast_expr_t* primary);
 	ast_expr_t* parse_array_def(ast_node_t* p);
 	ast_expr_t* parse_index_ref(ast_node_t* p, ast_expr_t* primary);
-	bool parse_object_field(ast_expr_obj_def_t* node);
+	bool parse_object_field(ast_expr_object_def_t* node);
 	ast_expr_t* parse_object_ref(ast_node_t* p, ast_expr_t* primary);
 	ast_expr_t* parse_module_ref(ast_node_t* p);
 
@@ -644,7 +644,7 @@ ast_expr_t* parser_impl_t::parse_object_def(ast_node_t* p)
 	if (!this->check_token(token_t::Make))
 		return nullptr;
 
-	ast_expr_obj_def_t* node = new ast_expr_obj_def_t(p);
+	ast_expr_object_def_t* node = new ast_expr_object_def_t(p);
 	node->type = this->parse_type_ref(node);
 	if (node->type == nullptr)
 	{
@@ -748,7 +748,7 @@ ast_expr_t* parser_impl_t::parse_index_ref(ast_node_t* p, ast_expr_t* primary)
 /*
 object_field => ID '=' expr
 */
-bool parser_impl_t::parse_object_field(ast_expr_obj_def_t* node)
+bool parser_impl_t::parse_object_field(ast_expr_object_def_t* node)
 {
 	if (!this->check_token(token_t::ID, true, false))
 		return false;
@@ -776,7 +776,7 @@ object_ref => '.' ID
 */
 ast_expr_t* parser_impl_t::parse_object_ref(ast_node_t* p, ast_expr_t* primary)
 {
-	ast_expr_obj_ref_t* node = new ast_expr_obj_ref_t(p);
+	ast_expr_object_ref_t* node = new ast_expr_object_ref_t(p);
 	node->obj = primary;
 	primary->parent = node;
 
