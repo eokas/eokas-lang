@@ -679,13 +679,34 @@ struct llvm_coder_t
             return nullptr;
 
         auto objType = obj->getType();
-        if (objType->isStructTy())
+        while(objType->isPointerTy())
         {
-            llvm::Value* value = llvm_builder->CreateGEP(obj, key);
-            return value;
+            obj = llvm_builder->CreateLoad(obj);
+            objType = obj->getType();
         }
 
-        return nullptr;
+        if (!objType->isStructTy())
+            return nullptr;
+
+        auto structIter = this->structs.find(objType);
+        if (structIter == this->structs.end())
+            return nullptr;
+
+        auto structDef = structIter->second;
+
+        u32_t index = 0;
+        for (auto& mem : structDef->members)
+        {
+            index += 1;
+            if (mem.second->name == node->key)
+                break;
+        }
+        if(index < 0)
+            return nullptr;
+
+        llvm::Value* value = llvm_builder->CreateStructGEP(obj->getType(), obj, index);
+
+        return value;
     }
 
     bool encode_stmt(struct ast_stmt_t* node)

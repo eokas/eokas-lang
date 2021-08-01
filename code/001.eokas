@@ -1,5 +1,6 @@
 struct A {
-    var a : i32;
+    var id : i32;
 };
 
-var a = make A {a = 99};
+var o = make A {id = 99};
+var i = o.id;
