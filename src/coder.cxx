@@ -14,6 +14,11 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
 
+#include <llvm/ExecutionEngine/MCJIT.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/Support/TargetSelect.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -172,6 +177,18 @@ struct llvm_coder_t
         // DUMP CODE
         llvm_module->print(llvm::errs(), nullptr);
 
+        llvm::InitializeNativeTarget();
+        llvm::InitializeNativeTargetAsmPrinter();
+        llvm::InitializeNativeTargetAsmParser();
+        auto ee = llvm::EngineBuilder(std::move(llvm_module)).setEngineKind(llvm::EngineKind::JIT).create();
+
+        printf("---------------- JIT RUN ----------------\n");
+        std::vector<llvm::GenericValue> args;
+        auto retval = ee->runFunction(this->func, args);
+        retval.IntVal.print(llvm::errs(), true);
+        printf("\n");
+        printf("---------------- JIT END ----------------\n");
+
         return true;
     }
 
@@ -195,7 +212,7 @@ struct llvm_coder_t
         this->scope->types["bool"] = llvm::Type::getInt1Ty(*llvm_context);
 
         llvm::FunctionType* funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(*llvm_context), false);
-        this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "@_main", *llvm_module);
+        this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "_main", *llvm_module);
 
         llvm::BasicBlock* entry = llvm::BasicBlock::Create(*llvm_context, "entry", this->func);
         llvm_builder->SetInsertPoint(entry);

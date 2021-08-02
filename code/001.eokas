@@ -1,6 +1,2 @@
-struct A {
-    var id : i32;
-};
-
-var o = make A {id = 99};
-var i = o.id;
+var a = 3 + 3;
+return a;
