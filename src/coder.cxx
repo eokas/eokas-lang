@@ -181,12 +181,13 @@ struct llvm_coder_t
         llvm::InitializeNativeTargetAsmPrinter();
         llvm::InitializeNativeTargetAsmParser();
         auto ee = llvm::EngineBuilder(std::move(llvm_module)).setEngineKind(llvm::EngineKind::JIT).create();
-
+        ee->finalizeObject();
+        
         printf("---------------- JIT RUN ----------------\n");
         std::vector<llvm::GenericValue> args;
-        auto retval = ee->runFunction(this->func, args);
-        retval.IntVal.print(llvm::errs(), true);
-        printf("\n");
+        auto retval = ee->runFunction(this->func, args);    
+        printf("i64: %d \n", *retval.IntVal.getRawData());
+        printf("f64: %f \n", retval.IntVal.bitsToDouble());
         printf("---------------- JIT END ----------------\n");
 
         return true;
@@ -372,13 +373,13 @@ struct llvm_coder_t
         switch (node->op)
         {
         case ast_binary_oper_t::Or:
-            return llvm_builder->CreateOr(lhs, rhs);
+            return this->encode_expr_binary_or(lhs, rhs);
         case ast_binary_oper_t::And:
-            return llvm_builder->CreateAnd(lhs, rhs);
+            return this->encode_expr_binary_and(lhs, rhs);
         case ast_binary_oper_t::Equal:
-            return llvm_builder->CreateICmpEQ(lhs, rhs);
+            return this->encode_expr_binary_eq(lhs, rhs);
         case ast_binary_oper_t::NEqual:
-            return llvm_builder->CreateICmpNE(lhs, rhs);
+            return this->encode_expr_binary_ne(lhs, rhs);
         case ast_binary_oper_t::LEqual:
             return llvm_builder->CreateICmpSLE(lhs, rhs);
         case ast_binary_oper_t::GEqual:
@@ -411,6 +412,115 @@ struct llvm_coder_t
             return nullptr;
         }
     }
+
+    llvm::Value* encode_expr_binary_or(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if ((!ltype->isIntegerTy(1)) || (!rtype->isIntegerTy(1)))
+        {
+            printf("LHS or RHS is not bool value. \n");
+            return nullptr;
+        }
+
+        return llvm_builder->CreateOr(lhs, rhs);
+    }
+
+    llvm::Value* encode_expr_binary_and(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if ((!ltype->isIntegerTy(1)) || (!rtype->isIntegerTy(1)))
+        {
+            printf("LHS or RHS is not bool value. \n");
+            return nullptr;
+        }
+
+        return llvm_builder->CreateAnd(lhs, rhs);
+    }
+
+    llvm::Value* encode_expr_binary_eq(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateICmpEQ(lhs, rhs);
+
+        if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+            return llvm_builder->CreateFCmpOEQ(lhs, rhs);
+
+        if (ltype->isPointerTy() && rtype->isPointerTy())
+        {
+            return llvm_builder->CreateICmpEQ
+            (
+                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
+                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+            );
+        }
+
+        if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
+        {
+            return llvm_builder->CreateFCmpOEQ(
+                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+                rhs
+            );
+        }
+
+        if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateFCmpOEQ(
+                lhs,
+                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+            );
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_ne(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateICmpNE(lhs, rhs);
+
+        if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+            return llvm_builder->CreateFCmpONE(lhs, rhs);
+
+        if (ltype->isPointerTy() && rtype->isPointerTy())
+        {
+            return llvm_builder->CreateICmpNE
+            (
+                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
+                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+            );
+        }
+
+        if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
+        {
+            return llvm_builder->CreateFCmpONE(
+                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+                rhs
+            );
+        }
+
+        if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateFCmpONE(
+                lhs,
+                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+            );
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
 
     llvm::Value* encode_expr_unary(struct ast_expr_unary_t* node)
     {
@@ -696,7 +806,7 @@ struct llvm_coder_t
             return nullptr;
 
         auto objType = obj->getType();
-        while(objType->isPointerTy())
+        while (objType->isPointerTy())
         {
             obj = llvm_builder->CreateLoad(obj);
             objType = obj->getType();
@@ -718,7 +828,7 @@ struct llvm_coder_t
             if (mem.second->name == node->key)
                 break;
         }
-        if(index < 0)
+        if (index < 0)
             return nullptr;
 
         llvm::Value* value = llvm_builder->CreateStructGEP(obj->getType(), obj, index);
@@ -936,15 +1046,20 @@ struct llvm_coder_t
         if (node == nullptr)
             return false;
 
-        if (node->value != nullptr)
-        {
-            llvm::Value* value = this->encode_expr(node->value);
-            llvm_builder->CreateRet(value);
-        }
-        else
+        if (node->value == nullptr)
         {
             llvm_builder->CreateRetVoid();
+            return true;
         }
+
+        llvm::Value* value = this->encode_expr(node->value);
+        if (value == nullptr)
+        {
+            printf("invalid ret value.\n");
+            return false;
+        }
+
+        llvm_builder->CreateRet(value);
 
         return true;
     }

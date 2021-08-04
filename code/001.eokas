@@ -1,2 +1,4 @@
-var a = 3 + 3;
-return a;
+
+val a = 1;
+val b = 1.1;
+return 2;
