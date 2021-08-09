@@ -340,7 +340,7 @@ expr_value := int | float | str | true | false
 */
 ast_expr_t* parser_impl_t::parse_expr_unary(ast_node_t* p)
 {
-	ast_unary_oper_t oper = this->check_unary_oper(false, false);
+	ast_unary_oper_t oper = this->check_unary_oper(false, true);
 
 	ast_expr_t* right = nullptr;
 
@@ -1554,6 +1554,7 @@ ast_unary_oper_t parser_impl_t::check_unary_oper(bool required, bool movenext)
 	case token_t::Add: oper = ast_unary_oper_t::Pos; break;
 	case token_t::Sub: oper = ast_unary_oper_t::Neg; break;
 	case token_t::Not: oper = ast_unary_oper_t::Not; break;
+	case token_t::Flip: oper = ast_unary_oper_t::Flip; break;
 	case token_t::At: oper = ast_unary_oper_t::TypeOf; break;
 	case token_t::Pound: oper = ast_unary_oper_t::SizeOf; break;
 	default: break;
@@ -1566,7 +1567,7 @@ ast_unary_oper_t parser_impl_t::check_unary_oper(bool required, bool movenext)
 		}
 		return oper;
 	}
-	else if (movenext)
+	if (movenext)
 	{
 		m_scanner->next_token();
 	}
@@ -1612,7 +1613,7 @@ ast_binary_oper_t parser_impl_t::check_binary_oper(int priority, bool required, 
 		}
 		return oper;
 	}
-	else if (movenext)
+	if (movenext)
 	{
 		m_scanner->next_token();
 	}

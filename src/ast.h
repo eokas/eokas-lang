@@ -62,13 +62,6 @@ enum class ast_node_category_t
     stmt_call,
 };
 
-enum class ast_unary_oper_t
-{
-    Pos, Neg, Not, Flip,
-    TypeOf, SizeOf,
-    Count, Unknown
-};
-
 enum class ast_binary_oper_t
 {
     Or = 100,
@@ -78,10 +71,17 @@ enum class ast_binary_oper_t
     Mul = 500, Div, Mod,
     BitAnd = 600, BitOr, BitXor, ShiftL, ShiftR,
     Is = 700, As,
-    MaxPriority,
+    MaxPriority = 800,
     Unknown = 0x7FFFFFFF
 };
 
+enum class ast_unary_oper_t
+{
+    Pos = 900, Neg, Flip, SizeOf, TypeOf,
+    Not = 1000,
+    MaxPriority = 1100, 
+    Unknown = 0x7FFFFFFF
+};
 
 struct ast_node_t
 {

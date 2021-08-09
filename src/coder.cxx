@@ -182,10 +182,10 @@ struct llvm_coder_t
         llvm::InitializeNativeTargetAsmParser();
         auto ee = llvm::EngineBuilder(std::move(llvm_module)).setEngineKind(llvm::EngineKind::JIT).create();
         ee->finalizeObject();
-        
+
         printf("---------------- JIT RUN ----------------\n");
         std::vector<llvm::GenericValue> args;
-        auto retval = ee->runFunction(this->func, args);    
+        auto retval = ee->runFunction(this->func, args);
         printf("i64: %d \n", *retval.IntVal.getRawData());
         printf("f64: %f \n", retval.IntVal.bitsToDouble());
         printf("---------------- JIT END ----------------\n");
@@ -907,20 +907,59 @@ struct llvm_coder_t
         if (rhs == nullptr)
             return nullptr;
 
-
         switch (node->op)
         {
         case ast_unary_oper_t::Pos:
             return rhs;
         case ast_unary_oper_t::Neg:
-            return llvm_builder->CreateNeg(rhs);
+            return this->encode_expr_unary_neg(rhs);
         case ast_unary_oper_t::Not:
-            return llvm_builder->CreateNot(rhs);
+            return this->encode_expr_unary_not(rhs);
         case ast_unary_oper_t::Flip:
-            return nullptr;
+            return this->encode_expr_unary_flip(rhs);
         default:
             return nullptr;
         }
+    }
+
+    llvm::Value* encode_expr_unary_neg(llvm::Value* rhs)
+    {
+        auto rtype = rhs->getType();
+
+        if (rtype->isIntegerTy())
+            return llvm_builder->CreateNeg(rhs);
+
+        if (rtype->isFloatingPointTy())
+            return llvm_builder->CreateFNeg(rhs);
+
+        printf("Type of RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_unary_not(llvm::Value* rhs)
+    {
+        auto rtype = rhs->getType();
+
+        if (rtype->isIntegerTy() && rtype->getIntegerBitWidth() == 1)
+            return llvm_builder->CreateNot(rhs);
+
+        printf("Type of RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_unary_flip(llvm::Value* rhs)
+    {
+        auto rtype = rhs->getType();
+
+        if (rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateXor(
+                rhs,
+                llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF))
+            );
+        }
+        printf("Type of RHS is invalid.");
+        return nullptr;
     }
 
     llvm::Value* encode_expr_int(struct ast_expr_int_t* node)
@@ -929,11 +968,8 @@ struct llvm_coder_t
             return nullptr;
 
         u64_t vals = *((u64_t*)&(node->value));
-        u32_t bits = 8;
-        if (vals > 0xFF) bits = 16;
-        if (vals > 0xFFFF) bits = 32;
-        if (vals > 0xFFFFFFFF) bits = 64;
-
+        u32_t bits = vals > 0xFFFFFFFF ? 64 : 32;
+        
         return llvm::ConstantInt::get(*llvm_context, llvm::APInt(bits, node->value));
     }
 
