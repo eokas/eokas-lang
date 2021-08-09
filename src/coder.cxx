@@ -399,11 +399,11 @@ struct llvm_coder_t
         case ast_binary_oper_t::Mod:
             return this->encode_expr_binary_mod(lhs, rhs);
         case ast_binary_oper_t::BitAnd:
-            return nullptr;
+            return this->encode_expr_binary_bitand(lhs, rhs);
         case ast_binary_oper_t::BitOr:
-            return nullptr;
+            return this->encode_expr_binary_bitor(lhs, rhs);
         case ast_binary_oper_t::BitXor:
-            return llvm_builder->CreateXor(lhs, rhs);
+            return this->encode_expr_binary_bitxor(lhs, rhs);
         case ast_binary_oper_t::ShiftL:
             return llvm_builder->CreateShl(lhs, rhs);
         case ast_binary_oper_t::ShiftR:
@@ -833,6 +833,70 @@ struct llvm_coder_t
         return nullptr;
     }
 
+    llvm::Value* encode_expr_binary_bitand(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateAnd(lhs, rhs);
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_bitor(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateOr(lhs, rhs);
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_bitxor(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateXor(lhs, rhs);
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_bitshl(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateShl(lhs, rhs);
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_bitshr(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+        {
+            // 逻辑右移：在左边补 0
+            // 算术右移：在左边补 符号位
+            // 我们采用逻辑右移
+            return llvm_builder->CreateLShr(lhs, rhs);
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
 
     llvm::Value* encode_expr_unary(struct ast_expr_unary_t* node)
     {
