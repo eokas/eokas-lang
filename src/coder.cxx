@@ -381,23 +381,23 @@ struct llvm_coder_t
         case ast_binary_oper_t::NEqual:
             return this->encode_expr_binary_ne(lhs, rhs);
         case ast_binary_oper_t::LEqual:
-            return llvm_builder->CreateICmpSLE(lhs, rhs);
+            return this->encode_expr_binary_le(lhs, rhs);
         case ast_binary_oper_t::GEqual:
-            return llvm_builder->CreateICmpSGE(lhs, rhs);
+            return this->encode_expr_binary_ge(lhs, rhs);
         case ast_binary_oper_t::Less:
-            return llvm_builder->CreateICmpSLT(lhs, rhs);
+            return this->encode_expr_binary_lt(lhs, rhs);
         case ast_binary_oper_t::Greater:
-            return llvm_builder->CreateICmpSGT(lhs, rhs);
+            return this->encode_expr_binary_gt(lhs, rhs);
         case ast_binary_oper_t::Add:
-            return llvm_builder->CreateAdd(lhs, rhs);
+            return this->encode_expr_binary_add(lhs, rhs);
         case ast_binary_oper_t::Sub:
-            return llvm_builder->CreateSub(lhs, rhs);
+            return this->encode_expr_binary_sub(lhs, rhs);
         case ast_binary_oper_t::Mul:
-            return llvm_builder->CreateMul(lhs, rhs);
+            return this->encode_expr_binary_mul(lhs, rhs);
         case ast_binary_oper_t::Div:
-            return llvm_builder->CreateSDiv(lhs, rhs);
+            return this->encode_expr_binary_div(lhs, rhs);
         case ast_binary_oper_t::Mod:
-            return llvm_builder->CreateSRem(lhs, rhs);
+            return this->encode_expr_binary_mod(lhs, rhs);
         case ast_binary_oper_t::BitAnd:
             return nullptr;
         case ast_binary_oper_t::BitOr:
@@ -512,6 +512,318 @@ struct llvm_coder_t
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder->CreateFCmpONE(
+                lhs,
+                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+            );
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_le(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateICmpSLE(lhs, rhs);
+
+        if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+            return llvm_builder->CreateFCmpOLE(lhs, rhs);
+
+        if (ltype->isPointerTy() && rtype->isPointerTy())
+        {
+            return llvm_builder->CreateICmpULE
+            (
+                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
+                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+            );
+        }
+
+        if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
+        {
+            return llvm_builder->CreateFCmpOLE(
+                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+                rhs
+            );
+        }
+
+        if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateFCmpOLE(
+                lhs,
+                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+            );
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_ge(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateICmpSGE(lhs, rhs);
+
+        if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+            return llvm_builder->CreateFCmpOGE(lhs, rhs);
+
+        if (ltype->isPointerTy() && rtype->isPointerTy())
+        {
+            return llvm_builder->CreateICmpUGE(
+                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
+                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+            );
+        }
+
+        if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
+        {
+            return llvm_builder->CreateFCmpOGE(
+                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+                rhs
+            );
+        }
+
+        if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateFCmpOGE(
+                lhs,
+                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+            );
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_lt(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateICmpSLT(lhs, rhs);
+
+        if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+            return llvm_builder->CreateFCmpOLT(lhs, rhs);
+
+        if (ltype->isPointerTy() && rtype->isPointerTy())
+        {
+            return llvm_builder->CreateICmpULT(
+                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
+                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+            );
+        }
+
+        if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
+        {
+            return llvm_builder->CreateFCmpOLT(
+                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+                rhs
+            );
+        }
+
+        if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateFCmpOLT(
+                lhs,
+                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+            );
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_gt(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateICmpSGT(lhs, rhs);
+
+        if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+            return llvm_builder->CreateFCmpOGT(lhs, rhs);
+
+        if (ltype->isPointerTy() && rtype->isPointerTy())
+        {
+            return llvm_builder->CreateICmpUGT(
+                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
+                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+            );
+        }
+
+        if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
+        {
+            return llvm_builder->CreateFCmpOGT(
+                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+                rhs
+            );
+        }
+
+        if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateFCmpOGT(
+                lhs,
+                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+            );
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_add(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateAdd(lhs, rhs);
+
+        if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+            return llvm_builder->CreateFAdd(lhs, rhs);
+
+        if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
+        {
+            return llvm_builder->CreateFAdd(
+                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+                rhs
+            );
+        }
+
+        if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateFAdd(
+                lhs,
+                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+            );
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_sub(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateSub(lhs, rhs);
+
+        if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+            return llvm_builder->CreateFSub(lhs, rhs);
+
+        if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
+        {
+            return llvm_builder->CreateFSub(
+                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+                rhs
+            );
+        }
+
+        if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateFSub(
+                lhs,
+                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+            );
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_mul(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateMul(lhs, rhs);
+
+        if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+            return llvm_builder->CreateFMul(lhs, rhs);
+
+        if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
+        {
+            return llvm_builder->CreateFMul(
+                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+                rhs
+            );
+        }
+
+        if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateFMul(
+                lhs,
+                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+            );
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_div(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateSDiv(lhs, rhs);
+
+        if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+            return llvm_builder->CreateFMul(lhs, rhs);
+
+        if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
+        {
+            return llvm_builder->CreateFDiv(
+                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+                rhs
+            );
+        }
+
+        if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateFDiv(
+                lhs,
+                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+            );
+        }
+
+        printf("Type of LHS or RHS is invalid.");
+        return nullptr;
+    }
+
+    llvm::Value* encode_expr_binary_mod(llvm::Value* lhs, llvm::Value* rhs)
+    {
+        auto ltype = lhs->getType();
+        auto rtype = rhs->getType();
+
+        if (ltype->isIntegerTy() && rtype->isIntegerTy())
+            return llvm_builder->CreateSRem(lhs, rhs);
+
+        if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+            return llvm_builder->CreateFRem(lhs, rhs);
+
+        if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
+        {
+            return llvm_builder->CreateFRem(
+                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+                rhs
+            );
+        }
+
+        if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
+        {
+            return llvm_builder->CreateFRem(
                 lhs,
                 llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
             );
