@@ -369,6 +369,14 @@ struct llvm_coder_t
         auto rhs = this->encode_expr(node->right);
         if (lhs == nullptr || rhs == nullptr)
             return nullptr;
+        if(lhs->getType()->isPointerTy()) 
+        {
+            lhs = llvm_builder->CreateLoad(lhs);
+        }
+        if(rhs->getType()->isPointerTy())
+        {
+            rhs = llvm_builder->CreateLoad(rhs);
+        }
 
         switch (node->op)
         {
@@ -906,6 +914,11 @@ struct llvm_coder_t
         auto rhs = this->encode_expr(node->right);
         if (rhs == nullptr)
             return nullptr;
+            
+        if(rhs->getType()->isPointerTy())
+        {
+            rhs = llvm_builder->CreateLoad(rhs);
+        }
 
         switch (node->op)
         {
@@ -1004,7 +1017,7 @@ struct llvm_coder_t
         if (symbol == nullptr)
             return nullptr;
 
-        return llvm_builder->CreateLoad(symbol);
+        return symbol;
     }
 
     llvm::Value* encode_expr_func_def(struct ast_expr_func_def_t* node)
