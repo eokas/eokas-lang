@@ -141,6 +141,22 @@ struct llvm_coder_t
 
     std::map<llvm::Type*, ast_stmt_struct_def_t*> structs;
 
+    llvm::Type* type_void;
+    llvm::Type* type_i8;
+    llvm::Type* type_i16;
+    llvm::Type* type_i32;
+    llvm::Type* type_i64;
+    llvm::Type* type_u8;
+    llvm::Type* type_u16;
+    llvm::Type* type_u32;
+    llvm::Type* type_u64;
+    llvm::Type* type_f32;
+    llvm::Type* type_f64;
+    llvm::Type* type_bool;
+    llvm::Type* type_string;
+
+    llvm::Value* const_zero;
+
     llvm_coder_t(Stream& stream)
         : base(stream)
     {
@@ -152,6 +168,22 @@ struct llvm_coder_t
         this->func = nullptr;
         this->continuePoint = nullptr;
         this->breakPoint = nullptr;
+
+        type_void = llvm::Type::getVoidTy(*llvm_context);
+        type_i8 = llvm::Type::getInt8Ty(*llvm_context);
+        type_i16 = llvm::Type::getInt16Ty(*llvm_context);
+        type_i32 = llvm::Type::getInt32Ty(*llvm_context);
+        type_i64 = llvm::Type::getInt64Ty(*llvm_context);
+        type_u8 = llvm::Type::getInt8Ty(*llvm_context);
+        type_u16 = llvm::Type::getInt16Ty(*llvm_context);
+        type_u32 = llvm::Type::getInt32Ty(*llvm_context);
+        type_u64 = llvm::Type::getInt64Ty(*llvm_context);
+        type_f32 = llvm::Type::getFloatTy(*llvm_context);
+        type_f64 = llvm::Type::getDoubleTy(*llvm_context);
+        type_bool = llvm::Type::getInt1Ty(*llvm_context);
+        type_string = llvm::Type::getInt8PtrTy(*llvm_context);
+
+        const_zero = llvm::ConstantInt::get(*llvm_context, llvm::APInt(32, 0));
     }
 
     virtual ~llvm_coder_t()
@@ -186,11 +218,22 @@ struct llvm_coder_t
         printf("---------------- JIT RUN ----------------\n");
         std::vector<llvm::GenericValue> args;
         auto retval = ee->runFunction(this->func, args);
-        printf("i64: %d \n", *retval.IntVal.getRawData());
-        printf("f64: %f \n", retval.IntVal.bitsToDouble());
+        printf("\nRET: %s \n", retval.IntVal.toString(10, true).c_str());
         printf("---------------- JIT END ----------------\n");
 
         return true;
+    }
+
+    llvm::Function* libs_printf()
+    {
+        std::vector<llvm::Type*> type_args;
+        type_args.push_back(type_string);
+
+        auto funcType = llvm::FunctionType::get(type_i32, type_args, true);
+        auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "printf", *llvm_module);
+        funcValue->setCallingConv(llvm::CallingConv::C);
+
+        return funcValue;
     }
 
     bool encode_module(struct ast_module_t* node)
@@ -200,19 +243,23 @@ struct llvm_coder_t
 
         this->pushScope();
 
-        this->scope->types["i8"] = llvm::Type::getInt8Ty(*llvm_context);
-        this->scope->types["i16"] = llvm::Type::getInt16Ty(*llvm_context);
-        this->scope->types["i32"] = llvm::Type::getInt32Ty(*llvm_context);
-        this->scope->types["i64"] = llvm::Type::getInt64Ty(*llvm_context);
-        this->scope->types["u8"] = llvm::Type::getInt8Ty(*llvm_context);
-        this->scope->types["u16"] = llvm::Type::getInt16Ty(*llvm_context);
-        this->scope->types["u32"] = llvm::Type::getInt32Ty(*llvm_context);
-        this->scope->types["u64"] = llvm::Type::getInt64Ty(*llvm_context);
-        this->scope->types["f32"] = llvm::Type::getFloatTy(*llvm_context);
-        this->scope->types["f64"] = llvm::Type::getDoubleTy(*llvm_context);
-        this->scope->types["bool"] = llvm::Type::getInt1Ty(*llvm_context);
+        this->scope->types["void"] = type_void;
+        this->scope->types["i8"] = type_i8;
+        this->scope->types["i16"] = type_i16;
+        this->scope->types["i32"] = type_i32;
+        this->scope->types["i64"] = type_i64;
+        this->scope->types["u8"] = type_u8;
+        this->scope->types["u16"] = type_u16;
+        this->scope->types["u32"] = type_u32;
+        this->scope->types["u64"] = type_u64;
+        this->scope->types["f32"] = type_f32;
+        this->scope->types["f64"] = type_f64;
+        this->scope->types["bool"] = type_bool;
+        this->scope->types["string"] = type_string;
 
-        llvm::FunctionType* funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(*llvm_context), false);
+        this->scope->symbols["printf"] = libs_printf();
+
+        llvm::FunctionType* funcType = llvm::FunctionType::get(type_i32, false);
         this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "_main", *llvm_module);
 
         llvm::BasicBlock* entry = llvm::BasicBlock::Create(*llvm_context, "entry", this->func);
@@ -224,7 +271,7 @@ struct llvm_coder_t
                 return false;
         }
 
-        llvm_builder->CreateRetVoid();
+        llvm_builder->CreateRet(const_zero);
 
         this->popScope();
 
@@ -369,11 +416,11 @@ struct llvm_coder_t
         auto rhs = this->encode_expr(node->right);
         if (lhs == nullptr || rhs == nullptr)
             return nullptr;
-        if(lhs->getType()->isPointerTy()) 
+        if (lhs->getType()->isPointerTy())
         {
             lhs = llvm_builder->CreateLoad(lhs);
         }
-        if(rhs->getType()->isPointerTy())
+        if (rhs->getType()->isPointerTy())
         {
             rhs = llvm_builder->CreateLoad(rhs);
         }
@@ -914,8 +961,8 @@ struct llvm_coder_t
         auto rhs = this->encode_expr(node->right);
         if (rhs == nullptr)
             return nullptr;
-            
-        if(rhs->getType()->isPointerTy())
+
+        if (rhs->getType()->isPointerTy())
         {
             rhs = llvm_builder->CreateLoad(rhs);
         }
@@ -982,7 +1029,7 @@ struct llvm_coder_t
 
         u64_t vals = *((u64_t*)&(node->value));
         u32_t bits = vals > 0xFFFFFFFF ? 64 : 32;
-        
+
         return llvm::ConstantInt::get(*llvm_context, llvm::APInt(bits, node->value));
     }
 
@@ -1005,7 +1052,7 @@ struct llvm_coder_t
     {
         if (node == nullptr)
             return nullptr;
-        return llvm::ConstantDataArray::getString(*llvm_context, node->value.cstr());
+        return llvm_builder->CreateGlobalString(llvm::StringRef(node->value.cstr()));
     }
 
     llvm::Value* encode_expr_symbol_ref(struct ast_expr_symbol_ref_t* node)
@@ -1096,6 +1143,10 @@ struct llvm_coder_t
             llvm::Value* param = this->encode_expr(arg);
             if (param == nullptr)
                 return nullptr;
+            if(param->getType()->isPointerTy())
+            {
+                param = llvm_builder->CreateLoad(param);
+            }
             params.push_back(param);
         }
 
