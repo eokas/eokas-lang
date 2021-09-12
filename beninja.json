@@ -46,7 +46,7 @@
         ],
 
         "sources": [
-            "./src/*.cxx"
+            "./src/**/*.cxx"
         ],
 
         "copies": []

@@ -1,4 +1,7 @@
 
-var str = "hello world.";
-str = "hello eokas.";
-printf(str);
+var a = "true\n";
+var b = "false\n";
+
+while(true) {
+    printf(a);
+}

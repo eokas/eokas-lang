@@ -1,7 +1,7 @@
 
 #include "app.h"
-#include "parser.h"
-#include "coder.h"
+#include "parser/parser.h"
+#include "llvm/engine.h"
 using namespace eokas;
 
 #include <stdio.h>
@@ -57,14 +57,14 @@ static void eokas_main(const String& fileName)
     in.read(buffer.data(), buffer.size());
     in.close();
 
-    String str((const char*)buffer.data(), buffer.size());
+    String source((const char*)buffer.data(), buffer.size());
     printf("=> Source code:\n");
     printf("------------------------------------------\n");
-    printf(str.cstr());
+    printf(source.replace("%", "%%").cstr());
     printf("------------------------------------------\n");
 
     parser_t parser;
-    ast_module_t* m = parser.parse(str.cstr());
+    ast_module_t* m = parser.parse(source.cstr());
     printf("=> Module AST: %x\n", m);
     if (m == nullptr)
     {
@@ -79,8 +79,7 @@ static void eokas_main(const String& fileName)
 
     printf("=> Encode to IR:\n");
     printf("------------------------------------------\n");
-    coder_t coder(out);
-    coder.encode(m);
+    llvm_jit(m);
     printf("------------------------------------------\n");
     out.close();
 

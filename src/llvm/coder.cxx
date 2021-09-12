@@ -1,6 +1,4 @@
-
 #include "coder.h"
-#include "ast.h"
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
@@ -13,11 +11,6 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
-
-#include <llvm/ExecutionEngine/MCJIT.h>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/ExecutionEngine/GenericValue.h>
-#include <llvm/Support/TargetSelect.h>
 
 #include <algorithm>
 #include <cctype>
@@ -128,8 +121,6 @@ struct llvm_scope_t
 
 struct llvm_coder_t
 {
-    Stream& base;
-
     std::unique_ptr<llvm::LLVMContext> llvm_context;
     std::unique_ptr<llvm::Module> llvm_module;
     std::unique_ptr<llvm::IRBuilder<>> llvm_builder;
@@ -157,8 +148,7 @@ struct llvm_coder_t
 
     llvm::Value* const_zero;
 
-    llvm_coder_t(Stream& stream)
-        : base(stream)
+    llvm_coder_t()
     {
         this->llvm_context = std::make_unique<llvm::LLVMContext>();
         this->llvm_module = std::make_unique<llvm::Module>("eokas", *llvm_context);
@@ -205,21 +195,6 @@ struct llvm_coder_t
     {
         if (!this->encode_module(m))
             return false;
-
-        // DUMP CODE
-        llvm_module->print(llvm::errs(), nullptr);
-
-        llvm::InitializeNativeTarget();
-        llvm::InitializeNativeTargetAsmPrinter();
-        llvm::InitializeNativeTargetAsmParser();
-        auto ee = llvm::EngineBuilder(std::move(llvm_module)).setEngineKind(llvm::EngineKind::JIT).create();
-        ee->finalizeObject();
-
-        printf("---------------- JIT RUN ----------------\n");
-        std::vector<llvm::GenericValue> args;
-        auto retval = ee->runFunction(this->func, args);
-        printf("\nRET: %s \n", retval.IntVal.toString(10, true).c_str());
-        printf("---------------- JIT END ----------------\n");
 
         return true;
     }
@@ -1704,19 +1679,11 @@ struct llvm_coder_t
     }
 };
 
-
-coder_t::coder_t(Stream& stream)
-    : impl(new llvm_coder_t(stream))
-{}
-
-coder_t::~coder_t()
+std::unique_ptr<llvm::Module> llvm_encode(ast_module_t* module)
 {
-    _DeletePointer(impl);
-}
-
-bool coder_t::encode(struct ast_module_t* m)
-{
-    return impl->encode(m);
+    llvm_coder_t coder;
+    coder.encode(module);
+    return std::move(coder.llvm_module);
 }
 
 _EndNamespace(eokas)

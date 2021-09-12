@@ -1,8 +1,7 @@
 #ifndef _EOKAS_AST_H_
 #define _EOKAS_AST_H_
 
-#include "header.h"
-#include "scanner.h"
+#include <libarchaism/archaism.h>
 
 _BeginNamespace(eokas)
 
