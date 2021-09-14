@@ -4,12 +4,13 @@
 #include "../ast/ast.h"
 
 namespace llvm {
+    class LLVMContext;
     class Module;
 }
 
 _BeginNamespace(eokas)
 
-std::unique_ptr<llvm::Module> llvm_encode(ast_module_t* module);
+llvm::Module* llvm_encode(llvm::LLVMContext& context, ast_module_t* module);
 
 _EndNamespace(eokas)
 

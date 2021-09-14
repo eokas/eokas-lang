@@ -1,7 +1,4 @@
 
-var a = "true\n";
-var b = "false\n";
+var a = "hello world.";
 
-while(true) {
-    printf(a);
-}
+printf(a);

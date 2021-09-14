@@ -121,9 +121,9 @@ struct llvm_scope_t
 
 struct llvm_coder_t
 {
-    std::unique_ptr<llvm::LLVMContext> llvm_context;
-    std::unique_ptr<llvm::Module> llvm_module;
-    std::unique_ptr<llvm::IRBuilder<>> llvm_builder;
+    llvm::LLVMContext& llvm_context;
+    llvm::IRBuilder<> llvm_builder;
+    llvm::Module* llvm_module;
     llvm_scope_t* root;
     llvm_scope_t* scope;
     llvm::Function* func;
@@ -148,32 +148,31 @@ struct llvm_coder_t
 
     llvm::Value* const_zero;
 
-    llvm_coder_t()
+    llvm_coder_t(llvm::LLVMContext& llvm_context)
+        : llvm_context(llvm_context)
+        , llvm_builder(llvm_context)
     {
-        this->llvm_context = std::make_unique<llvm::LLVMContext>();
-        this->llvm_module = std::make_unique<llvm::Module>("eokas", *llvm_context);
-        this->llvm_builder = std::make_unique<llvm::IRBuilder<>>(*llvm_context);
         this->root = new llvm_scope_t(nullptr);
         this->scope = this->root;
         this->func = nullptr;
         this->continuePoint = nullptr;
         this->breakPoint = nullptr;
 
-        type_void = llvm::Type::getVoidTy(*llvm_context);
-        type_i8 = llvm::Type::getInt8Ty(*llvm_context);
-        type_i16 = llvm::Type::getInt16Ty(*llvm_context);
-        type_i32 = llvm::Type::getInt32Ty(*llvm_context);
-        type_i64 = llvm::Type::getInt64Ty(*llvm_context);
-        type_u8 = llvm::Type::getInt8Ty(*llvm_context);
-        type_u16 = llvm::Type::getInt16Ty(*llvm_context);
-        type_u32 = llvm::Type::getInt32Ty(*llvm_context);
-        type_u64 = llvm::Type::getInt64Ty(*llvm_context);
-        type_f32 = llvm::Type::getFloatTy(*llvm_context);
-        type_f64 = llvm::Type::getDoubleTy(*llvm_context);
-        type_bool = llvm::Type::getInt1Ty(*llvm_context);
-        type_string = llvm::Type::getInt8PtrTy(*llvm_context);
+        type_void = llvm::Type::getVoidTy(llvm_context);
+        type_i8 = llvm::Type::getInt8Ty(llvm_context);
+        type_i16 = llvm::Type::getInt16Ty(llvm_context);
+        type_i32 = llvm::Type::getInt32Ty(llvm_context);
+        type_i64 = llvm::Type::getInt64Ty(llvm_context);
+        type_u8 = llvm::Type::getInt8Ty(llvm_context);
+        type_u16 = llvm::Type::getInt16Ty(llvm_context);
+        type_u32 = llvm::Type::getInt32Ty(llvm_context);
+        type_u64 = llvm::Type::getInt64Ty(llvm_context);
+        type_f32 = llvm::Type::getFloatTy(llvm_context);
+        type_f64 = llvm::Type::getDoubleTy(llvm_context);
+        type_bool = llvm::Type::getInt1Ty(llvm_context);
+        type_string = llvm::Type::getInt8PtrTy(llvm_context);
 
-        const_zero = llvm::ConstantInt::get(*llvm_context, llvm::APInt(32, 0));
+        const_zero = llvm::ConstantInt::get(llvm_context, llvm::APInt(32, 0));
     }
 
     virtual ~llvm_coder_t()
@@ -191,12 +190,15 @@ struct llvm_coder_t
         this->scope = this->scope->parent;
     }
 
-    bool encode(struct ast_module_t* m)
+    llvm::Module* encode(struct ast_module_t* m)
     {
+        this->llvm_module = new llvm::Module("eokas", llvm_context);
         if (!this->encode_module(m))
-            return false;
-
-        return true;
+        {
+            _DeletePointer(this->llvm_module);
+            return nullptr;
+        }
+        return this->llvm_module;
     }
 
     llvm::Function* libs_printf()
@@ -205,7 +207,7 @@ struct llvm_coder_t
         type_args.push_back(type_string);
 
         auto funcType = llvm::FunctionType::get(type_i32, type_args, true);
-        auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "printf", *llvm_module);
+        auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "printf", llvm_module);
         funcValue->setCallingConv(llvm::CallingConv::C);
 
         return funcValue;
@@ -235,10 +237,10 @@ struct llvm_coder_t
         this->scope->symbols["printf"] = libs_printf();
 
         llvm::FunctionType* funcType = llvm::FunctionType::get(type_i32, false);
-        this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "_main", *llvm_module);
+        this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", llvm_module);
 
-        llvm::BasicBlock* entry = llvm::BasicBlock::Create(*llvm_context, "entry", this->func);
-        llvm_builder->SetInsertPoint(entry);
+        llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", this->func);
+        llvm_builder.SetInsertPoint(entry);
 
         for (auto& stmt : node->stmts)
         {
@@ -246,10 +248,10 @@ struct llvm_coder_t
                 return false;
         }
 
-        llvm_builder->CreateRet(const_zero);
+        llvm_builder.CreateRet(const_zero);
 
         this->popScope();
-
+        
         return true;
     }
 
@@ -347,35 +349,35 @@ struct llvm_coder_t
         if (node == nullptr)
             return nullptr;
 
-        llvm::BasicBlock* trinary_begin = llvm::BasicBlock::Create(*llvm_context, "trinary.begin", this->func);
-        llvm::BasicBlock* trinary_true = llvm::BasicBlock::Create(*llvm_context, "trinary.true", this->func);
-        llvm::BasicBlock* trinary_false = llvm::BasicBlock::Create(*llvm_context, "trinary.false", this->func);
-        llvm::BasicBlock* trinary_end = llvm::BasicBlock::Create(*llvm_context, "trinary.end", this->func);
+        llvm::BasicBlock* trinary_begin = llvm::BasicBlock::Create(llvm_context, "trinary.begin", this->func);
+        llvm::BasicBlock* trinary_true = llvm::BasicBlock::Create(llvm_context, "trinary.true", this->func);
+        llvm::BasicBlock* trinary_false = llvm::BasicBlock::Create(llvm_context, "trinary.false", this->func);
+        llvm::BasicBlock* trinary_end = llvm::BasicBlock::Create(llvm_context, "trinary.end", this->func);
 
-        llvm_builder->SetInsertPoint(trinary_begin);
+        llvm_builder.SetInsertPoint(trinary_begin);
 
         // TODO: define a temp var
 
         llvm::Value* cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return nullptr;
-        llvm_builder->CreateCondBr(cond, trinary_true, trinary_false);
+        llvm_builder.CreateCondBr(cond, trinary_true, trinary_false);
 
-        llvm_builder->SetInsertPoint(trinary_true);
+        llvm_builder.SetInsertPoint(trinary_true);
         llvm::Value* trueV = this->encode_expr(node->branch_true);
         if (trueV == nullptr)
             return nullptr;
         // TODO: set temp var
-        llvm_builder->CreateBr(trinary_end);
+        llvm_builder.CreateBr(trinary_end);
 
-        llvm_builder->SetInsertPoint(trinary_false);
+        llvm_builder.SetInsertPoint(trinary_false);
         llvm::Value* falseV = this->encode_expr(node->branch_false);
         if (falseV == nullptr)
             return nullptr;
         // TODO: set temp var
-        llvm_builder->CreateBr(trinary_end);
+        llvm_builder.CreateBr(trinary_end);
 
-        llvm_builder->SetInsertPoint(trinary_end);
+        llvm_builder.SetInsertPoint(trinary_end);
 
         // TODO: return temp var
 
@@ -393,11 +395,11 @@ struct llvm_coder_t
             return nullptr;
         if (lhs->getType()->isPointerTy())
         {
-            lhs = llvm_builder->CreateLoad(lhs);
+            lhs = llvm_builder.CreateLoad(lhs);
         }
         if (rhs->getType()->isPointerTy())
         {
-            rhs = llvm_builder->CreateLoad(rhs);
+            rhs = llvm_builder.CreateLoad(rhs);
         }
 
         switch (node->op)
@@ -435,9 +437,9 @@ struct llvm_coder_t
         case ast_binary_oper_t::BitXor:
             return this->encode_expr_binary_bitxor(lhs, rhs);
         case ast_binary_oper_t::ShiftL:
-            return llvm_builder->CreateShl(lhs, rhs);
+            return llvm_builder.CreateShl(lhs, rhs);
         case ast_binary_oper_t::ShiftR:
-            return llvm_builder->CreateLShr(lhs, rhs);
+            return llvm_builder.CreateLShr(lhs, rhs);
         default:
             return nullptr;
         }
@@ -454,7 +456,7 @@ struct llvm_coder_t
             return nullptr;
         }
 
-        return llvm_builder->CreateOr(lhs, rhs);
+        return llvm_builder.CreateOr(lhs, rhs);
     }
 
     llvm::Value* encode_expr_binary_and(llvm::Value* lhs, llvm::Value* rhs)
@@ -468,7 +470,7 @@ struct llvm_coder_t
             return nullptr;
         }
 
-        return llvm_builder->CreateAnd(lhs, rhs);
+        return llvm_builder.CreateAnd(lhs, rhs);
     }
 
     llvm::Value* encode_expr_binary_eq(llvm::Value* lhs, llvm::Value* rhs)
@@ -477,33 +479,33 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateICmpEQ(lhs, rhs);
+            return llvm_builder.CreateICmpEQ(lhs, rhs);
 
         if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-            return llvm_builder->CreateFCmpOEQ(lhs, rhs);
+            return llvm_builder.CreateFCmpOEQ(lhs, rhs);
 
         if (ltype->isPointerTy() && rtype->isPointerTy())
         {
-            return llvm_builder->CreateICmpEQ
+            return llvm_builder.CreateICmpEQ
             (
-                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
-                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+                llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
             );
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
-            return llvm_builder->CreateFCmpOEQ(
-                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+            return llvm_builder.CreateFCmpOEQ(
+                llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
                 rhs
             );
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
-            return llvm_builder->CreateFCmpOEQ(
+            return llvm_builder.CreateFCmpOEQ(
                 lhs,
-                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
             );
         }
 
@@ -517,33 +519,33 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateICmpNE(lhs, rhs);
+            return llvm_builder.CreateICmpNE(lhs, rhs);
 
         if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-            return llvm_builder->CreateFCmpONE(lhs, rhs);
+            return llvm_builder.CreateFCmpONE(lhs, rhs);
 
         if (ltype->isPointerTy() && rtype->isPointerTy())
         {
-            return llvm_builder->CreateICmpNE
+            return llvm_builder.CreateICmpNE
             (
-                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
-                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+                llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
             );
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
-            return llvm_builder->CreateFCmpONE(
-                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+            return llvm_builder.CreateFCmpONE(
+                llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
                 rhs
             );
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
-            return llvm_builder->CreateFCmpONE(
+            return llvm_builder.CreateFCmpONE(
                 lhs,
-                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
             );
         }
 
@@ -557,33 +559,33 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateICmpSLE(lhs, rhs);
+            return llvm_builder.CreateICmpSLE(lhs, rhs);
 
         if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-            return llvm_builder->CreateFCmpOLE(lhs, rhs);
+            return llvm_builder.CreateFCmpOLE(lhs, rhs);
 
         if (ltype->isPointerTy() && rtype->isPointerTy())
         {
-            return llvm_builder->CreateICmpULE
+            return llvm_builder.CreateICmpULE
             (
-                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
-                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+                llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
             );
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
-            return llvm_builder->CreateFCmpOLE(
-                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+            return llvm_builder.CreateFCmpOLE(
+                llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
                 rhs
             );
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
-            return llvm_builder->CreateFCmpOLE(
+            return llvm_builder.CreateFCmpOLE(
                 lhs,
-                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
             );
         }
 
@@ -597,32 +599,32 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateICmpSGE(lhs, rhs);
+            return llvm_builder.CreateICmpSGE(lhs, rhs);
 
         if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-            return llvm_builder->CreateFCmpOGE(lhs, rhs);
+            return llvm_builder.CreateFCmpOGE(lhs, rhs);
 
         if (ltype->isPointerTy() && rtype->isPointerTy())
         {
-            return llvm_builder->CreateICmpUGE(
-                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
-                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+            return llvm_builder.CreateICmpUGE(
+                llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
             );
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
-            return llvm_builder->CreateFCmpOGE(
-                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+            return llvm_builder.CreateFCmpOGE(
+                llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
                 rhs
             );
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
-            return llvm_builder->CreateFCmpOGE(
+            return llvm_builder.CreateFCmpOGE(
                 lhs,
-                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
             );
         }
 
@@ -636,32 +638,32 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateICmpSLT(lhs, rhs);
+            return llvm_builder.CreateICmpSLT(lhs, rhs);
 
         if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-            return llvm_builder->CreateFCmpOLT(lhs, rhs);
+            return llvm_builder.CreateFCmpOLT(lhs, rhs);
 
         if (ltype->isPointerTy() && rtype->isPointerTy())
         {
-            return llvm_builder->CreateICmpULT(
-                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
-                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+            return llvm_builder.CreateICmpULT(
+                llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
             );
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
-            return llvm_builder->CreateFCmpOLT(
-                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+            return llvm_builder.CreateFCmpOLT(
+                llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
                 rhs
             );
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
-            return llvm_builder->CreateFCmpOLT(
+            return llvm_builder.CreateFCmpOLT(
                 lhs,
-                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
             );
         }
 
@@ -675,32 +677,32 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateICmpSGT(lhs, rhs);
+            return llvm_builder.CreateICmpSGT(lhs, rhs);
 
         if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-            return llvm_builder->CreateFCmpOGT(lhs, rhs);
+            return llvm_builder.CreateFCmpOGT(lhs, rhs);
 
         if (ltype->isPointerTy() && rtype->isPointerTy())
         {
-            return llvm_builder->CreateICmpUGT(
-                llvm_builder->CreatePtrToInt(lhs, llvm::Type::getInt64Ty(*llvm_context)),
-                llvm_builder->CreatePtrToInt(rhs, llvm::Type::getInt64Ty(*llvm_context))
+            return llvm_builder.CreateICmpUGT(
+                llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
             );
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
-            return llvm_builder->CreateFCmpOGT(
-                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+            return llvm_builder.CreateFCmpOGT(
+                llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
                 rhs
             );
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
-            return llvm_builder->CreateFCmpOGT(
+            return llvm_builder.CreateFCmpOGT(
                 lhs,
-                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
             );
         }
 
@@ -714,24 +716,24 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateAdd(lhs, rhs);
+            return llvm_builder.CreateAdd(lhs, rhs);
 
         if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-            return llvm_builder->CreateFAdd(lhs, rhs);
+            return llvm_builder.CreateFAdd(lhs, rhs);
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
-            return llvm_builder->CreateFAdd(
-                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+            return llvm_builder.CreateFAdd(
+                llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
                 rhs
             );
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
-            return llvm_builder->CreateFAdd(
+            return llvm_builder.CreateFAdd(
                 lhs,
-                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
             );
         }
 
@@ -745,24 +747,24 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateSub(lhs, rhs);
+            return llvm_builder.CreateSub(lhs, rhs);
 
         if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-            return llvm_builder->CreateFSub(lhs, rhs);
+            return llvm_builder.CreateFSub(lhs, rhs);
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
-            return llvm_builder->CreateFSub(
-                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+            return llvm_builder.CreateFSub(
+                llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
                 rhs
             );
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
-            return llvm_builder->CreateFSub(
+            return llvm_builder.CreateFSub(
                 lhs,
-                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
             );
         }
 
@@ -776,24 +778,24 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateMul(lhs, rhs);
+            return llvm_builder.CreateMul(lhs, rhs);
 
         if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-            return llvm_builder->CreateFMul(lhs, rhs);
+            return llvm_builder.CreateFMul(lhs, rhs);
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
-            return llvm_builder->CreateFMul(
-                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+            return llvm_builder.CreateFMul(
+                llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
                 rhs
             );
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
-            return llvm_builder->CreateFMul(
+            return llvm_builder.CreateFMul(
                 lhs,
-                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
             );
         }
 
@@ -807,24 +809,24 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateSDiv(lhs, rhs);
+            return llvm_builder.CreateSDiv(lhs, rhs);
 
         if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-            return llvm_builder->CreateFMul(lhs, rhs);
+            return llvm_builder.CreateFMul(lhs, rhs);
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
-            return llvm_builder->CreateFDiv(
-                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+            return llvm_builder.CreateFDiv(
+                llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
                 rhs
             );
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
-            return llvm_builder->CreateFDiv(
+            return llvm_builder.CreateFDiv(
                 lhs,
-                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
             );
         }
 
@@ -838,24 +840,24 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateSRem(lhs, rhs);
+            return llvm_builder.CreateSRem(lhs, rhs);
 
         if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-            return llvm_builder->CreateFRem(lhs, rhs);
+            return llvm_builder.CreateFRem(lhs, rhs);
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
-            return llvm_builder->CreateFRem(
-                llvm_builder->CreateSIToFP(lhs, llvm::Type::getDoubleTy(*llvm_context)),
+            return llvm_builder.CreateFRem(
+                llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
                 rhs
             );
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
-            return llvm_builder->CreateFRem(
+            return llvm_builder.CreateFRem(
                 lhs,
-                llvm_builder->CreateSIToFP(rhs, llvm::Type::getDoubleTy(*llvm_context))
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
             );
         }
 
@@ -869,7 +871,7 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateAnd(lhs, rhs);
+            return llvm_builder.CreateAnd(lhs, rhs);
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
@@ -881,7 +883,7 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateOr(lhs, rhs);
+            return llvm_builder.CreateOr(lhs, rhs);
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
@@ -893,7 +895,7 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateXor(lhs, rhs);
+            return llvm_builder.CreateXor(lhs, rhs);
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
@@ -905,7 +907,7 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (ltype->isIntegerTy() && rtype->isIntegerTy())
-            return llvm_builder->CreateShl(lhs, rhs);
+            return llvm_builder.CreateShl(lhs, rhs);
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
@@ -921,7 +923,7 @@ struct llvm_coder_t
             // 逻辑右移：在左边补 0
             // 算术右移：在左边补 符号位
             // 我们采用逻辑右移
-            return llvm_builder->CreateLShr(lhs, rhs);
+            return llvm_builder.CreateLShr(lhs, rhs);
         }
 
         printf("Type of LHS or RHS is invalid.");
@@ -939,7 +941,7 @@ struct llvm_coder_t
 
         if (rhs->getType()->isPointerTy())
         {
-            rhs = llvm_builder->CreateLoad(rhs);
+            rhs = llvm_builder.CreateLoad(rhs);
         }
 
         switch (node->op)
@@ -962,10 +964,10 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (rtype->isIntegerTy())
-            return llvm_builder->CreateNeg(rhs);
+            return llvm_builder.CreateNeg(rhs);
 
         if (rtype->isFloatingPointTy())
-            return llvm_builder->CreateFNeg(rhs);
+            return llvm_builder.CreateFNeg(rhs);
 
         printf("Type of RHS is invalid.");
         return nullptr;
@@ -976,7 +978,7 @@ struct llvm_coder_t
         auto rtype = rhs->getType();
 
         if (rtype->isIntegerTy() && rtype->getIntegerBitWidth() == 1)
-            return llvm_builder->CreateNot(rhs);
+            return llvm_builder.CreateNot(rhs);
 
         printf("Type of RHS is invalid.");
         return nullptr;
@@ -988,7 +990,7 @@ struct llvm_coder_t
 
         if (rtype->isIntegerTy())
         {
-            return llvm_builder->CreateXor(
+            return llvm_builder.CreateXor(
                 rhs,
                 llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF))
             );
@@ -1005,7 +1007,7 @@ struct llvm_coder_t
         u64_t vals = *((u64_t*)&(node->value));
         u32_t bits = vals > 0xFFFFFFFF ? 64 : 32;
 
-        return llvm::ConstantInt::get(*llvm_context, llvm::APInt(bits, node->value));
+        return llvm::ConstantInt::get(llvm_context, llvm::APInt(bits, node->value));
     }
 
     llvm::Value* encode_expr_float(struct ast_expr_float_t* node)
@@ -1013,21 +1015,21 @@ struct llvm_coder_t
         if (node == nullptr)
             return nullptr;
 
-        return llvm::ConstantFP::get(*llvm_context, llvm::APFloat(node->value));
+        return llvm::ConstantFP::get(llvm_context, llvm::APFloat(node->value));
     }
 
     llvm::Value* encode_expr_bool(struct ast_expr_bool_t* node)
     {
         if (node == nullptr)
             return nullptr;
-        return llvm::ConstantInt::getBool(*llvm_context, node->value);
+        return llvm::ConstantInt::getBool(llvm_context, node->value);
     }
 
     llvm::Value* encode_expr_string(struct ast_expr_string_t* node)
     {
         if (node == nullptr)
             return nullptr;
-        return llvm_builder->CreateGlobalString(llvm::StringRef(node->value.cstr()));
+        return llvm_builder.CreateGlobalString(llvm::StringRef(node->value.cstr()));
     }
 
     llvm::Value* encode_expr_symbol_ref(struct ast_expr_symbol_ref_t* node)
@@ -1061,7 +1063,7 @@ struct llvm_coder_t
         }
 
         llvm::FunctionType* procType = llvm::FunctionType::get(retType, argTypes, false);
-        llvm::Function* func = llvm::Function::Create(procType, llvm::Function::ExternalLinkage, "", *llvm_module);
+        llvm::Function* func = llvm::Function::Create(procType, llvm::Function::ExternalLinkage, "", llvm_module);
         u32_t index = 0;
         for (auto& arg : func->args())
         {
@@ -1070,18 +1072,18 @@ struct llvm_coder_t
         }
 
         auto oldFunc = this->func;
-        auto oldIB = llvm_builder->GetInsertBlock();
+        auto oldIB = llvm_builder.GetInsertBlock();
         this->func = func;
         this->pushScope();
         {
-            llvm::BasicBlock* entry = llvm::BasicBlock::Create(*llvm_context, "entry", func);
-            llvm_builder->SetInsertPoint(entry);
+            llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", func);
+            llvm_builder.SetInsertPoint(entry);
 
             for (auto& arg : func->args())
             {
                 const char* name = arg.getName().data();
-                llvm::Value* ptr = llvm_builder->CreateAlloca(arg.getType());
-                llvm_builder->CreateStore(&arg, ptr);
+                llvm::Value* ptr = llvm_builder.CreateAlloca(arg.getType());
+                llvm_builder.CreateStore(&arg, ptr);
                 auto pair = std::make_pair(String(name), ptr);
                 this->scope->symbols.insert(pair);
             }
@@ -1095,7 +1097,7 @@ struct llvm_coder_t
 
         this->popScope();
         this->func = oldFunc;
-        llvm_builder->SetInsertPoint(oldIB);
+        llvm_builder.SetInsertPoint(oldIB);
 
         return func;
     }
@@ -1120,12 +1122,12 @@ struct llvm_coder_t
                 return nullptr;
             if(param->getType()->isPointerTy())
             {
-                param = llvm_builder->CreateLoad(param);
+                param = llvm_builder.CreateLoad(param);
             }
             params.push_back(param);
         }
 
-        return llvm_builder->CreateCall(func, params);
+        return llvm_builder.CreateCall(func, params);
     }
 
     llvm::Value* encode_expr_array_def(struct ast_expr_array_def_t* node)
@@ -1156,7 +1158,7 @@ struct llvm_coder_t
         }
 
         if (arrayItems.empty() || itemType == nullptr)
-            itemType = llvm::Type::getInt32Ty(*llvm_context);
+            itemType = llvm::Type::getInt32Ty(llvm_context);
 
         printf("3 \n");
         auto arrayType = llvm::ArrayType::get(itemType, 0);
@@ -1181,7 +1183,7 @@ struct llvm_coder_t
 
         if (objType->isArrayTy() && keyType->isIntegerTy())
         {
-            llvm::Value* value = llvm_builder->CreateGEP(obj, key);
+            llvm::Value* value = llvm_builder.CreateGEP(obj, key);
             return value;
         }
 
@@ -1211,18 +1213,18 @@ struct llvm_coder_t
         }
 
         llvm::Value* malloccall = llvm::CallInst::CreateMalloc(
-            llvm_builder->GetInsertBlock(),
-            llvm::Type::getInt64Ty(*llvm_context),
+            llvm_builder.GetInsertBlock(),
+            llvm::Type::getInt64Ty(llvm_context),
             structType,
             llvm::ConstantExpr::getSizeOf(structType),
             nullptr, nullptr, ""
         );
-        llvm::Value* objectValue = llvm_builder->Insert(malloccall);
+        llvm::Value* objectValue = llvm_builder.Insert(malloccall);
 
         llvm::Value* metaSymbol = this->scope->getSymbol(String::format("struct.%s.meta", structDef->name.cstr()), true);
-        llvm::Value* metaValue = llvm_builder->CreateLoad(metaSymbol);
-        llvm::Value* metaPtr = llvm_builder->CreateStructGEP(structType, objectValue, 0, "meta");
-        llvm_builder->CreateStore(metaValue, metaPtr);
+        llvm::Value* metaValue = llvm_builder.CreateLoad(metaSymbol);
+        llvm::Value* metaPtr = llvm_builder.CreateStructGEP(structType, objectValue, 0, "meta");
+        llvm_builder.CreateStore(metaValue, metaPtr);
 
         u32_t index = 0;
         for (auto& mem : structDef->members)
@@ -1236,11 +1238,11 @@ struct llvm_coder_t
             }
             else
             {
-                memValue = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*llvm_context), llvm::APInt(8, 0));
+                memValue = llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvm_context), llvm::APInt(8, 0));
             }
 
-            llvm::Value* memPtr = llvm_builder->CreateStructGEP(structType, objectValue, index, mem.first.cstr());
-            llvm_builder->CreateStore(memValue, memPtr);
+            llvm::Value* memPtr = llvm_builder.CreateStructGEP(structType, objectValue, index, mem.first.cstr());
+            llvm_builder.CreateStore(memValue, memPtr);
         }
 
         return objectValue;
@@ -1252,14 +1254,14 @@ struct llvm_coder_t
             return nullptr;
 
         auto obj = this->encode_expr(node->obj);
-        auto key = llvm::ConstantDataArray::getString(*llvm_context, node->key.cstr());
+        auto key = llvm::ConstantDataArray::getString(llvm_context, node->key.cstr());
         if (obj == nullptr || key == nullptr)
             return nullptr;
 
         auto objType = obj->getType();
         while (objType->isPointerTy())
         {
-            obj = llvm_builder->CreateLoad(obj);
+            obj = llvm_builder.CreateLoad(obj);
             objType = obj->getType();
         }
 
@@ -1282,7 +1284,7 @@ struct llvm_coder_t
         if (index < 0)
             return nullptr;
 
-        llvm::Value* value = llvm_builder->CreateStructGEP(obj->getType(), obj, index);
+        llvm::Value* value = llvm_builder.CreateStructGEP(obj->getType(), obj, index);
 
         return value;
     }
@@ -1336,9 +1338,9 @@ struct llvm_coder_t
 
         std::vector<llvm::Constant*> memberNames;
         std::vector<llvm::Type*> memberTypes;
-        auto tokenNameType = llvm::ArrayType::get(llvm::Type::getInt8Ty(*llvm_context), 256);
+        auto tokenNameType = llvm::ArrayType::get(llvm::Type::getInt8Ty(llvm_context), 256);
         auto metaType = llvm::ArrayType::get(tokenNameType, node->members.size() + 1);
-        memberNames.push_back(llvm::ConstantDataArray::getString(*llvm_context, "$_meta"));
+        memberNames.push_back(llvm::ConstantDataArray::getString(llvm_context, "$_meta"));
         memberTypes.push_back(metaType);
         for (auto node : node->members)
         {
@@ -1347,16 +1349,16 @@ struct llvm_coder_t
             const auto& memType = this->encode_type(mem->type);
             if (memType == nullptr)
                 return false;
-            memberNames.push_back(llvm::ConstantDataArray::getString(*llvm_context, memName));
+            memberNames.push_back(llvm::ConstantDataArray::getString(llvm_context, memName));
             memberTypes.push_back(memType);
         }
 
-        auto structType = llvm::StructType::get(*llvm_context);
+        auto structType = llvm::StructType::get(llvm_context);
         structType->setBody(memberTypes);
 
         auto metaData = llvm::ConstantArray::get(metaType, memberNames);
-        auto metaSymbol = llvm_builder->CreateAlloca(metaType);
-        llvm_builder->CreateStore(metaData, metaSymbol);
+        auto metaSymbol = llvm_builder.CreateAlloca(metaType);
+        llvm_builder.CreateStore(metaData, metaSymbol);
         this->scope->symbols.insert(std::make_pair(String::format("schema.%s.meta", name.cstr()), metaSymbol));
         this->scope->types.insert(std::make_pair(name, structType));
 
@@ -1372,9 +1374,9 @@ struct llvm_coder_t
 
         std::vector<llvm::Constant*> memberNames;
         std::vector<llvm::Type*> memberTypes;
-        auto tokenNameType = llvm::ArrayType::get(llvm::Type::getInt8Ty(*llvm_context), 256);
+        auto tokenNameType = llvm::ArrayType::get(llvm::Type::getInt8Ty(llvm_context), 256);
         auto metaType = llvm::ArrayType::get(tokenNameType, node->members.size() + 1);
-        memberNames.push_back(llvm::ConstantDataArray::getString(*llvm_context, "$_meta"));
+        memberNames.push_back(llvm::ConstantDataArray::getString(llvm_context, "$_meta"));
         memberTypes.push_back(metaType);
         for (auto node : node->members)
         {
@@ -1383,19 +1385,19 @@ struct llvm_coder_t
             const auto& memType = this->encode_type(mem->type);
             if (memType == nullptr)
                 return false;
-            memberNames.push_back(llvm::ConstantDataArray::getString(*llvm_context, memName));
+            memberNames.push_back(llvm::ConstantDataArray::getString(llvm_context, memName));
             memberTypes.push_back(memType);
         }
 
         String structName = String::format("struct.%s", name.cstr());
-        auto structType = llvm::StructType::create(*llvm_context, structName.cstr());
+        auto structType = llvm::StructType::create(llvm_context, structName.cstr());
         structType->setBody(memberTypes);
         structType->setName(structName.cstr());
 
         String metaName = String::format("struct.%s.meta", name.cstr());
         auto metaData = llvm::ConstantArray::get(metaType, memberNames);
-        auto metaSymbol = llvm_builder->CreateAlloca(metaType, nullptr, metaName.cstr());
-        llvm_builder->CreateStore(metaData, metaSymbol);
+        auto metaSymbol = llvm_builder.CreateAlloca(metaType, nullptr, metaName.cstr());
+        llvm_builder.CreateStore(metaData, metaSymbol);
         this->scope->symbols.insert(std::make_pair(metaName, metaSymbol));
         this->scope->types.insert(std::make_pair(name, structType));
 
@@ -1459,8 +1461,8 @@ struct llvm_coder_t
         // TODO: 校验类型合法性, 值类型是否遵循标记类型
         // 不同的类型，需要调用不同的store命令
 
-        auto symbol = llvm_builder->CreateAlloca(type);
-        llvm_builder->CreateStore(value, symbol);
+        auto symbol = llvm_builder.CreateAlloca(type);
+        llvm_builder.CreateStore(value, symbol);
         scope->symbols.insert(std::make_pair(node->name, symbol));
 
         return true;
@@ -1474,7 +1476,7 @@ struct llvm_coder_t
         if (this->breakPoint == nullptr)
             return false;
 
-        llvm_builder->CreateBr(this->breakPoint);
+        llvm_builder.CreateBr(this->breakPoint);
 
         return true;
     }
@@ -1487,7 +1489,7 @@ struct llvm_coder_t
         if (this->continuePoint == nullptr)
             return false;
 
-        llvm_builder->CreateBr(this->continuePoint);
+        llvm_builder.CreateBr(this->continuePoint);
 
         return true;
     }
@@ -1499,7 +1501,7 @@ struct llvm_coder_t
 
         if (node->value == nullptr)
         {
-            llvm_builder->CreateRetVoid();
+            llvm_builder.CreateRetVoid();
             return true;
         }
 
@@ -1510,7 +1512,7 @@ struct llvm_coder_t
             return false;
         }
 
-        llvm_builder->CreateRet(value);
+        llvm_builder.CreateRet(value);
 
         return true;
     }
@@ -1520,31 +1522,31 @@ struct llvm_coder_t
         if (node == nullptr)
             return false;
 
-        llvm::BasicBlock* if_begin = llvm::BasicBlock::Create(*llvm_context, "if.begin", this->func);
-        llvm::BasicBlock* if_true = llvm::BasicBlock::Create(*llvm_context, "if.true", this->func);
-        llvm::BasicBlock* if_false = llvm::BasicBlock::Create(*llvm_context, "if.false", this->func);
-        llvm::BasicBlock* if_end = llvm::BasicBlock::Create(*llvm_context, "if.end", this->func);
+        llvm::BasicBlock* if_begin = llvm::BasicBlock::Create(llvm_context, "if.begin", this->func);
+        llvm::BasicBlock* if_true = llvm::BasicBlock::Create(llvm_context, "if.true", this->func);
+        llvm::BasicBlock* if_false = llvm::BasicBlock::Create(llvm_context, "if.false", this->func);
+        llvm::BasicBlock* if_end = llvm::BasicBlock::Create(llvm_context, "if.end", this->func);
 
-        llvm_builder->SetInsertPoint(if_begin);
+        llvm_builder.SetInsertPoint(if_begin);
         llvm::Value* cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return false;
-        llvm_builder->CreateCondBr(cond, if_true, if_false);
+        llvm_builder.CreateCondBr(cond, if_true, if_false);
 
-        llvm_builder->SetInsertPoint(if_true);
+        llvm_builder.SetInsertPoint(if_true);
         if (!this->encode_stmt(node->branch_true))
             return false;
-        llvm_builder->CreateBr(if_end);
+        llvm_builder.CreateBr(if_end);
 
         if (node->branch_false != nullptr)
         {
-            llvm_builder->SetInsertPoint(if_false);
+            llvm_builder.SetInsertPoint(if_false);
             if (!this->encode_stmt(node->branch_false))
                 return false;
-            llvm_builder->CreateBr(if_end);
+            llvm_builder.CreateBr(if_end);
         }
 
-        llvm_builder->SetInsertPoint(if_end);
+        llvm_builder.SetInsertPoint(if_end);
 
         return true;
     }
@@ -1556,9 +1558,9 @@ struct llvm_coder_t
 
         this->pushScope();
 
-        llvm::BasicBlock* while_begin = llvm::BasicBlock::Create(*llvm_context, "while.begin", this->func);
-        llvm::BasicBlock* while_body = llvm::BasicBlock::Create(*llvm_context, "while.body", this->func);
-        llvm::BasicBlock* while_end = llvm::BasicBlock::Create(*llvm_context, "while.end", this->func);
+        llvm::BasicBlock* while_begin = llvm::BasicBlock::Create(llvm_context, "while.begin", this->func);
+        llvm::BasicBlock* while_body = llvm::BasicBlock::Create(llvm_context, "while.body", this->func);
+        llvm::BasicBlock* while_end = llvm::BasicBlock::Create(llvm_context, "while.end", this->func);
 
         auto oldContinuePoint = this->continuePoint;
         auto oldBreakPoint = this->breakPoint;
@@ -1566,18 +1568,18 @@ struct llvm_coder_t
         this->continuePoint = while_begin;
         this->breakPoint = while_end;
 
-        llvm_builder->SetInsertPoint(while_begin);
+        llvm_builder.SetInsertPoint(while_begin);
         llvm::Value* cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return false;
-        llvm_builder->CreateCondBr(cond, while_body, while_end);
+        llvm_builder.CreateCondBr(cond, while_body, while_end);
 
-        llvm_builder->SetInsertPoint(while_body);
+        llvm_builder.SetInsertPoint(while_body);
         if (!this->encode_stmt(node->body))
             return false;
-        llvm_builder->CreateBr(while_begin);
+        llvm_builder.CreateBr(while_begin);
 
-        llvm_builder->SetInsertPoint(while_end);
+        llvm_builder.SetInsertPoint(while_end);
 
         this->continuePoint = oldContinuePoint;
         this->breakPoint = oldBreakPoint;
@@ -1594,39 +1596,39 @@ struct llvm_coder_t
 
         this->pushScope();
 
-        llvm::BasicBlock* for_init = llvm::BasicBlock::Create(*llvm_context, "for.init", this->func);
-        llvm::BasicBlock* for_test = llvm::BasicBlock::Create(*llvm_context, "for.test", this->func);
-        llvm::BasicBlock* for_step = llvm::BasicBlock::Create(*llvm_context, "for.step", this->func);
-        llvm::BasicBlock* for_body = llvm::BasicBlock::Create(*llvm_context, "for.body", this->func);
-        llvm::BasicBlock* for_end = llvm::BasicBlock::Create(*llvm_context, "for.end", this->func);
+        llvm::BasicBlock* for_init = llvm::BasicBlock::Create(llvm_context, "for.init", this->func);
+        llvm::BasicBlock* for_test = llvm::BasicBlock::Create(llvm_context, "for.test", this->func);
+        llvm::BasicBlock* for_step = llvm::BasicBlock::Create(llvm_context, "for.step", this->func);
+        llvm::BasicBlock* for_body = llvm::BasicBlock::Create(llvm_context, "for.body", this->func);
+        llvm::BasicBlock* for_end = llvm::BasicBlock::Create(llvm_context, "for.end", this->func);
 
         auto oldContinuePoint = this->continuePoint;
         auto oldBreakPoint = this->breakPoint;
         this->continuePoint = for_step;
         this->breakPoint = for_end;
 
-        llvm_builder->SetInsertPoint(for_init);
+        llvm_builder.SetInsertPoint(for_init);
         if (!this->encode_stmt(node->init))
             return false;
-        llvm_builder->CreateBr(for_test);
+        llvm_builder.CreateBr(for_test);
 
-        llvm_builder->SetInsertPoint(for_test);
+        llvm_builder.SetInsertPoint(for_test);
         llvm::Value* cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return false;
-        llvm_builder->CreateCondBr(cond, for_body, for_end);
+        llvm_builder.CreateCondBr(cond, for_body, for_end);
 
-        llvm_builder->SetInsertPoint(for_body);
+        llvm_builder.SetInsertPoint(for_body);
         if (!this->encode_stmt(node->body))
             return false;
-        llvm_builder->CreateBr(for_step);
+        llvm_builder.CreateBr(for_step);
 
-        llvm_builder->SetInsertPoint(for_step);
+        llvm_builder.SetInsertPoint(for_step);
         if (!this->encode_stmt(node->step))
             return false;
-        llvm_builder->CreateBr(for_test);
+        llvm_builder.CreateBr(for_test);
 
-        llvm_builder->SetInsertPoint(for_end);
+        llvm_builder.SetInsertPoint(for_end);
 
         this->continuePoint = oldContinuePoint;
         this->breakPoint = oldBreakPoint;
@@ -1662,7 +1664,7 @@ struct llvm_coder_t
         llvm::Value* left = this->encode_expr(node->left);
         llvm::Value* right = this->encode_expr(node->right);
 
-        llvm_builder->CreateStore(right, left);
+        llvm_builder.CreateStore(right, left);
 
         return true;
     }
@@ -1679,11 +1681,11 @@ struct llvm_coder_t
     }
 };
 
-std::unique_ptr<llvm::Module> llvm_encode(ast_module_t* module)
+llvm::Module* llvm_encode(llvm::LLVMContext& context, ast_module_t* module)
 {
-    llvm_coder_t coder;
-    coder.encode(module);
-    return std::move(coder.llvm_module);
+    llvm_coder_t coder(context);
+    llvm::Module* llvm_module = coder.encode(module);
+    return llvm_module;
 }
 
 _EndNamespace(eokas)

@@ -5,6 +5,7 @@
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Mangler.h>
 #include <llvm/IR/LegacyPassManager.h>
 
 #include <llvm/Support/FileSystem.h>
@@ -23,22 +24,26 @@ _BeginNamespace(eokas)
 
 bool llvm_jit(ast_module_t* m)
 {
-    std::unique_ptr<llvm::Module> module = llvm_encode(m);
+    llvm::LLVMContext context;
+
+    llvm::Module* module = llvm_encode(context, m);
     if (module == nullptr)
         return false;
-    llvm::Function* func = module->getFunction("main");
-    if(func == nullptr)
-        return false;
-
+    
     module->print(llvm::errs(), nullptr);
 
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
     llvm::InitializeNativeTargetAsmParser();
 
-    auto ee = llvm::EngineBuilder(std::move(module))
+    auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(module))
         .setEngineKind(llvm::EngineKind::JIT).create();
+
     ee->finalizeObject();
+
+    llvm::Function* func = module->getFunction("main");
+    if (func == nullptr)
+        return false;
 
     printf("---------------- JIT RUN ----------------\n");
     std::vector<llvm::GenericValue> args;
@@ -51,7 +56,9 @@ bool llvm_jit(ast_module_t* m)
 
 bool llvm_aot(ast_module_t* m)
 {
-    std::unique_ptr<llvm::Module> module = llvm_encode(m);
+    llvm::LLVMContext context;
+
+    llvm::Module* module = llvm_encode(context, m);
     if (module == nullptr)
         return false;
 
