@@ -23,22 +23,19 @@
 
 _BeginNamespace(eokas)
 
-struct llvm_scope_t
+    struct llvm_scope_t
 {
-    llvm_scope_t* parent;
-    std::vector<llvm_scope_t*> children;
+    llvm_scope_t *parent;
+    std::vector<llvm_scope_t *> children;
 
-    std::map<String, llvm::Value*> symbols;
-    std::map<String, llvm::Type*> types;
-    std::map<String, ast_type_generic_t*> generics;
+    std::map<String, llvm::Value *> symbols;
+    std::map<String, llvm::Type *> types;
+    std::map<String, ast_type_generic_t *> generics;
 
-    llvm_scope_t(llvm_scope_t* parent)
-        : parent(parent)
-        , children()
-        , symbols()
-        , types()
-        , generics()
-    {}
+    llvm_scope_t(llvm_scope_t *parent)
+        : parent(parent), children(), symbols(), types(), generics()
+    {
+    }
 
     virtual ~llvm_scope_t()
     {
@@ -48,14 +45,14 @@ struct llvm_scope_t
         this->symbols.clear();
     }
 
-    llvm_scope_t* addChild()
+    llvm_scope_t *addChild()
     {
-        llvm_scope_t* child = new llvm_scope_t(this);
+        llvm_scope_t *child = new llvm_scope_t(this);
         this->children.push_back(child);
         return child;
     }
 
-    llvm::Value* getSymbol(const String& name, bool lookUp)
+    llvm::Value *getSymbol(const String &name, bool lookUp)
     {
         if (lookUp)
         {
@@ -76,7 +73,7 @@ struct llvm_scope_t
         }
     }
 
-    llvm::Type* getType(const String& name, bool lookUp)
+    llvm::Type *getType(const String &name, bool lookUp)
     {
         if (lookUp)
         {
@@ -97,7 +94,7 @@ struct llvm_scope_t
         }
     }
 
-    ast_type_generic_t* getGeneric(const String& name, bool lookUp)
+    ast_type_generic_t *getGeneric(const String &name, bool lookUp)
     {
         if (lookUp)
         {
@@ -121,36 +118,35 @@ struct llvm_scope_t
 
 struct llvm_coder_t
 {
-    llvm::LLVMContext& llvm_context;
+    llvm::LLVMContext &llvm_context;
     llvm::IRBuilder<> llvm_builder;
-    llvm::Module* llvm_module;
-    llvm_scope_t* root;
-    llvm_scope_t* scope;
-    llvm::Function* func;
-    llvm::BasicBlock* continuePoint;
-    llvm::BasicBlock* breakPoint;
+    llvm::Module *llvm_module;
+    llvm_scope_t *root;
+    llvm_scope_t *scope;
+    llvm::Function *func;
+    llvm::BasicBlock *continuePoint;
+    llvm::BasicBlock *breakPoint;
 
-    std::map<llvm::Type*, ast_stmt_struct_def_t*> structs;
+    std::map<llvm::Type *, ast_stmt_struct_def_t *> structs;
 
-    llvm::Type* type_void;
-    llvm::Type* type_i8;
-    llvm::Type* type_i16;
-    llvm::Type* type_i32;
-    llvm::Type* type_i64;
-    llvm::Type* type_u8;
-    llvm::Type* type_u16;
-    llvm::Type* type_u32;
-    llvm::Type* type_u64;
-    llvm::Type* type_f32;
-    llvm::Type* type_f64;
-    llvm::Type* type_bool;
-    llvm::Type* type_string;
+    llvm::Type *type_void;
+    llvm::Type *type_i8;
+    llvm::Type *type_i16;
+    llvm::Type *type_i32;
+    llvm::Type *type_i64;
+    llvm::Type *type_u8;
+    llvm::Type *type_u16;
+    llvm::Type *type_u32;
+    llvm::Type *type_u64;
+    llvm::Type *type_f32;
+    llvm::Type *type_f64;
+    llvm::Type *type_bool;
+    llvm::Type *type_string;
 
-    llvm::Value* const_zero;
+    llvm::Value *const_zero;
 
-    llvm_coder_t(llvm::LLVMContext& llvm_context)
-        : llvm_context(llvm_context)
-        , llvm_builder(llvm_context)
+    llvm_coder_t(llvm::LLVMContext &llvm_context)
+        : llvm_context(llvm_context), llvm_builder(llvm_context)
     {
         this->root = new llvm_scope_t(nullptr);
         this->scope = this->root;
@@ -190,7 +186,7 @@ struct llvm_coder_t
         this->scope = this->scope->parent;
     }
 
-    llvm::Module* encode(struct ast_module_t* m)
+    llvm::Module *encode(struct ast_module_t *m)
     {
         this->llvm_module = new llvm::Module("eokas", llvm_context);
         if (!this->encode_module(m))
@@ -201,9 +197,9 @@ struct llvm_coder_t
         return this->llvm_module;
     }
 
-    llvm::Function* libs_printf()
+    llvm::Function *libs_printf()
     {
-        std::vector<llvm::Type*> type_args;
+        std::vector<llvm::Type *> type_args;
         type_args.push_back(type_string);
 
         auto funcType = llvm::FunctionType::get(type_i32, type_args, true);
@@ -213,7 +209,7 @@ struct llvm_coder_t
         return funcValue;
     }
 
-    bool encode_module(struct ast_module_t* node)
+    bool encode_module(struct ast_module_t *node)
     {
         if (node == nullptr)
             return false;
@@ -236,13 +232,13 @@ struct llvm_coder_t
 
         this->scope->symbols["printf"] = libs_printf();
 
-        llvm::FunctionType* funcType = llvm::FunctionType::get(type_i32, false);
+        llvm::FunctionType *funcType = llvm::FunctionType::get(type_i32, false);
         this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", llvm_module);
 
-        llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", this->func);
+        llvm::BasicBlock *entry = llvm::BasicBlock::Create(llvm_context, "entry", this->func);
         llvm_builder.SetInsertPoint(entry);
 
-        for (auto& stmt : node->stmts)
+        for (auto &stmt : node->stmts)
         {
             if (!this->encode_stmt(stmt))
                 return false;
@@ -251,11 +247,11 @@ struct llvm_coder_t
         llvm_builder.CreateRet(const_zero);
 
         this->popScope();
-        
+
         return true;
     }
 
-    llvm::Type* encode_type(struct ast_type_t* node)
+    llvm::Type *encode_type(struct ast_type_t *node)
     {
         if (node == nullptr)
             return nullptr;
@@ -263,9 +259,9 @@ struct llvm_coder_t
         switch (node->category)
         {
         case ast_node_category_t::type_ref:
-            return this->encode_type_ref(dynamic_cast<ast_type_ref_t*>(node));
+            return this->encode_type_ref(dynamic_cast<ast_type_ref_t *>(node));
         case ast_node_category_t::type_array:
-            return this->encode_type_array(dynamic_cast<ast_type_array_t*>(node));
+            return this->encode_type_array(dynamic_cast<ast_type_array_t *>(node));
         default:
             return nullptr;
         }
@@ -273,7 +269,7 @@ struct llvm_coder_t
         return nullptr;
     }
 
-    llvm::Type* encode_type_ref(struct ast_type_ref_t* node)
+    llvm::Type *encode_type_ref(struct ast_type_ref_t *node)
     {
         if (node == nullptr)
         {
@@ -281,12 +277,12 @@ struct llvm_coder_t
             return nullptr;
         }
 
-        const String& name = node->name;
-        llvm::Type* type = this->scope->getType(name, true);
+        const String &name = node->name;
+        llvm::Type *type = this->scope->getType(name, true);
         return type;
     }
 
-    llvm::Type* encode_type_array(struct ast_type_array_t* node)
+    llvm::Type *encode_type_array(struct ast_type_array_t *node)
     {
         if (node == nullptr)
         {
@@ -294,16 +290,16 @@ struct llvm_coder_t
             return nullptr;
         }
 
-        llvm::Type* elementType = this->encode_type(node->elementType);
+        llvm::Type *elementType = this->encode_type(node->elementType);
         if (elementType == nullptr)
             return nullptr;
 
-        llvm::Type* type = llvm::ArrayType::get(elementType, node->length);
+        llvm::Type *type = llvm::ArrayType::get(elementType, node->length);
 
         return type;
     }
 
-    llvm::Value* encode_expr(struct ast_expr_t* node)
+    llvm::Value *encode_expr(struct ast_expr_t *node)
     {
         if (node == nullptr)
             return nullptr;
@@ -311,67 +307,67 @@ struct llvm_coder_t
         switch (node->category)
         {
         case ast_node_category_t::expr_trinary:
-            return this->encode_expr_trinary(dynamic_cast<ast_expr_trinary_t*>(node));
+            return this->encode_expr_trinary(dynamic_cast<ast_expr_trinary_t *>(node));
         case ast_node_category_t::expr_binary:
-            return this->encode_expr_binary(dynamic_cast<ast_expr_binary_t*>(node));
+            return this->encode_expr_binary(dynamic_cast<ast_expr_binary_t *>(node));
         case ast_node_category_t::expr_unary:
-            return this->encode_expr_unary(dynamic_cast<ast_expr_unary_t*>(node));
+            return this->encode_expr_unary(dynamic_cast<ast_expr_unary_t *>(node));
         case ast_node_category_t::expr_int:
-            return this->encode_expr_int(dynamic_cast<ast_expr_int_t*>(node));
+            return this->encode_expr_int(dynamic_cast<ast_expr_int_t *>(node));
         case ast_node_category_t::expr_float:
-            return this->encode_expr_float(dynamic_cast<ast_expr_float_t*>(node));
+            return this->encode_expr_float(dynamic_cast<ast_expr_float_t *>(node));
         case ast_node_category_t::expr_bool:
-            return this->encode_expr_bool(dynamic_cast<ast_expr_bool_t*>(node));
+            return this->encode_expr_bool(dynamic_cast<ast_expr_bool_t *>(node));
         case ast_node_category_t::expr_string:
-            return this->encode_expr_string(dynamic_cast<ast_expr_string_t*>(node));
+            return this->encode_expr_string(dynamic_cast<ast_expr_string_t *>(node));
         case ast_node_category_t::expr_symbol_ref:
-            return this->encode_expr_symbol_ref(dynamic_cast<ast_expr_symbol_ref_t*>(node));
+            return this->encode_expr_symbol_ref(dynamic_cast<ast_expr_symbol_ref_t *>(node));
         case ast_node_category_t::expr_func_def:
-            return this->encode_expr_func_def(dynamic_cast<ast_expr_func_def_t*>(node));
+            return this->encode_expr_func_def(dynamic_cast<ast_expr_func_def_t *>(node));
         case ast_node_category_t::expr_func_ref:
-            return this->encode_expr_func_ref(dynamic_cast<ast_expr_func_ref_t*>(node));
+            return this->encode_expr_func_ref(dynamic_cast<ast_expr_func_ref_t *>(node));
         case ast_node_category_t::expr_array_def:
-            return this->encode_expr_array_def(dynamic_cast<ast_expr_array_def_t*>(node));
+            return this->encode_expr_array_def(dynamic_cast<ast_expr_array_def_t *>(node));
         case ast_node_category_t::expr_index_ref:
-            return this->encode_expr_index_ref(dynamic_cast<ast_expr_index_ref_t*>(node));
+            return this->encode_expr_index_ref(dynamic_cast<ast_expr_index_ref_t *>(node));
         case ast_node_category_t::expr_object_def:
-            return this->encode_expr_object_def(dynamic_cast<ast_expr_object_def_t*>(node));
+            return this->encode_expr_object_def(dynamic_cast<ast_expr_object_def_t *>(node));
         case ast_node_category_t::expr_object_ref:
-            return this->encode_expr_object_ref(dynamic_cast<ast_expr_object_ref_t*>(node));
+            return this->encode_expr_object_ref(dynamic_cast<ast_expr_object_ref_t *>(node));
         default:
             return nullptr;
         }
         return nullptr;
     }
 
-    llvm::Value* encode_expr_trinary(struct ast_expr_trinary_t* node)
+    llvm::Value *encode_expr_trinary(struct ast_expr_trinary_t *node)
     {
         if (node == nullptr)
             return nullptr;
 
-        llvm::BasicBlock* trinary_begin = llvm::BasicBlock::Create(llvm_context, "trinary.begin", this->func);
-        llvm::BasicBlock* trinary_true = llvm::BasicBlock::Create(llvm_context, "trinary.true", this->func);
-        llvm::BasicBlock* trinary_false = llvm::BasicBlock::Create(llvm_context, "trinary.false", this->func);
-        llvm::BasicBlock* trinary_end = llvm::BasicBlock::Create(llvm_context, "trinary.end", this->func);
+        llvm::BasicBlock *trinary_begin = llvm::BasicBlock::Create(llvm_context, "trinary.begin", this->func);
+        llvm::BasicBlock *trinary_true = llvm::BasicBlock::Create(llvm_context, "trinary.true", this->func);
+        llvm::BasicBlock *trinary_false = llvm::BasicBlock::Create(llvm_context, "trinary.false", this->func);
+        llvm::BasicBlock *trinary_end = llvm::BasicBlock::Create(llvm_context, "trinary.end", this->func);
 
         llvm_builder.SetInsertPoint(trinary_begin);
 
         // TODO: define a temp var
 
-        llvm::Value* cond = this->encode_expr(node->cond);
+        llvm::Value *cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return nullptr;
         llvm_builder.CreateCondBr(cond, trinary_true, trinary_false);
 
         llvm_builder.SetInsertPoint(trinary_true);
-        llvm::Value* trueV = this->encode_expr(node->branch_true);
+        llvm::Value *trueV = this->encode_expr(node->branch_true);
         if (trueV == nullptr)
             return nullptr;
         // TODO: set temp var
         llvm_builder.CreateBr(trinary_end);
 
         llvm_builder.SetInsertPoint(trinary_false);
-        llvm::Value* falseV = this->encode_expr(node->branch_false);
+        llvm::Value *falseV = this->encode_expr(node->branch_false);
         if (falseV == nullptr)
             return nullptr;
         // TODO: set temp var
@@ -384,7 +380,7 @@ struct llvm_coder_t
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary(struct ast_expr_binary_t* node)
+    llvm::Value *encode_expr_binary(struct ast_expr_binary_t *node)
     {
         if (node == nullptr)
             return nullptr;
@@ -445,7 +441,7 @@ struct llvm_coder_t
         }
     }
 
-    llvm::Value* encode_expr_binary_or(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_or(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -459,7 +455,7 @@ struct llvm_coder_t
         return llvm_builder.CreateOr(lhs, rhs);
     }
 
-    llvm::Value* encode_expr_binary_and(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_and(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -473,7 +469,7 @@ struct llvm_coder_t
         return llvm_builder.CreateAnd(lhs, rhs);
     }
 
-    llvm::Value* encode_expr_binary_eq(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_eq(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -486,34 +482,30 @@ struct llvm_coder_t
 
         if (ltype->isPointerTy() && rtype->isPointerTy())
         {
-            return llvm_builder.CreateICmpEQ
-            (
+            return llvm_builder.CreateICmpEQ(
                 llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
-            );
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)));
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
             return llvm_builder.CreateFCmpOEQ(
                 llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-                rhs
-            );
+                rhs);
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder.CreateFCmpOEQ(
                 lhs,
-                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
-            );
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)));
         }
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_ne(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_ne(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -526,34 +518,30 @@ struct llvm_coder_t
 
         if (ltype->isPointerTy() && rtype->isPointerTy())
         {
-            return llvm_builder.CreateICmpNE
-            (
+            return llvm_builder.CreateICmpNE(
                 llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
-            );
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)));
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
             return llvm_builder.CreateFCmpONE(
                 llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-                rhs
-            );
+                rhs);
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder.CreateFCmpONE(
                 lhs,
-                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
-            );
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)));
         }
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_le(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_le(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -566,34 +554,30 @@ struct llvm_coder_t
 
         if (ltype->isPointerTy() && rtype->isPointerTy())
         {
-            return llvm_builder.CreateICmpULE
-            (
+            return llvm_builder.CreateICmpULE(
                 llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
-            );
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)));
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
             return llvm_builder.CreateFCmpOLE(
                 llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-                rhs
-            );
+                rhs);
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder.CreateFCmpOLE(
                 lhs,
-                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
-            );
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)));
         }
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_ge(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_ge(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -608,31 +592,28 @@ struct llvm_coder_t
         {
             return llvm_builder.CreateICmpUGE(
                 llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
-            );
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)));
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
             return llvm_builder.CreateFCmpOGE(
                 llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-                rhs
-            );
+                rhs);
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder.CreateFCmpOGE(
                 lhs,
-                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
-            );
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)));
         }
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_lt(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_lt(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -647,31 +628,28 @@ struct llvm_coder_t
         {
             return llvm_builder.CreateICmpULT(
                 llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
-            );
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)));
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
             return llvm_builder.CreateFCmpOLT(
                 llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-                rhs
-            );
+                rhs);
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder.CreateFCmpOLT(
                 lhs,
-                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
-            );
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)));
         }
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_gt(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_gt(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -686,31 +664,28 @@ struct llvm_coder_t
         {
             return llvm_builder.CreateICmpUGT(
                 llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))
-            );
+                llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)));
         }
 
         if (ltype->isIntegerTy() && rtype->isFloatingPointTy())
         {
             return llvm_builder.CreateFCmpOGT(
                 llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-                rhs
-            );
+                rhs);
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder.CreateFCmpOGT(
                 lhs,
-                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
-            );
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)));
         }
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_add(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_add(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -725,23 +700,21 @@ struct llvm_coder_t
         {
             return llvm_builder.CreateFAdd(
                 llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-                rhs
-            );
+                rhs);
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder.CreateFAdd(
                 lhs,
-                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
-            );
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)));
         }
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_sub(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_sub(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -756,23 +729,21 @@ struct llvm_coder_t
         {
             return llvm_builder.CreateFSub(
                 llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-                rhs
-            );
+                rhs);
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder.CreateFSub(
                 lhs,
-                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
-            );
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)));
         }
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_mul(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_mul(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -787,23 +758,21 @@ struct llvm_coder_t
         {
             return llvm_builder.CreateFMul(
                 llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-                rhs
-            );
+                rhs);
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder.CreateFMul(
                 lhs,
-                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
-            );
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)));
         }
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_div(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_div(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -818,23 +787,21 @@ struct llvm_coder_t
         {
             return llvm_builder.CreateFDiv(
                 llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-                rhs
-            );
+                rhs);
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder.CreateFDiv(
                 lhs,
-                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
-            );
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)));
         }
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_mod(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_mod(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -849,23 +816,21 @@ struct llvm_coder_t
         {
             return llvm_builder.CreateFRem(
                 llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-                rhs
-            );
+                rhs);
         }
 
         if (ltype->isFloatingPointTy() && rtype->isIntegerTy())
         {
             return llvm_builder.CreateFRem(
                 lhs,
-                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))
-            );
+                llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)));
         }
 
         printf("Type of LHS or RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_bitand(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_bitand(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -877,7 +842,7 @@ struct llvm_coder_t
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_bitor(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_bitor(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -889,7 +854,7 @@ struct llvm_coder_t
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_bitxor(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_bitxor(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -901,7 +866,7 @@ struct llvm_coder_t
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_bitshl(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_bitshl(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -913,7 +878,7 @@ struct llvm_coder_t
         return nullptr;
     }
 
-    llvm::Value* encode_expr_binary_bitshr(llvm::Value* lhs, llvm::Value* rhs)
+    llvm::Value *encode_expr_binary_bitshr(llvm::Value *lhs, llvm::Value *rhs)
     {
         auto ltype = lhs->getType();
         auto rtype = rhs->getType();
@@ -930,7 +895,7 @@ struct llvm_coder_t
         return nullptr;
     }
 
-    llvm::Value* encode_expr_unary(struct ast_expr_unary_t* node)
+    llvm::Value *encode_expr_unary(struct ast_expr_unary_t *node)
     {
         if (node == nullptr)
             return nullptr;
@@ -959,7 +924,7 @@ struct llvm_coder_t
         }
     }
 
-    llvm::Value* encode_expr_unary_neg(llvm::Value* rhs)
+    llvm::Value *encode_expr_unary_neg(llvm::Value *rhs)
     {
         auto rtype = rhs->getType();
 
@@ -973,7 +938,7 @@ struct llvm_coder_t
         return nullptr;
     }
 
-    llvm::Value* encode_expr_unary_not(llvm::Value* rhs)
+    llvm::Value *encode_expr_unary_not(llvm::Value *rhs)
     {
         auto rtype = rhs->getType();
 
@@ -984,7 +949,7 @@ struct llvm_coder_t
         return nullptr;
     }
 
-    llvm::Value* encode_expr_unary_flip(llvm::Value* rhs)
+    llvm::Value *encode_expr_unary_flip(llvm::Value *rhs)
     {
         auto rtype = rhs->getType();
 
@@ -992,25 +957,24 @@ struct llvm_coder_t
         {
             return llvm_builder.CreateXor(
                 rhs,
-                llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF))
-            );
+                llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF)));
         }
         printf("Type of RHS is invalid.");
         return nullptr;
     }
 
-    llvm::Value* encode_expr_int(struct ast_expr_int_t* node)
+    llvm::Value *encode_expr_int(struct ast_expr_int_t *node)
     {
         if (node == nullptr)
             return nullptr;
 
-        u64_t vals = *((u64_t*)&(node->value));
+        u64_t vals = *((u64_t *)&(node->value));
         u32_t bits = vals > 0xFFFFFFFF ? 64 : 32;
 
         return llvm::ConstantInt::get(llvm_context, llvm::APInt(bits, node->value));
     }
 
-    llvm::Value* encode_expr_float(struct ast_expr_float_t* node)
+    llvm::Value *encode_expr_float(struct ast_expr_float_t *node)
     {
         if (node == nullptr)
             return nullptr;
@@ -1018,21 +982,21 @@ struct llvm_coder_t
         return llvm::ConstantFP::get(llvm_context, llvm::APFloat(node->value));
     }
 
-    llvm::Value* encode_expr_bool(struct ast_expr_bool_t* node)
+    llvm::Value *encode_expr_bool(struct ast_expr_bool_t *node)
     {
         if (node == nullptr)
             return nullptr;
         return llvm::ConstantInt::getBool(llvm_context, node->value);
     }
 
-    llvm::Value* encode_expr_string(struct ast_expr_string_t* node)
+    llvm::Value *encode_expr_string(struct ast_expr_string_t *node)
     {
         if (node == nullptr)
             return nullptr;
         return llvm_builder.CreateGlobalString(llvm::StringRef(node->value.cstr()));
     }
 
-    llvm::Value* encode_expr_symbol_ref(struct ast_expr_symbol_ref_t* node)
+    llvm::Value *encode_expr_symbol_ref(struct ast_expr_symbol_ref_t *node)
     {
         if (node == nullptr)
             return nullptr;
@@ -1044,30 +1008,30 @@ struct llvm_coder_t
         return symbol;
     }
 
-    llvm::Value* encode_expr_func_def(struct ast_expr_func_def_t* node)
+    llvm::Value *encode_expr_func_def(struct ast_expr_func_def_t *node)
     {
         if (node == nullptr)
             return nullptr;
 
-        llvm::Type* retType = this->encode_type(node->type);
+        llvm::Type *retType = this->encode_type(node->type);
         if (retType == nullptr)
             return nullptr;
 
-        std::vector<llvm::Type*> argTypes;
+        std::vector<llvm::Type *> argTypes;
         for (auto arg : node->args)
         {
-            llvm::Type* argType = this->encode_type(arg.type);
+            llvm::Type *argType = this->encode_type(arg.type);
             if (argType == nullptr)
                 return nullptr;
             argTypes.push_back(argType);
         }
 
-        llvm::FunctionType* procType = llvm::FunctionType::get(retType, argTypes, false);
-        llvm::Function* func = llvm::Function::Create(procType, llvm::Function::ExternalLinkage, "", llvm_module);
+        llvm::FunctionType *procType = llvm::FunctionType::get(retType, argTypes, false);
+        llvm::Function *func = llvm::Function::Create(procType, llvm::Function::ExternalLinkage, "", llvm_module);
         u32_t index = 0;
-        for (auto& arg : func->args())
+        for (auto &arg : func->args())
         {
-            const char* name = node->args[index++].name.cstr();
+            const char *name = node->args[index++].name.cstr();
             arg.setName(name);
         }
 
@@ -1076,19 +1040,19 @@ struct llvm_coder_t
         this->func = func;
         this->pushScope();
         {
-            llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", func);
+            llvm::BasicBlock *entry = llvm::BasicBlock::Create(llvm_context, "entry", func);
             llvm_builder.SetInsertPoint(entry);
 
-            for (auto& arg : func->args())
+            for (auto &arg : func->args())
             {
-                const char* name = arg.getName().data();
-                llvm::Value* ptr = llvm_builder.CreateAlloca(arg.getType());
+                const char *name = arg.getName().data();
+                llvm::Value *ptr = llvm_builder.CreateAlloca(arg.getType());
                 llvm_builder.CreateStore(&arg, ptr);
                 auto pair = std::make_pair(String(name), ptr);
                 this->scope->symbols.insert(pair);
             }
 
-            for (auto& stmt : node->body)
+            for (auto &stmt : node->body)
             {
                 if (!this->encode_stmt(stmt))
                     return nullptr;
@@ -1102,25 +1066,25 @@ struct llvm_coder_t
         return func;
     }
 
-    llvm::Value* encode_expr_func_ref(struct ast_expr_func_ref_t* node)
+    llvm::Value *encode_expr_func_ref(struct ast_expr_func_ref_t *node)
     {
         if (node == nullptr)
             return nullptr;
 
-        llvm::Value* funcValue = this->encode_expr(node->func);
-        llvm::Function* func = llvm::cast<llvm::Function>(funcValue);
+        llvm::Value *funcValue = this->encode_expr(node->func);
+        llvm::Function *func = llvm::cast<llvm::Function>(funcValue);
         if (func == nullptr)
             return nullptr;
         if (func->arg_size() != node->args.size())
             return nullptr;
 
-        std::vector<llvm::Value*> params;
-        for (auto& arg : node->args)
+        std::vector<llvm::Value *> params;
+        for (auto &arg : node->args)
         {
-            llvm::Value* param = this->encode_expr(arg);
+            llvm::Value *param = this->encode_expr(arg);
             if (param == nullptr)
                 return nullptr;
-            if(param->getType()->isPointerTy())
+            if (param->getType()->isPointerTy())
             {
                 param = llvm_builder.CreateLoad(param);
             }
@@ -1130,14 +1094,14 @@ struct llvm_coder_t
         return llvm_builder.CreateCall(func, params);
     }
 
-    llvm::Value* encode_expr_array_def(struct ast_expr_array_def_t* node)
+    llvm::Value *encode_expr_array_def(struct ast_expr_array_def_t *node)
     {
         if (node == nullptr)
             return nullptr;
 
         printf("1 \n");
-        std::vector<llvm::Constant*> arrayItems;
-        llvm::Type* itemType = nullptr;
+        std::vector<llvm::Constant *> arrayItems;
+        llvm::Type *itemType = nullptr;
         for (auto item : node->items)
         {
             printf("2 \n");
@@ -1168,7 +1132,7 @@ struct llvm_coder_t
         return arrayValue;
     }
 
-    llvm::Value* encode_expr_index_ref(struct ast_expr_index_ref_t* node)
+    llvm::Value *encode_expr_index_ref(struct ast_expr_index_ref_t *node)
     {
         if (node == nullptr)
             return nullptr;
@@ -1183,27 +1147,27 @@ struct llvm_coder_t
 
         if (objType->isArrayTy() && keyType->isIntegerTy())
         {
-            llvm::Value* value = llvm_builder.CreateGEP(obj, key);
+            llvm::Value *value = llvm_builder.CreateGEP(obj, key);
             return value;
         }
 
         return nullptr;
     }
 
-    llvm::Value* encode_expr_object_def(struct ast_expr_object_def_t* node)
+    llvm::Value *encode_expr_object_def(struct ast_expr_object_def_t *node)
     {
         if (node == nullptr)
             return nullptr;
 
-        llvm::StructType* structType = llvm::cast<llvm::StructType>(this->encode_type(node->type));
+        llvm::StructType *structType = llvm::cast<llvm::StructType>(this->encode_type(node->type));
         if (structType == nullptr)
             return nullptr;
         auto iter = this->structs.find(structType);
         if (iter == this->structs.end())
             return nullptr;
-        ast_stmt_struct_def_t* structDef = iter->second;
+        ast_stmt_struct_def_t *structDef = iter->second;
 
-        for (auto& mem : node->members)
+        for (auto &mem : node->members)
         {
             if (structDef->members.find(mem.first) == structDef->members.end())
             {
@@ -1212,26 +1176,25 @@ struct llvm_coder_t
             }
         }
 
-        llvm::Value* malloccall = llvm::CallInst::CreateMalloc(
+        llvm::Value *malloccall = llvm::CallInst::CreateMalloc(
             llvm_builder.GetInsertBlock(),
             llvm::Type::getInt64Ty(llvm_context),
             structType,
             llvm::ConstantExpr::getSizeOf(structType),
-            nullptr, nullptr, ""
-        );
-        llvm::Value* objectValue = llvm_builder.Insert(malloccall);
+            nullptr, nullptr, "");
+        llvm::Value *objectValue = llvm_builder.Insert(malloccall);
 
-        llvm::Value* metaSymbol = this->scope->getSymbol(String::format("struct.%s.meta", structDef->name.cstr()), true);
-        llvm::Value* metaValue = llvm_builder.CreateLoad(metaSymbol);
-        llvm::Value* metaPtr = llvm_builder.CreateStructGEP(structType, objectValue, 0, "meta");
+        llvm::Value *metaSymbol = this->scope->getSymbol(String::format("struct.%s.meta", structDef->name.cstr()), true);
+        llvm::Value *metaValue = llvm_builder.CreateLoad(metaSymbol);
+        llvm::Value *metaPtr = llvm_builder.CreateStructGEP(structType, objectValue, 0, "meta");
         llvm_builder.CreateStore(metaValue, metaPtr);
 
         u32_t index = 0;
-        for (auto& mem : structDef->members)
+        for (auto &mem : structDef->members)
         {
             index += 1;
             auto memNode = node->members.find(mem.first);
-            llvm::Constant* memValue = nullptr;
+            llvm::Constant *memValue = nullptr;
             if (memNode != node->members.end())
             {
                 memValue = llvm::cast<llvm::Constant>(this->encode_expr(memNode->second));
@@ -1241,14 +1204,14 @@ struct llvm_coder_t
                 memValue = llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvm_context), llvm::APInt(8, 0));
             }
 
-            llvm::Value* memPtr = llvm_builder.CreateStructGEP(structType, objectValue, index, mem.first.cstr());
+            llvm::Value *memPtr = llvm_builder.CreateStructGEP(structType, objectValue, index, mem.first.cstr());
             llvm_builder.CreateStore(memValue, memPtr);
         }
 
         return objectValue;
     }
 
-    llvm::Value* encode_expr_object_ref(struct ast_expr_object_ref_t* node)
+    llvm::Value *encode_expr_object_ref(struct ast_expr_object_ref_t *node)
     {
         if (node == nullptr)
             return nullptr;
@@ -1275,7 +1238,7 @@ struct llvm_coder_t
         auto structDef = structIter->second;
 
         u32_t index = 0;
-        for (auto& mem : structDef->members)
+        for (auto &mem : structDef->members)
         {
             index += 1;
             if (mem.second->name == node->key)
@@ -1284,12 +1247,12 @@ struct llvm_coder_t
         if (index < 0)
             return nullptr;
 
-        llvm::Value* value = llvm_builder.CreateStructGEP(obj->getType(), obj, index);
+        llvm::Value *value = llvm_builder.CreateStructGEP(obj->getType(), obj, index);
 
         return value;
     }
 
-    bool encode_stmt(struct ast_stmt_t* node)
+    bool encode_stmt(struct ast_stmt_t *node)
     {
         if (node == nullptr)
             return false;
@@ -1297,31 +1260,31 @@ struct llvm_coder_t
         switch (node->category)
         {
         case ast_node_category_t::stmt_schema_def:
-            return this->encode_stmt_schema_def(dynamic_cast<ast_stmt_schema_def_t*>(node));
+            return this->encode_stmt_schema_def(dynamic_cast<ast_stmt_schema_def_t *>(node));
         case ast_node_category_t::stmt_struct_def:
-            return this->encode_stmt_struct_def(dynamic_cast<ast_stmt_struct_def_t*>(node));
+            return this->encode_stmt_struct_def(dynamic_cast<ast_stmt_struct_def_t *>(node));
         case ast_node_category_t::stmt_proc_def:
-            return this->encode_stmt_proc_def(dynamic_cast<ast_stmt_proc_def_t*>(node));
+            return this->encode_stmt_proc_def(dynamic_cast<ast_stmt_proc_def_t *>(node));
         case ast_node_category_t::stmt_symbol_def:
-            return this->encode_stmt_symbol_def(dynamic_cast<ast_stmt_symbol_def_t*>(node));
+            return this->encode_stmt_symbol_def(dynamic_cast<ast_stmt_symbol_def_t *>(node));
         case ast_node_category_t::stmt_break:
-            return this->encode_stmt_break(dynamic_cast<ast_stmt_break_t*>(node));
+            return this->encode_stmt_break(dynamic_cast<ast_stmt_break_t *>(node));
         case ast_node_category_t::stmt_continue:
-            return this->encode_stmt_continue(dynamic_cast<ast_stmt_continue_t*>(node));
+            return this->encode_stmt_continue(dynamic_cast<ast_stmt_continue_t *>(node));
         case ast_node_category_t::stmt_return:
-            return this->encode_stmt_return(dynamic_cast<ast_stmt_return_t*>(node));
+            return this->encode_stmt_return(dynamic_cast<ast_stmt_return_t *>(node));
         case ast_node_category_t::stmt_if:
-            return this->encode_stmt_if(dynamic_cast<ast_stmt_if_t*>(node));
+            return this->encode_stmt_if(dynamic_cast<ast_stmt_if_t *>(node));
         case ast_node_category_t::stmt_while:
-            return this->encode_stmt_while(dynamic_cast<ast_stmt_while_t*>(node));
+            return this->encode_stmt_while(dynamic_cast<ast_stmt_while_t *>(node));
         case ast_node_category_t::stmt_for:
-            return this->encode_stmt_for(dynamic_cast<ast_stmt_for_t*>(node));
+            return this->encode_stmt_for(dynamic_cast<ast_stmt_for_t *>(node));
         case ast_node_category_t::stmt_block:
-            return this->encode_stmt_block(dynamic_cast<ast_stmt_block_t*>(node));
+            return this->encode_stmt_block(dynamic_cast<ast_stmt_block_t *>(node));
         case ast_node_category_t::stmt_assign:
-            return this->encode_stmt_assign(dynamic_cast<ast_stmt_assign_t*>(node));
+            return this->encode_stmt_assign(dynamic_cast<ast_stmt_assign_t *>(node));
         case ast_node_category_t::stmt_call:
-            return this->encode_stmt_call(dynamic_cast<ast_stmt_call_t*>(node));
+            return this->encode_stmt_call(dynamic_cast<ast_stmt_call_t *>(node));
         default:
             return false;
         }
@@ -1329,15 +1292,15 @@ struct llvm_coder_t
         return false;
     }
 
-    bool encode_stmt_schema_def(struct ast_stmt_schema_def_t* node)
+    bool encode_stmt_schema_def(struct ast_stmt_schema_def_t *node)
     {
         if (node == nullptr)
             return false;
 
-        const String& name = node->name;
+        const String &name = node->name;
 
-        std::vector<llvm::Constant*> memberNames;
-        std::vector<llvm::Type*> memberTypes;
+        std::vector<llvm::Constant *> memberNames;
+        std::vector<llvm::Type *> memberTypes;
         auto tokenNameType = llvm::ArrayType::get(llvm::Type::getInt8Ty(llvm_context), 256);
         auto metaType = llvm::ArrayType::get(tokenNameType, node->members.size() + 1);
         memberNames.push_back(llvm::ConstantDataArray::getString(llvm_context, "$_meta"));
@@ -1345,8 +1308,8 @@ struct llvm_coder_t
         for (auto node : node->members)
         {
             auto mem = node.second;
-            const auto& memName = mem->name.cstr();
-            const auto& memType = this->encode_type(mem->type);
+            const auto &memName = mem->name.cstr();
+            const auto &memType = this->encode_type(mem->type);
             if (memType == nullptr)
                 return false;
             memberNames.push_back(llvm::ConstantDataArray::getString(llvm_context, memName));
@@ -1365,15 +1328,15 @@ struct llvm_coder_t
         return true;
     }
 
-    bool encode_stmt_struct_def(struct ast_stmt_struct_def_t* node)
+    bool encode_stmt_struct_def(struct ast_stmt_struct_def_t *node)
     {
         if (node == nullptr)
             return false;
 
-        const String& name = node->name;
+        const String &name = node->name;
 
-        std::vector<llvm::Constant*> memberNames;
-        std::vector<llvm::Type*> memberTypes;
+        std::vector<llvm::Constant *> memberNames;
+        std::vector<llvm::Type *> memberTypes;
         auto tokenNameType = llvm::ArrayType::get(llvm::Type::getInt8Ty(llvm_context), 256);
         auto metaType = llvm::ArrayType::get(tokenNameType, node->members.size() + 1);
         memberNames.push_back(llvm::ConstantDataArray::getString(llvm_context, "$_meta"));
@@ -1381,8 +1344,8 @@ struct llvm_coder_t
         for (auto node : node->members)
         {
             auto mem = node.second;
-            const auto& memName = mem->name.cstr();
-            const auto& memType = this->encode_type(mem->type);
+            const auto &memName = mem->name.cstr();
+            const auto &memType = this->encode_type(mem->type);
             if (memType == nullptr)
                 return false;
             memberNames.push_back(llvm::ConstantDataArray::getString(llvm_context, memName));
@@ -1406,7 +1369,7 @@ struct llvm_coder_t
         return true;
     }
 
-    bool encode_stmt_proc_def(struct ast_stmt_proc_def_t* node)
+    bool encode_stmt_proc_def(struct ast_stmt_proc_def_t *node)
     {
         if (node == nullptr)
             return false;
@@ -1414,25 +1377,25 @@ struct llvm_coder_t
         if (this->scope->getType(node->name, false) != nullptr)
             return false;
 
-        llvm::Type* retType = this->encode_type(node->type);
+        llvm::Type *retType = this->encode_type(node->type);
 
-        std::vector<llvm::Type*> argTypes;
+        std::vector<llvm::Type *> argTypes;
         for (auto arg : node->args)
         {
-            llvm::Type* argType = this->encode_type(arg.second);
+            llvm::Type *argType = this->encode_type(arg.second);
             if (argType == nullptr)
                 return false;
             argTypes.push_back(argType);
         }
 
-        llvm::FunctionType* procType = llvm::FunctionType::get(retType, argTypes, false);
+        llvm::FunctionType *procType = llvm::FunctionType::get(retType, argTypes, false);
 
         this->scope->types[node->name] = procType;
 
         return true;
     }
 
-    bool encode_stmt_symbol_def(struct ast_stmt_symbol_def_t* node)
+    bool encode_stmt_symbol_def(struct ast_stmt_symbol_def_t *node)
     {
         if (node == nullptr)
             return false;
@@ -1454,7 +1417,8 @@ struct llvm_coder_t
                 return false;
             }
         }
-        else {
+        else
+        {
             type = vtype;
         }
 
@@ -1468,7 +1432,7 @@ struct llvm_coder_t
         return true;
     }
 
-    bool encode_stmt_break(struct ast_stmt_break_t* node)
+    bool encode_stmt_break(struct ast_stmt_break_t *node)
     {
         if (node == nullptr)
             return false;
@@ -1481,7 +1445,7 @@ struct llvm_coder_t
         return true;
     }
 
-    bool encode_stmt_continue(struct ast_stmt_continue_t* node)
+    bool encode_stmt_continue(struct ast_stmt_continue_t *node)
     {
         if (node == nullptr)
             return false;
@@ -1494,7 +1458,7 @@ struct llvm_coder_t
         return true;
     }
 
-    bool encode_stmt_return(struct ast_stmt_return_t* node)
+    bool encode_stmt_return(struct ast_stmt_return_t *node)
     {
         if (node == nullptr)
             return false;
@@ -1505,7 +1469,7 @@ struct llvm_coder_t
             return true;
         }
 
-        llvm::Value* value = this->encode_expr(node->value);
+        llvm::Value *value = this->encode_expr(node->value);
         if (value == nullptr)
         {
             printf("invalid ret value.\n");
@@ -1517,18 +1481,18 @@ struct llvm_coder_t
         return true;
     }
 
-    bool encode_stmt_if(struct ast_stmt_if_t* node)
+    bool encode_stmt_if(struct ast_stmt_if_t *node)
     {
         if (node == nullptr)
             return false;
 
-        llvm::BasicBlock* if_begin = llvm::BasicBlock::Create(llvm_context, "if.begin", this->func);
-        llvm::BasicBlock* if_true = llvm::BasicBlock::Create(llvm_context, "if.true", this->func);
-        llvm::BasicBlock* if_false = llvm::BasicBlock::Create(llvm_context, "if.false", this->func);
-        llvm::BasicBlock* if_end = llvm::BasicBlock::Create(llvm_context, "if.end", this->func);
+        llvm::BasicBlock *if_begin = llvm::BasicBlock::Create(llvm_context, "if.begin", this->func);
+        llvm::BasicBlock *if_true = llvm::BasicBlock::Create(llvm_context, "if.true", this->func);
+        llvm::BasicBlock *if_false = llvm::BasicBlock::Create(llvm_context, "if.false", this->func);
+        llvm::BasicBlock *if_end = llvm::BasicBlock::Create(llvm_context, "if.end", this->func);
 
         llvm_builder.SetInsertPoint(if_begin);
-        llvm::Value* cond = this->encode_expr(node->cond);
+        llvm::Value *cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return false;
         llvm_builder.CreateCondBr(cond, if_true, if_false);
@@ -1551,16 +1515,16 @@ struct llvm_coder_t
         return true;
     }
 
-    bool encode_stmt_while(struct ast_stmt_while_t* node)
+    bool encode_stmt_while(struct ast_stmt_while_t *node)
     {
         if (node == nullptr)
             return false;
 
         this->pushScope();
 
-        llvm::BasicBlock* while_begin = llvm::BasicBlock::Create(llvm_context, "while.begin", this->func);
-        llvm::BasicBlock* while_body = llvm::BasicBlock::Create(llvm_context, "while.body", this->func);
-        llvm::BasicBlock* while_end = llvm::BasicBlock::Create(llvm_context, "while.end", this->func);
+        llvm::BasicBlock *while_begin = llvm::BasicBlock::Create(llvm_context, "while.begin", this->func);
+        llvm::BasicBlock *while_body = llvm::BasicBlock::Create(llvm_context, "while.body", this->func);
+        llvm::BasicBlock *while_end = llvm::BasicBlock::Create(llvm_context, "while.end", this->func);
 
         auto oldContinuePoint = this->continuePoint;
         auto oldBreakPoint = this->breakPoint;
@@ -1569,7 +1533,7 @@ struct llvm_coder_t
         this->breakPoint = while_end;
 
         llvm_builder.SetInsertPoint(while_begin);
-        llvm::Value* cond = this->encode_expr(node->cond);
+        llvm::Value *cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return false;
         llvm_builder.CreateCondBr(cond, while_body, while_end);
@@ -1589,18 +1553,18 @@ struct llvm_coder_t
         return true;
     }
 
-    bool encode_stmt_for(struct ast_stmt_for_t* node)
+    bool encode_stmt_for(struct ast_stmt_for_t *node)
     {
         if (node == nullptr)
             return false;
 
         this->pushScope();
 
-        llvm::BasicBlock* for_init = llvm::BasicBlock::Create(llvm_context, "for.init", this->func);
-        llvm::BasicBlock* for_test = llvm::BasicBlock::Create(llvm_context, "for.test", this->func);
-        llvm::BasicBlock* for_step = llvm::BasicBlock::Create(llvm_context, "for.step", this->func);
-        llvm::BasicBlock* for_body = llvm::BasicBlock::Create(llvm_context, "for.body", this->func);
-        llvm::BasicBlock* for_end = llvm::BasicBlock::Create(llvm_context, "for.end", this->func);
+        llvm::BasicBlock *for_init = llvm::BasicBlock::Create(llvm_context, "for.init", this->func);
+        llvm::BasicBlock *for_test = llvm::BasicBlock::Create(llvm_context, "for.test", this->func);
+        llvm::BasicBlock *for_step = llvm::BasicBlock::Create(llvm_context, "for.step", this->func);
+        llvm::BasicBlock *for_body = llvm::BasicBlock::Create(llvm_context, "for.body", this->func);
+        llvm::BasicBlock *for_end = llvm::BasicBlock::Create(llvm_context, "for.end", this->func);
 
         auto oldContinuePoint = this->continuePoint;
         auto oldBreakPoint = this->breakPoint;
@@ -1613,7 +1577,7 @@ struct llvm_coder_t
         llvm_builder.CreateBr(for_test);
 
         llvm_builder.SetInsertPoint(for_test);
-        llvm::Value* cond = this->encode_expr(node->cond);
+        llvm::Value *cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return false;
         llvm_builder.CreateCondBr(cond, for_body, for_end);
@@ -1638,14 +1602,14 @@ struct llvm_coder_t
         return true;
     }
 
-    bool encode_stmt_block(struct ast_stmt_block_t* node)
+    bool encode_stmt_block(struct ast_stmt_block_t *node)
     {
         if (node == nullptr)
             return false;
 
         this->pushScope();
 
-        for (auto& stmt : node->stmts)
+        for (auto &stmt : node->stmts)
         {
             if (!this->encode_stmt(stmt))
                 return false;
@@ -1656,20 +1620,20 @@ struct llvm_coder_t
         return true;
     }
 
-    bool encode_stmt_assign(struct ast_stmt_assign_t* node)
+    bool encode_stmt_assign(struct ast_stmt_assign_t *node)
     {
         if (node == nullptr)
             return false;
 
-        llvm::Value* left = this->encode_expr(node->left);
-        llvm::Value* right = this->encode_expr(node->right);
+        llvm::Value *left = this->encode_expr(node->left);
+        llvm::Value *right = this->encode_expr(node->right);
 
         llvm_builder.CreateStore(right, left);
 
         return true;
     }
 
-    bool encode_stmt_call(struct ast_stmt_call_t* node)
+    bool encode_stmt_call(struct ast_stmt_call_t *node)
     {
         if (node == nullptr)
             return false;
@@ -1681,11 +1645,51 @@ struct llvm_coder_t
     }
 };
 
-llvm::Module* llvm_encode(llvm::LLVMContext& context, ast_module_t* module)
+llvm::Module *llvm_encode(llvm::LLVMContext &context, ast_module_t *module)
 {
     llvm_coder_t coder(context);
-    llvm::Module* llvm_module = coder.encode(module);
+    llvm::Module *llvm_module = coder.encode(module);
     return llvm_module;
+}
+
+llvm::Module *llvm_encode_test(llvm::LLVMContext &context)
+{
+    llvm::Module *module = new llvm::Module("eokas-test", context);
+    llvm::IRBuilder<> builder(context);
+
+    llvm::Type *type_i32 = llvm::Type::getInt32Ty(context);
+
+    llvm::FunctionType *funcType = llvm::FunctionType::get(type_i32, false);
+    auto func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", module);
+
+    llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", func);
+    builder.SetInsertPoint(entry);
+
+    llvm::Value *zero = llvm::ConstantInt::get(type_i32, llvm::APInt(32, 0));
+
+    llvm::Value *value = llvm::ConstantInt::get(type_i32, llvm::APInt(32, 100));
+
+    llvm::BasicBlock *if_begin = llvm::BasicBlock::Create(context, "if.begin", func);
+    llvm::BasicBlock *if_true = llvm::BasicBlock::Create(context, "if.true", func);
+    llvm::BasicBlock *if_false = llvm::BasicBlock::Create(context, "if.false", func);
+    llvm::BasicBlock *if_end = llvm::BasicBlock::Create(context, "if.end", func);
+
+    builder.SetInsertPoint(if_begin);
+    llvm::Value *cond = builder.CreateICmpNE(value, zero);
+    builder.CreateCondBr(cond, if_true, if_false);
+
+    builder.SetInsertPoint(if_true);
+    builder.CreateBr(if_end);
+
+    builder.SetInsertPoint(if_false);
+    builder.CreateBr(if_end);
+
+    builder.SetInsertPoint(if_end);
+    builder.CreatePHI(llvm::Type::getVoidTy(context), 0);
+
+    builder.CreateRet(value);
+
+    return module;
 }
 
 _EndNamespace(eokas)
