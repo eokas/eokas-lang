@@ -1491,6 +1491,7 @@ struct llvm_coder_t
         llvm::BasicBlock *if_false = llvm::BasicBlock::Create(llvm_context, "if.false", this->func);
         llvm::BasicBlock *if_end = llvm::BasicBlock::Create(llvm_context, "if.end", this->func);
 
+        llvm_builder.CreateBr(if_begin);
         llvm_builder.SetInsertPoint(if_begin);
         llvm::Value *cond = this->encode_expr(node->cond);
         if (cond == nullptr)
@@ -1532,6 +1533,7 @@ struct llvm_coder_t
         this->continuePoint = while_begin;
         this->breakPoint = while_end;
 
+        llvm_builder.CreateBr(while_begin);
         llvm_builder.SetInsertPoint(while_begin);
         llvm::Value *cond = this->encode_expr(node->cond);
         if (cond == nullptr)
@@ -1571,6 +1573,7 @@ struct llvm_coder_t
         this->continuePoint = for_step;
         this->breakPoint = for_end;
 
+        llvm_builder.CreateBr(for_init);
         llvm_builder.SetInsertPoint(for_init);
         if (!this->encode_stmt(node->init))
             return false;
@@ -1674,6 +1677,8 @@ llvm::Module *llvm_encode_test(llvm::LLVMContext &context)
     llvm::BasicBlock *if_false = llvm::BasicBlock::Create(context, "if.false", func);
     llvm::BasicBlock *if_end = llvm::BasicBlock::Create(context, "if.end", func);
 
+    builder.CreateBr(if_begin);
+    
     builder.SetInsertPoint(if_begin);
     llvm::Value *cond = builder.CreateICmpNE(value, zero);
     builder.CreateCondBr(cond, if_true, if_false);
@@ -1685,7 +1690,6 @@ llvm::Module *llvm_encode_test(llvm::LLVMContext &context)
     builder.CreateBr(if_end);
 
     builder.SetInsertPoint(if_end);
-    builder.CreatePHI(llvm::Type::getVoidTy(context), 0);
 
     builder.CreateRet(value);
 

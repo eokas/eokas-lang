@@ -1,4 +1,6 @@
 
-var a = "hello world.";
+var sum = 0;
 
-printf(a);
+sum = sum + 1;
+
+return sum;

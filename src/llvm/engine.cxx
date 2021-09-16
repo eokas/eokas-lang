@@ -26,7 +26,7 @@ bool llvm_jit(ast_module_t* m)
 {
     llvm::LLVMContext context;
 
-    llvm::Module* module = llvm_encode_test(context);
+    llvm::Module* module = llvm_encode(context, m);
     if (module == nullptr)
         return false;
     
