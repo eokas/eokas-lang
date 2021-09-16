@@ -1,6 +1,7 @@
 
 #include "engine.h"
 #include "coder.h"
+#include "runtime.h"
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>

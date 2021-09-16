@@ -1,4 +1,13 @@
+var a = "true";
+var b = "false";
 
-var str = "%d\n";
-var a = 10;
-printf(str, a);
+
+var x = 1.0;
+var y = 2;
+var z = 3;
+if(x < y && y > z) {
+    puts(a);
+}
+else {
+    puts(b);
+}

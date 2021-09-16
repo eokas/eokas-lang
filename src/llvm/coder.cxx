@@ -1,4 +1,5 @@
 #include "coder.h"
+#include "runtime.h"
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
@@ -197,18 +198,6 @@ struct llvm_coder_t
         return this->llvm_module;
     }
 
-    llvm::Function *libs_printf()
-    {
-        std::vector<llvm::Type *> type_args;
-        type_args.push_back(type_string);
-
-        auto funcType = llvm::FunctionType::get(type_i32, type_args, true);
-        auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "printf", llvm_module);
-        funcValue->setCallingConv(llvm::CallingConv::C);
-
-        return funcValue;
-    }
-
     bool encode_module(struct ast_module_t *node)
     {
         if (node == nullptr)
@@ -230,7 +219,8 @@ struct llvm_coder_t
         this->scope->types["bool"] = type_bool;
         this->scope->types["string"] = type_string;
 
-        this->scope->symbols["printf"] = libs_printf();
+        this->scope->symbols["puts"] = llvm_define_function_puts(llvm_context, llvm_module);
+        this->scope->symbols["itoa"] = llvm_define_function_itoa(llvm_context, llvm_module);
 
         llvm::FunctionType *funcType = llvm::FunctionType::get(type_i32, false);
         this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", llvm_module);
@@ -1496,6 +1486,11 @@ struct llvm_coder_t
         llvm::Value *cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return false;
+        if(!cond->getType()->isIntegerTy(1))
+        {
+            printf("if.cond need a bool value.\n");
+            return false;
+        }
         llvm_builder.CreateCondBr(cond, if_true, if_false);
 
         llvm_builder.SetInsertPoint(if_true);
@@ -1538,6 +1533,11 @@ struct llvm_coder_t
         llvm::Value *cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return false;
+        if(!cond->getType()->isIntegerTy(1))
+        {
+            printf("while.cond need a bool value.\n");
+            return false;
+        }
         llvm_builder.CreateCondBr(cond, while_body, while_end);
 
         llvm_builder.SetInsertPoint(while_body);
@@ -1583,6 +1583,11 @@ struct llvm_coder_t
         llvm::Value *cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return false;
+        if(!cond->getType()->isIntegerTy(1))
+        {
+            printf("for.cond need a bool value.\n");
+            return false;
+        }
         llvm_builder.CreateCondBr(cond, for_body, for_end);
 
         llvm_builder.SetInsertPoint(for_body);
