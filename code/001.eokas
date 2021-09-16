@@ -1,6 +1,4 @@
 
-var sum = 0;
-
-sum = sum + 1;
-
-return sum;
+var str = "%d\n";
+var a = 10;
+printf(str, a);

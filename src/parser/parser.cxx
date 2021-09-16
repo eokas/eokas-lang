@@ -1356,7 +1356,6 @@ ast_stmt_while_t* parser_impl_t::parse_stmt_while(ast_node_t* p)
 
 ast_stmt_for_t* parser_impl_t::parse_stmt_for(ast_node_t* p)
 {
-	printf("test 1\n");
 	if (!this->check_token(token_t::For))
 		return nullptr;
 
@@ -1368,7 +1367,6 @@ ast_stmt_for_t* parser_impl_t::parse_stmt_for(ast_node_t* p)
 		return nullptr;
 	}
 
-printf("test 2\n");
 	node->init = this->parse_stmt_for_init(node);
 	if (node->init == nullptr)
 	{
@@ -1376,7 +1374,6 @@ printf("test 2\n");
 		return nullptr;
 	}
 
-printf("test 3\n");
 	node->cond = this->parse_stmt_for_cond(node);
 	if (node->cond == nullptr)
 	{
@@ -1384,7 +1381,6 @@ printf("test 3\n");
 		return nullptr;
 	}
 
-printf("test 4\n");
 	node->step = this->parse_stmt_for_step(node);
 	if (node->step == nullptr)
 	{
@@ -1392,7 +1388,6 @@ printf("test 4\n");
 		return nullptr;
 	}
 
-printf("test 5\n");
 	if (!this->check_token(token_t::RRB))
 	{
 		_DeletePointer(node);
@@ -1405,7 +1400,6 @@ printf("test 5\n");
 		_DeletePointer(node);
 		return nullptr;
 	}
-	printf("test 6\n");
 
 	return node;
 }
