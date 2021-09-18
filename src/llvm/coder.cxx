@@ -220,7 +220,7 @@ struct llvm_coder_t
         this->scope->types["string"] = type_string;
 
         this->scope->symbols["puts"] = llvm_define_function_puts(llvm_context, llvm_module);
-        this->scope->symbols["itoa"] = llvm_define_function_itoa(llvm_context, llvm_module);
+        this->scope->symbols["sprintf"] = llvm_define_function_sprintf(llvm_context, llvm_module);
 
         llvm::FunctionType *funcType = llvm::FunctionType::get(type_i32, false);
         this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", llvm_module);
@@ -1665,7 +1665,13 @@ llvm::Module *llvm_encode_test(llvm::LLVMContext &context)
     llvm::Module *module = new llvm::Module("eokas-test", context);
     llvm::IRBuilder<> builder(context);
 
-    llvm::Type *type_i32 = llvm::Type::getInt32Ty(context);
+    llvm::Function* puts = llvm_define_function_puts(context, module);
+    llvm::Function* sprintf = llvm_define_function_sprintf(context, module);
+
+    llvm::Type* type_i32 = llvm::Type::getInt32Ty(context);
+    llvm::Type* type_f32 = llvm::Type::getFloatTy(context);
+    llvm::Type* type_f64 = llvm::Type::getDoubleTy(context);
+    llvm::Type* type_str = llvm::Type::getInt8PtrTy(context);
 
     llvm::FunctionType *funcType = llvm::FunctionType::get(type_i32, false);
     auto func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", module);
@@ -1673,30 +1679,17 @@ llvm::Module *llvm_encode_test(llvm::LLVMContext &context)
     llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", func);
     builder.SetInsertPoint(entry);
 
-    llvm::Value *zero = llvm::ConstantInt::get(type_i32, llvm::APInt(32, 0));
+    llvm::Value *zero = llvm::ConstantFP::get(type_f64, llvm::APFloat(0.0));
 
-    llvm::Value *value = llvm::ConstantInt::get(type_i32, llvm::APInt(32, 100));
+    llvm::Value *i = llvm::ConstantInt::get(type_i32, llvm::APInt(32, 100));
+    llvm::Value *f = llvm::ConstantFP::get(type_f64, llvm::APFloat(3.141592653));
 
-    llvm::BasicBlock *if_begin = llvm::BasicBlock::Create(context, "if.begin", func);
-    llvm::BasicBlock *if_true = llvm::BasicBlock::Create(context, "if.true", func);
-    llvm::BasicBlock *if_false = llvm::BasicBlock::Create(context, "if.false", func);
-    llvm::BasicBlock *if_end = llvm::BasicBlock::Create(context, "if.end", func);
+    llvm::Value* str = llvm_as_string(entry, {i});
 
-    builder.CreateBr(if_begin);
-    
-    builder.SetInsertPoint(if_begin);
-    llvm::Value *cond = builder.CreateICmpNE(value, zero);
-    builder.CreateCondBr(cond, if_true, if_false);
+    builder.SetInsertPoint(entry);
+    builder.CreateCall(puts, {str});
 
-    builder.SetInsertPoint(if_true);
-    builder.CreateBr(if_end);
-
-    builder.SetInsertPoint(if_false);
-    builder.CreateBr(if_end);
-
-    builder.SetInsertPoint(if_end);
-
-    builder.CreateRet(value);
+    builder.CreateRet(i);
 
     return module;
 }

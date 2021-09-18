@@ -1,13 +1,12 @@
-var a = "true";
-var b = "false";
 
 
-var x = 1.0;
-var y = 2;
-var z = 3;
-if(x < y && y > z) {
-    puts(a);
-}
-else {
-    puts(b);
-}
+var i = 26;
+var f = 3.141592653;
+
+var si = int2str(i);
+var sf = float2str(f);
+var ln = "\n";
+
+puts(si);
+puts(ln);
+puts(sf);

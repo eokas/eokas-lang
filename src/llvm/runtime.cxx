@@ -27,38 +27,123 @@ llvm::Function* llvm_define_function_puts(llvm::LLVMContext& context, llvm::Modu
 {
     llvm::StringRef name = "puts";
 
-    llvm::Type* type_ret = llvm::Type::getInt32Ty(context);
+    llvm::Type* ret = llvm::Type::getInt32Ty(context);
 
-    std::vector<llvm::Type*> type_args = 
+    std::vector<llvm::Type*> args =
     {
         llvm::Type::getInt8PtrTy(context)
     };
 
-    auto funcType = llvm::FunctionType::get(type_ret, type_args, false);
+    llvm::AttributeList attrs;
+
+    auto funcType = llvm::FunctionType::get(ret, args, false);
     auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, module);
     funcValue->setCallingConv(llvm::CallingConv::C);
+    funcValue->setAttributes(attrs);
 
     return funcValue;
 }
 
-llvm::Function* llvm_define_function_itoa(llvm::LLVMContext& context, llvm::Module* module)
+llvm::Function* llvm_define_function_sprintf(llvm::LLVMContext& context, llvm::Module* module)
 {
-    llvm::StringRef name = "itoa";
+    llvm::StringRef name = "sprintf";
 
-    llvm::Type* type_ret = llvm::Type::getInt8PtrTy(context);
+    llvm::Type* ret = llvm::Type::getInt32Ty(context);
 
-    std::vector<llvm::Type*> type_args = 
+    std::vector<llvm::Type*> args =
     {
-        llvm::Type::getInt32Ty(context),
         llvm::Type::getInt8PtrTy(context),
-        llvm::Type::getInt32Ty(context)
+        llvm::Type::getInt8PtrTy(context)
     };
 
-    auto funcType = llvm::FunctionType::get(type_ret, type_args, false);
+    llvm::AttributeList attrs;
+
+    auto funcType = llvm::FunctionType::get(ret, args, true);
     auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, module);
     funcValue->setCallingConv(llvm::CallingConv::C);
+    funcValue->setAttributes(attrs);
 
     return funcValue;
+}
+
+llvm::Value* llvm_int2str(llvm::BasicBlock* block, std::vector<llvm::Value*> args)
+{
+    llvm::LLVMContext& context = block->getContext();
+    llvm::Module* module = block->getModule();
+
+    llvm::IRBuilder<> builder(context);
+    builder.SetInsertPoint(block);
+
+    llvm::Value* buf = builder.CreateAlloca(
+        llvm::ArrayType::get(
+            llvm::Type::getInt8Ty(context), 
+            64
+        )
+    );
+
+    llvm::Value* fmt = builder.CreateGlobalStringPtr("%d");
+
+    auto x = args[0];
+
+    auto sprintf = module->getFunction("sprintf");
+    builder.CreateCall(sprintf, {buf, fmt, x});
+
+    return buf;
+}
+
+llvm::Value* llvm_float2str(llvm::BasicBlock* block, std::vector<llvm::Value*> args)
+{
+    llvm::LLVMContext& context = block->getContext();
+    llvm::Module* module = block->getModule();
+
+    llvm::IRBuilder<> builder(context);
+    builder.SetInsertPoint(block);
+
+    llvm::Value* buf = builder.CreateAlloca(
+        llvm::ArrayType::get(
+            llvm::Type::getInt8Ty(context), 
+            64
+        )
+    );
+
+    llvm::Value* fmt = builder.CreateGlobalStringPtr("%f");
+
+    auto x = args[0];
+
+    auto sprintf = module->getFunction("sprintf");
+    builder.CreateCall(sprintf, {buf, fmt, x});
+
+    return buf;
+}
+
+llvm::Value* llvm_as_string(llvm::BasicBlock* block, std::vector<llvm::Value*> args)
+{
+    llvm::LLVMContext& context = block->getContext();
+    llvm::Module* module = block->getModule();
+
+    llvm::IRBuilder<> builder(context);
+    builder.SetInsertPoint(block);
+
+    llvm::Value* str = builder.CreateAlloca(
+        llvm::ArrayType::get(
+            llvm::Type::getInt8Ty(context), 
+            64
+        )
+    );
+
+    llvm::Value* val = args[0];
+    llvm::Type* vt = val->getType();
+
+    llvm::StringRef vf = "%x";
+    if(vt->isIntegerTy()) vf = "%d";
+    else if(vt->isFloatingPointTy()) vf = "%f";
+
+    llvm::Value* fmt = builder.CreateGlobalStringPtr(vf);
+
+    auto sprintf = module->getFunction("sprintf");
+    builder.CreateCall(sprintf, {str, fmt, val});
+
+    return str;
 }
 
 _EndNamespace(eokas)

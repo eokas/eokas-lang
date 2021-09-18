@@ -11,12 +11,17 @@ namespace llvm
     class Value;
     class Function;
     class Module;
+    class BasicBlock;
 }
 
 _BeginNamespace(eokas)
 
 llvm::Function* llvm_define_function_puts(llvm::LLVMContext& context, llvm::Module* module);
-llvm::Function* llvm_define_function_itoa(llvm::LLVMContext& context, llvm::Module* module);
+llvm::Function* llvm_define_function_sprintf(llvm::LLVMContext& context, llvm::Module* module);
+
+llvm::Value* llvm_int2str(llvm::BasicBlock* block, std::vector<llvm::Value*> args);
+llvm::Value* llvm_float2str(llvm::BasicBlock* block, std::vector<llvm::Value*> args);
+llvm::Value* llvm_as_string(llvm::BasicBlock* block, std::vector<llvm::Value*> args);
 
 _EndNamespace(eokas)
 
