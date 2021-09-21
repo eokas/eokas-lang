@@ -6,9 +6,9 @@
 
 _BeginNamespace(eokas)
 
-bool llvm_jit(ast_module_t* module);
+bool llvm_jit(ast_module_t *module);
 
-bool llvm_aot(ast_module_t* module);
+bool llvm_aot(ast_module_t *module);
 
 _EndNamespace(eokas)
 

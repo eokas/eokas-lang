@@ -23,14 +23,13 @@
 
 _BeginNamespace(eokas)
 
-bool llvm_jit(ast_module_t* m)
-{
+bool llvm_jit(ast_module_t *m) {
     llvm::LLVMContext context;
 
-    llvm::Module* module = llvm_encode_test(context);
+    llvm::Module *module = llvm_encode(context, m);
     if (module == nullptr)
         return false;
-    
+
     module->print(llvm::errs(), nullptr);
 
     llvm::InitializeNativeTarget();
@@ -38,17 +37,17 @@ bool llvm_jit(ast_module_t* m)
     llvm::InitializeNativeTargetAsmParser();
 
     auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(module))
-        .setEngineKind(llvm::EngineKind::JIT)
-        .create();
+            .setEngineKind(llvm::EngineKind::JIT)
+            .create();
 
     ee->finalizeObject();
 
-    llvm::Function* func = module->getFunction("main");
+    llvm::Function *func = module->getFunction("main");
     if (func == nullptr)
         return false;
 
     printf("---------------- JIT RUN ----------------\n");
-    std::vector<llvm::GenericValue> args;
+    std::vector <llvm::GenericValue> args;
     auto retval = ee->runFunction(func, args);
     printf("\nRET: %s \n", retval.IntVal.toString(10, true).c_str());
     printf("---------------- JIT END ----------------\n");
@@ -56,11 +55,10 @@ bool llvm_jit(ast_module_t* m)
     return true;
 }
 
-bool llvm_aot(ast_module_t* m)
-{
+bool llvm_aot(ast_module_t *m) {
     llvm::LLVMContext context;
 
-    llvm::Module* module = llvm_encode(context, m);
+    llvm::Module *module = llvm_encode(context, m);
     if (module == nullptr)
         return false;
 

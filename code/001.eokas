@@ -1,12 +1,2 @@
 
-
-var i = 26;
-var f = 3.141592653;
-
-var si = int2str(i);
-var sf = float2str(f);
-var ln = "\n";
-
-puts(si);
-puts(ln);
-puts(sf);
+var a = "hello world.";
