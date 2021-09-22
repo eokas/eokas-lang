@@ -28,10 +28,9 @@ llvm::Function *llvm_define_cfunc_puts(llvm::LLVMContext &context, llvm::Module 
 
     llvm::Type *ret = llvm::Type::getInt32Ty(context);
 
-    std::vector < llvm::Type * > args =
-            {
-                    llvm::Type::getInt8PtrTy(context)
-            };
+    std::vector < llvm::Type * > args = {
+        llvm::Type::getInt8PtrTy(context)
+    };
 
     llvm::AttributeList attrs;
 
@@ -48,10 +47,9 @@ llvm::Function *llvm_define_cfunc_printf(llvm::LLVMContext &context, llvm::Modul
 
     llvm::Type *ret = llvm::Type::getInt32Ty(context);
 
-    std::vector < llvm::Type * > args =
-            {
-                    llvm::Type::getInt8PtrTy(context)
-            };
+    std::vector < llvm::Type * > args = {
+        llvm::Type::getInt8PtrTy(context)
+    };
 
     llvm::AttributeList attrs;
 
@@ -68,11 +66,10 @@ llvm::Function *llvm_define_cfunc_sprintf(llvm::LLVMContext &context, llvm::Modu
 
     llvm::Type *ret = llvm::Type::getInt32Ty(context);
 
-    std::vector < llvm::Type * > args =
-            {
-                    llvm::Type::getInt8PtrTy(context),
-                    llvm::Type::getInt8PtrTy(context)
-            };
+    std::vector < llvm::Type * > args = {
+        llvm::Type::getInt8PtrTy(context),
+        llvm::Type::getInt8PtrTy(context)
+    };
 
     llvm::AttributeList attrs;
 
@@ -89,10 +86,9 @@ llvm::Function *llvm_define_cfunc_malloc(llvm::LLVMContext &context, llvm::Modul
 
     llvm::Type *ret = llvm::Type::getInt8PtrTy(context);
 
-    std::vector < llvm::Type * > args =
-            {
-                    llvm::Type::getInt32Ty(context)
-            };
+    std::vector < llvm::Type * > args = {
+        llvm::Type::getInt32Ty(context)
+    };
 
     llvm::AttributeList attrs;
 
@@ -109,10 +105,9 @@ llvm::Function *llvm_define_cfunc_free(llvm::LLVMContext &context, llvm::Module 
 
     llvm::Type *ret = llvm::Type::getVoidTy(context);
 
-    std::vector < llvm::Type * > args =
-            {
-                    llvm::Type::getInt8PtrTy(context)
-            };
+    std::vector < llvm::Type * > args = {
+        llvm::Type::getInt8PtrTy(context)
+    };
 
     llvm::AttributeList attrs;
 
@@ -146,14 +141,20 @@ llvm::Value *llvm_invoke_code_as_string(llvm::BasicBlock *block, std::vector<llv
 
     llvm::Value *val = args[0];
     llvm::Type *vt = val->getType();
-    if (llvm_is_string(vt))
-        return val;
+
+    // val is string
+    if (vt->isPointerTy()) {
+        auto vit = vt->getPointerElementType();
+        if(vit->isIntegerTy(8)) {
+            return args[0];
+        }
+    }
 
     llvm::Value *str = builder.CreateAlloca(
-            llvm::ArrayType::get(
-                    llvm::Type::getInt8Ty(context),
-                    64
-            )
+        llvm::ArrayType::get(
+            llvm::Type::getInt8Ty(context),
+            64
+        )
     );
 
     llvm::StringRef vf = "%x";
@@ -174,42 +175,14 @@ llvm::Value *llvm_invoke_code_print(llvm::BasicBlock *block, std::vector<llvm::V
 
     llvm::IRBuilder<> builder(context);
     builder.SetInsertPoint(block);
-    printf("code print 01 \n");
+
     llvm::Value *str = llvm_invoke_code_as_string(block, args);
     builder.SetInsertPoint(block);
-    printf("code print 02 %s\n", str->getType()->getStructName());
-    llvm::Value *rawstr = builder.CreateStructGEP(str, 0);
-    printf("code print 03 %x\n", rawstr);
+
     auto puts = module->getFunction("puts");
-    llvm::Value *ret = builder.CreateCall(puts, {rawstr});
-    printf("code print 04 \n");
+    llvm::Value *ret = builder.CreateCall(puts, {str});
+
     return ret;
-}
-
-llvm::Type *llvm_define_type_string(llvm::LLVMContext &context, llvm::Module *module) {
-    llvm::StringRef name = "struct.string";
-
-    std::vector < llvm::Type * > members = {
-            llvm::Type::getInt8PtrTy(context)
-    };
-
-    auto structType = llvm::StructType::create(context);
-    structType->setName(name);
-    structType->setBody(members);
-
-    return structType;
-}
-
-bool llvm_is_string(llvm::Type *type) {
-    if (type == nullptr || !type->isStructTy())
-        return false;
-    auto structType = llvm::cast<llvm::StructType>(type);
-    return structType->getName() == "struct.string";
-}
-
-bool llvm_is_string(llvm::Value *value) {
-    return value != nullptr
-           && llvm_is_string(value->getType());
 }
 
 _EndNamespace(eokas)

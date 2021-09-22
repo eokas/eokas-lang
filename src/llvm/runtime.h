@@ -36,12 +36,6 @@ llvm::Value *llvm_invoke_code_as_string(llvm::BasicBlock *block, std::vector<llv
 
 llvm::Value *llvm_invoke_code_print(llvm::BasicBlock *block, std::vector<llvm::Value *> args);
 
-llvm::Type *llvm_define_type_string(llvm::LLVMContext &context, llvm::Module *module);
-
-bool llvm_is_string(llvm::Type *type);
-
-bool llvm_is_string(llvm::Value *value);
-
 _EndNamespace(eokas)
 
 #endif//_EOKAS_LLVM_RUNTIME_H_
