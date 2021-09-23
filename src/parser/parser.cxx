@@ -312,23 +312,40 @@ ast_expr_t *parser_impl_t::parse_expr_binary(ast_node_t *p, int priority) {
         if (oper == ast_binary_oper_t::Unknown)
             break;
 
-        ast_expr_t *right = nullptr;
-        if (priority < (int) ast_binary_oper_t::MaxPriority / 100) {
-            right = this->parse_expr_binary(p, priority + 1);
-        } else {
-            right = this->parse_expr_unary(p);
-        }
-        if (right == nullptr) {
-            _DeletePointer(left);
-            return nullptr;
-        }
+        if(oper == ast_binary_oper_t::Is || oper == ast_binary_oper_t::As) {
+            ast_type_t *right = right = this->parse_type(p);
+            if(right == nullptr) {
+                _DeletePointer(left);
+                return nullptr;
+            }
 
-        ast_expr_binary_t *binary = new ast_expr_binary_t(p);
-        binary->op = oper;
-        binary->left = left;
-        binary->right = right;
+            auto *binary = new ast_expr_binary_type_t(p);
+            binary->op = oper;
+            binary->left = left;
+            binary->right = right;
 
-        left = binary;
+            left = binary;
+        }
+        else {
+            ast_expr_t *right = nullptr;
+            if(priority<(int) ast_binary_oper_t::MaxPriority / 100) {
+                right = this->parse_expr_binary(p, priority + 1);
+            }
+            else {
+                right = this->parse_expr_unary(p);
+            }
+            if(right == nullptr) {
+                _DeletePointer(left);
+                return nullptr;
+            }
+
+            auto *binary = new ast_expr_binary_value_t(p);
+            binary->op = oper;
+            binary->left = left;
+            binary->right = right;
+
+            left = binary;
+        }
     }
 
     return left;

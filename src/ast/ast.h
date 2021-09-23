@@ -27,7 +27,8 @@ enum class ast_node_category_t {
     type_generic,
 
     expr_trinary,
-    expr_binary,
+    expr_binary_value,
+    expr_binary_type,
     expr_unary,
     expr_int,
     expr_float,
@@ -157,11 +158,14 @@ struct ast_expr_trinary_t : public ast_expr_t {
     ast_expr_t *branch_true;
     ast_expr_t *branch_false;
 
-    ast_expr_trinary_t(ast_node_t *parent)
-            : ast_expr_t(ast_node_category_t::expr_trinary, parent), cond(nullptr), branch_true(nullptr),
-              branch_false(nullptr) {}
+    explicit ast_expr_trinary_t(ast_node_t *parent)
+            : ast_expr_t(ast_node_category_t::expr_trinary, parent)
+            , cond(nullptr)
+            , branch_true(nullptr)
+            , branch_false(nullptr)
+        {}
 
-    virtual ~ast_expr_trinary_t() {
+    ~ast_expr_trinary_t() {
         _DeletePointer(cond);
         _DeletePointer(branch_true);
         _DeletePointer(branch_false);
@@ -170,27 +174,56 @@ struct ast_expr_trinary_t : public ast_expr_t {
 
 struct ast_expr_binary_t : public ast_expr_t {
     ast_binary_oper_t op;
+
+    ast_expr_binary_t(ast_node_category_t category, ast_node_t *parent)
+    : ast_expr_t(category, parent)
+    , op(ast_binary_oper_t::Unknown)
+    {}
+};
+
+struct ast_expr_binary_value_t: public ast_expr_binary_t
+{
     ast_expr_t *left;
     ast_expr_t *right;
 
-    ast_expr_binary_t(ast_node_t *parent)
-            : ast_expr_t(ast_node_category_t::expr_binary, parent), op(ast_binary_oper_t::Unknown), left(nullptr),
-              right(nullptr) {}
+    explicit ast_expr_binary_value_t(ast_node_t* parent)
+        : ast_expr_binary_t(ast_node_category_t::expr_binary_value, parent)
+        , left(nullptr)
+        , right(nullptr)
+    {}
 
-    virtual ~ast_expr_binary_t() {
+     ~ast_expr_binary_value_t(){
         _DeletePointer(left);
         _DeletePointer(right);
     }
 };
 
+struct ast_expr_binary_type_t: public ast_expr_binary_t
+{
+    ast_expr_t *left;
+    ast_type_t *right;
+
+    explicit ast_expr_binary_type_t(ast_node_t* parent)
+            : ast_expr_binary_t(ast_node_category_t::expr_binary_type, parent)
+            , left(nullptr)
+            , right(nullptr)
+    {}
+
+     ~ast_expr_binary_type_t(){
+        _DeletePointer(left);
+        _DeletePointer(right);
+    }
+};
+
+
 struct ast_expr_unary_t : public ast_expr_t {
     ast_unary_oper_t op;
     ast_expr_t *right;
 
-    ast_expr_unary_t(ast_node_t *parent)
+    explicit ast_expr_unary_t(ast_node_t *parent)
             : ast_expr_t(ast_node_category_t::expr_unary, parent), op(ast_unary_oper_t::Unknown), right(nullptr) {}
 
-    virtual ~ast_expr_unary_t() {
+     ~ast_expr_unary_t() {
         _DeletePointer(right);
     }
 };
@@ -198,14 +231,14 @@ struct ast_expr_unary_t : public ast_expr_t {
 struct ast_expr_int_t : public ast_expr_t {
     i64_t value;
 
-    ast_expr_int_t(ast_node_t *parent)
+    explicit ast_expr_int_t(ast_node_t *parent)
             : ast_expr_t(ast_node_category_t::expr_int, parent), value(0) {}
 };
 
 struct ast_expr_float_t : public ast_expr_t {
     f64_t value;
 
-    ast_expr_float_t(ast_node_t *parent)
+    explicit ast_expr_float_t(ast_node_t *parent)
             : ast_expr_t(ast_node_category_t::expr_float, parent), value(0) {}
 };
 

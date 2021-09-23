@@ -1,2 +1,8 @@
 
-print("hello eokas.");
+var a = 12 is i32;
+if(a) {
+    print("true");
+}
+else {
+    print("false");
+}

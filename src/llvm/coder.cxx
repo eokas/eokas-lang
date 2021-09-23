@@ -295,8 +295,10 @@ _BeginNamespace(eokas)
             switch (node->category) {
                 case ast_node_category_t::expr_trinary:
                     return this->encode_expr_trinary(dynamic_cast<ast_expr_trinary_t *>(node));
-                case ast_node_category_t::expr_binary:
-                    return this->encode_expr_binary(dynamic_cast<ast_expr_binary_t *>(node));
+                case ast_node_category_t::expr_binary_type:
+                    return this->encode_expr_binary_type(dynamic_cast<ast_expr_binary_type_t *>(node));
+                case ast_node_category_t::expr_binary_value:
+                    return this->encode_expr_binary_value(dynamic_cast<ast_expr_binary_value_t *>(node));
                 case ast_node_category_t::expr_unary:
                     return this->encode_expr_unary(dynamic_cast<ast_expr_unary_t *>(node));
                 case ast_node_category_t::expr_int:
@@ -366,7 +368,52 @@ _BeginNamespace(eokas)
             return nullptr;
         }
 
-        llvm::Value *encode_expr_binary(struct ast_expr_binary_t *node) {
+        llvm::Value *encode_expr_binary_type(struct ast_expr_binary_type_t *node) {
+            if(node == nullptr)
+                return nullptr;
+
+            auto lhs = this->encode_expr(node->left);
+            auto rhs = this->encode_type(node->right);
+            if (lhs == nullptr || rhs == nullptr)
+                return nullptr;
+            while (lhs->getType()->isPointerTy()) {
+                lhs = llvm_builder.CreateLoad(lhs);
+            }
+
+            switch(node->op) {
+                case ast_binary_oper_t::Is:
+                {
+                    if(rhs == lhs->getType())
+                        return llvm_builder.getTrue();
+                    else
+                        return llvm_builder.getFalse();
+                }
+                break;
+                case ast_binary_oper_t::As:
+                {
+                    if(lhs->getType()->isSingleValueType()) {
+                        if(rhs == type_string) {
+                            llvm::BasicBlock* block = llvm_builder.GetInsertBlock();
+                            llvm::Value *value = llvm_invoke_code_as_string(block, {lhs});
+                            llvm_builder.SetInsertPoint(block);
+                            return value;
+                        }
+                        return nullptr;
+                    }
+                    else {
+                        printf("complex cast is not supported.\n");
+                        return nullptr;
+                    }
+                }
+                break;
+                default:
+                    return nullptr;
+            }
+
+            return nullptr;
+        }
+
+        llvm::Value *encode_expr_binary_value(struct ast_expr_binary_value_t *node) {
             if (node == nullptr)
                 return nullptr;
 
@@ -923,8 +970,10 @@ _BeginNamespace(eokas)
                 return nullptr;
 
             auto symbol = this->scope->getSymbol(node->name, true);
-            if (symbol == nullptr)
+            if (symbol == nullptr) {
+                printf("symbol '%s' is undefined.\n", node->name.cstr());
                 return nullptr;
+            }
 
             return symbol;
         }
@@ -987,6 +1036,11 @@ _BeginNamespace(eokas)
                 return nullptr;
 
             llvm::Value *funcValue = this->encode_expr(node->func);
+            if(funcValue == nullptr) {
+                printf("Function is undefined.\n");
+                return nullptr;
+            }
+
             llvm::Function *func = llvm::cast<llvm::Function>(funcValue);
             if (func == nullptr)
                 return nullptr;
@@ -1365,6 +1419,9 @@ _BeginNamespace(eokas)
             llvm::Value *cond = this->encode_expr(node->cond);
             if (cond == nullptr)
                 return false;
+            while(cond->getType()->isPointerTy()) {
+                cond = llvm_builder.CreateLoad(cond);
+            }
             if (!cond->getType()->isIntegerTy(1)) {
                 printf("if.cond need a bool value.\n");
                 return false;
