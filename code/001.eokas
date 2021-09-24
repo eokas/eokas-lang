@@ -1,8 +1,7 @@
 
-var a = 12 is i32;
-if(a) {
-    print("true");
+struct A {
+    var id: i32 = 12;
 }
-else {
-    print("false");
-}
+
+var a = make A{};
+print(a.id as string);

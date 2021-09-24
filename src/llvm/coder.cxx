@@ -177,6 +177,26 @@ _BeginNamespace(eokas)
             return this->llvm_module;
         }
 
+        llvm::Value* get_value(llvm::Value* value) {
+            llvm::Type* type = value->getType();
+            while(type->isPointerTy()) {
+                value = llvm_builder.CreateLoad(value);
+                type = value->getType();
+            }
+            return value;
+        }
+
+        llvm::Value* ref_value(llvm::Value* value) {
+            llvm::Type* type = value->getType();
+            while(type->isPointerTy() &&
+                !type->getPointerElementType()->isStructTy() &&
+                !type->getPointerElementType()->isIntegerTy(8)) {
+                value = llvm_builder.CreateLoad(value);
+                type = value->getType();
+            }
+            return value;
+        }
+
         llvm::Function *define_func_print() {
             llvm::StringRef name = "print";
 
@@ -376,9 +396,8 @@ _BeginNamespace(eokas)
             auto rhs = this->encode_type(node->right);
             if (lhs == nullptr || rhs == nullptr)
                 return nullptr;
-            while (lhs->getType()->isPointerTy()) {
-                lhs = llvm_builder.CreateLoad(lhs);
-            }
+
+            lhs = this->get_value(lhs);
 
             switch(node->op) {
                 case ast_binary_oper_t::Is:
@@ -421,12 +440,9 @@ _BeginNamespace(eokas)
             auto rhs = this->encode_expr(node->right);
             if (lhs == nullptr || rhs == nullptr)
                 return nullptr;
-            if (lhs->getType()->isPointerTy()) {
-                lhs = llvm_builder.CreateLoad(lhs);
-            }
-            if (rhs->getType()->isPointerTy()) {
-                rhs = llvm_builder.CreateLoad(rhs);
-            }
+
+            lhs = this->get_value(lhs);
+            rhs = this->get_value(rhs);
 
             switch (node->op) {
                 case ast_binary_oper_t::Or:
@@ -883,9 +899,7 @@ _BeginNamespace(eokas)
             if (rhs == nullptr)
                 return nullptr;
 
-            if (rhs->getType()->isPointerTy()) {
-                rhs = llvm_builder.CreateLoad(rhs);
-            }
+            rhs = this->get_value(rhs);
 
             switch (node->op) {
                 case ast_unary_oper_t::Pos:
@@ -1041,7 +1055,7 @@ _BeginNamespace(eokas)
                 return nullptr;
             }
 
-            llvm::Function *func = llvm::cast<llvm::Function>(funcValue);
+            auto *func = llvm::cast<llvm::Function>(funcValue);
             if (func == nullptr)
                 return nullptr;
             if (func->arg_size() != node->args.size())
@@ -1117,13 +1131,14 @@ _BeginNamespace(eokas)
             if (node == nullptr)
                 return nullptr;
 
-
             llvm::PointerType *structRefType = llvm::cast<llvm::PointerType>(this->encode_type(node->type));
             if (structRefType == nullptr)
                 return nullptr;
+
             llvm::StructType *structType = llvm::cast<llvm::StructType>(structRefType->getElementType());
             if (structType == nullptr)
                 return nullptr;
+
             auto iter = this->structs.find(structType);
             if (iter == this->structs.end())
                 return nullptr;
@@ -1157,42 +1172,37 @@ _BeginNamespace(eokas)
         }
 
         llvm::Value *encode_expr_object_ref(struct ast_expr_object_ref_t *node) {
-            printf("object ref 01\n");
             if (node == nullptr)
                 return nullptr;
 
-            auto obj = this->encode_expr(node->obj);
+            auto instance = this->encode_expr(node->obj);
             auto key = llvm_builder.CreateGlobalString(node->key.cstr());
-            if (obj == nullptr || key == nullptr)
+            if (instance == nullptr || key == nullptr)
                 return nullptr;
-            printf("object ref 02\n");
-            auto objType = obj->getType();
-            while (objType->isPointerTy()) {
-                obj = llvm_builder.CreateLoad(obj);
-                objType = obj->getType();
+
+            instance = this->ref_value(instance);
+            auto instanceType = instance->getType();
+            if(!(instanceType->isPointerTy() && instanceType->getPointerElementType()->isStructTy())) {
+                printf("instance is not a object reference.");
+                return nullptr;
             }
-            printf("object ref 03\n");
-            if (!objType->isStructTy())
-                return nullptr;
-            printf("object ref 04\n");
-            auto structIter = this->structs.find(objType);
+            auto structType = instanceType->getPointerElementType();
+            auto structIter = this->structs.find(structType);
             if (structIter == this->structs.end())
                 return nullptr;
-            printf("object ref 05\n");
-            auto structDef = structIter->second;
+
+            auto structAST = structIter->second;
 
             u32_t index = -1;
-            for (auto &mem: structDef->members) {
+            for (auto &mem: structAST->members) {
                 index += 1;
                 if (mem.second->name == node->key)
                     break;
             }
-            printf("object ref 06， index=%d\n", index);
             if (index < 0)
                 return nullptr;
 
-            llvm::Value *value = llvm_builder.CreateStructGEP(obj->getType(), obj, index);
-            printf("object ref 07\n");
+            llvm::Value *value = llvm_builder.CreateStructGEP(structType, instance, index);
             value->getType()->print(llvm::errs());
             return value;
         }
@@ -1337,11 +1347,9 @@ _BeginNamespace(eokas)
             if (value == nullptr)
                 return false;
 
+            value = this->get_value(value);
             auto vtype = value->getType();
-            while (vtype->isPointerTy()) {
-                value = llvm_builder.CreateLoad(value);
-                vtype = vtype->getPointerElementType();
-            }
+
             if (type != nullptr) {
                 if (type->getTypeID() != vtype->getTypeID() && !vtype->canLosslesslyBitCastTo(type)) {
                     printf("type '%d' can not cast to type '%d'. \n", vtype->getTypeID(), type->getTypeID());
@@ -1419,9 +1427,7 @@ _BeginNamespace(eokas)
             llvm::Value *cond = this->encode_expr(node->cond);
             if (cond == nullptr)
                 return false;
-            while(cond->getType()->isPointerTy()) {
-                cond = llvm_builder.CreateLoad(cond);
-            }
+            cond = this->get_value(cond);
             if (!cond->getType()->isIntegerTy(1)) {
                 printf("if.cond need a bool value.\n");
                 return false;
