@@ -1,10 +1,3 @@
 
-struct Language {
-    var name: string;
-}
-
-var lang = make Language {
-    name = "eokas"
-};
-
-print(lang.name);
+var a = false ? 100 : 50.0;
+print(a as string);

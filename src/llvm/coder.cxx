@@ -190,6 +190,7 @@ _BeginNamespace(eokas)
             llvm::Type* type = value->getType();
             while(type->isPointerTy() &&
                 !type->getPointerElementType()->isStructTy() &&
+                !type->getPointerElementType()->isArrayTy() &&
                 !type->getPointerElementType()->isIntegerTy(8)) {
                 value = builder.CreateLoad(value);
                 type = value->getType();
@@ -360,34 +361,42 @@ _BeginNamespace(eokas)
             llvm::BasicBlock *trinary_false = llvm::BasicBlock::Create(llvm_context, "trinary.false", this->func);
             llvm::BasicBlock *trinary_end = llvm::BasicBlock::Create(llvm_context, "trinary.end", this->func);
 
+            llvm_builder.CreateBr(trinary_begin);
             llvm_builder.SetInsertPoint(trinary_begin);
-
-            // TODO: define a temp var
-
             llvm::Value *cond = this->encode_expr(node->cond);
             if (cond == nullptr)
                 return nullptr;
+            if(!cond->getType()->isIntegerTy(1)) {
+                printf("condition must be a bool value.\n");
+                return nullptr;
+            }
+            cond = this->get_value(llvm_builder, cond);
             llvm_builder.CreateCondBr(cond, trinary_true, trinary_false);
 
             llvm_builder.SetInsertPoint(trinary_true);
             llvm::Value *trueV = this->encode_expr(node->branch_true);
             if (trueV == nullptr)
                 return nullptr;
-            // TODO: set temp var
             llvm_builder.CreateBr(trinary_end);
 
             llvm_builder.SetInsertPoint(trinary_false);
             llvm::Value *falseV = this->encode_expr(node->branch_false);
             if (falseV == nullptr)
                 return nullptr;
-            // TODO: set temp var
             llvm_builder.CreateBr(trinary_end);
 
             llvm_builder.SetInsertPoint(trinary_end);
+            if(trueV->getType() != falseV->getType())
+            {
+                printf("type of true-branch must be the same as false-branch.\n");
+                return nullptr;
+            }
 
-            // TODO: return temp var
+            llvm::PHINode* phi = llvm_builder.CreatePHI(trueV->getType(), 2);
+            phi->addIncoming(trueV, trinary_true);
+            phi->addIncoming(falseV, trinary_false);
 
-            return nullptr;
+            return phi;
         }
 
         llvm::Value *encode_expr_binary_type(struct ast_expr_binary_type_t *node) {

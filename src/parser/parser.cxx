@@ -272,8 +272,8 @@ ast_expr_t *parser_impl_t::parse_expr_trinary(ast_node_t *p) {
         trinary->cond = binary;
         binary->parent = trinary;
 
-        ast_expr_t *expr_true = this->parse_expr(trinary);
-        if (expr_true == nullptr) {
+        trinary->branch_true = this->parse_expr(trinary);
+        if (trinary->branch_true == nullptr) {
             _DeletePointer(trinary);
             return nullptr;
         }
@@ -283,8 +283,8 @@ ast_expr_t *parser_impl_t::parse_expr_trinary(ast_node_t *p) {
             return nullptr;
         }
 
-        ast_expr_t *expr_false = this->parse_expr(trinary);
-        if (expr_false == nullptr) {
+        trinary->branch_false = this->parse_expr(trinary);
+        if (trinary->branch_false == nullptr) {
             _DeletePointer(trinary);
             return nullptr;
         }
