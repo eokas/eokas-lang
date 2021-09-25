@@ -188,10 +188,7 @@ _BeginNamespace(eokas)
 
         llvm::Value* ref_value(llvm::IRBuilder<>& builder, llvm::Value* value) {
             llvm::Type* type = value->getType();
-            while(type->isPointerTy() &&
-                !type->getPointerElementType()->isStructTy() &&
-                !type->getPointerElementType()->isArrayTy() &&
-                !type->getPointerElementType()->isIntegerTy(8)) {
+            while(type->isPointerTy() && type->getPointerElementType()->isPointerTy()) {
                 value = builder.CreateLoad(value);
                 type = value->getType();
             }
@@ -1577,10 +1574,12 @@ _BeginNamespace(eokas)
             if (node == nullptr)
                 return false;
 
-            llvm::Value *left = this->encode_expr(node->left);
-            llvm::Value *right = this->encode_expr(node->right);
+            llvm::Value *ptr = this->encode_expr(node->left);
+            llvm::Value *val = this->encode_expr(node->right);
 
-            llvm_builder.CreateStore(right, left);
+            ptr = this->ref_value(llvm_builder, ptr);
+            val = this->get_value(llvm_builder, val);
+            llvm_builder.CreateStore(val, ptr);
 
             return true;
         }
