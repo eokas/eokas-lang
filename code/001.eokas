@@ -1,7 +1,10 @@
 
-struct A {
-    var id: i32 = 12;
+struct Language {
+    var name: string;
 }
 
-var a = make A{};
-print(a.id as string);
+var lang = make Language {
+    name = "eokas"
+};
+
+print(lang.name);

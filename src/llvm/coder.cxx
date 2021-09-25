@@ -177,21 +177,21 @@ _BeginNamespace(eokas)
             return this->llvm_module;
         }
 
-        llvm::Value* get_value(llvm::Value* value) {
+        llvm::Value* get_value(llvm::IRBuilder<>& builder, llvm::Value* value) {
             llvm::Type* type = value->getType();
             while(type->isPointerTy()) {
-                value = llvm_builder.CreateLoad(value);
+                value = builder.CreateLoad(value);
                 type = value->getType();
             }
             return value;
         }
 
-        llvm::Value* ref_value(llvm::Value* value) {
+        llvm::Value* ref_value(llvm::IRBuilder<>& builder, llvm::Value* value) {
             llvm::Type* type = value->getType();
             while(type->isPointerTy() &&
                 !type->getPointerElementType()->isStructTy() &&
                 !type->getPointerElementType()->isIntegerTy(8)) {
-                value = llvm_builder.CreateLoad(value);
+                value = builder.CreateLoad(value);
                 type = value->getType();
             }
             return value;
@@ -218,7 +218,9 @@ _BeginNamespace(eokas)
             llvm::BasicBlock *entry = llvm::BasicBlock::Create(llvm_context, "entry", funcValue);
             builder.SetInsertPoint(entry);
 
-            llvm::Value *retval = llvm_invoke_code_print(entry, {funcValue->getArg(0)});
+            llvm::Value* arg0 = funcValue->getArg(0);
+
+            llvm::Value *retval = llvm_invoke_code_print(entry, {arg0});
             builder.SetInsertPoint(entry);
 
             builder.CreateRet(retval);
@@ -397,7 +399,7 @@ _BeginNamespace(eokas)
             if (lhs == nullptr || rhs == nullptr)
                 return nullptr;
 
-            lhs = this->get_value(lhs);
+            lhs = this->get_value(llvm_builder, lhs);
 
             switch(node->op) {
                 case ast_binary_oper_t::Is:
@@ -441,8 +443,8 @@ _BeginNamespace(eokas)
             if (lhs == nullptr || rhs == nullptr)
                 return nullptr;
 
-            lhs = this->get_value(lhs);
-            rhs = this->get_value(rhs);
+            lhs = this->get_value(llvm_builder, lhs);
+            rhs = this->get_value(llvm_builder, rhs);
 
             switch (node->op) {
                 case ast_binary_oper_t::Or:
@@ -899,7 +901,7 @@ _BeginNamespace(eokas)
             if (rhs == nullptr)
                 return nullptr;
 
-            rhs = this->get_value(rhs);
+            rhs = this->get_value(llvm_builder, rhs);
 
             switch (node->op) {
                 case ast_unary_oper_t::Pos:
@@ -1066,6 +1068,7 @@ _BeginNamespace(eokas)
                 llvm::Value *param = this->encode_expr(arg);
                 if (param == nullptr)
                     return nullptr;
+                param = this->ref_value(llvm_builder, param);
                 params.push_back(param);
             }
 
@@ -1180,7 +1183,7 @@ _BeginNamespace(eokas)
             if (instance == nullptr || key == nullptr)
                 return nullptr;
 
-            instance = this->ref_value(instance);
+            instance = this->ref_value(llvm_builder, instance);
             auto instanceType = instance->getType();
             if(!(instanceType->isPointerTy() && instanceType->getPointerElementType()->isStructTy())) {
                 printf("instance is not a object reference.");
@@ -1203,7 +1206,6 @@ _BeginNamespace(eokas)
                 return nullptr;
 
             llvm::Value *value = llvm_builder.CreateStructGEP(structType, instance, index);
-            value->getType()->print(llvm::errs());
             return value;
         }
 
@@ -1347,7 +1349,7 @@ _BeginNamespace(eokas)
             if (value == nullptr)
                 return false;
 
-            value = this->get_value(value);
+            value = this->get_value(llvm_builder, value);
             auto vtype = value->getType();
 
             if (type != nullptr) {
@@ -1427,7 +1429,7 @@ _BeginNamespace(eokas)
             llvm::Value *cond = this->encode_expr(node->cond);
             if (cond == nullptr)
                 return false;
-            cond = this->get_value(cond);
+            cond = this->get_value(llvm_builder, cond);
             if (!cond->getType()->isIntegerTy(1)) {
                 printf("if.cond need a bool value.\n");
                 return false;
