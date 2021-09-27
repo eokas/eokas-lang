@@ -274,24 +274,31 @@ struct ast_expr_func_def_t : public ast_expr_t {
     };
 
     ast_type_t *type;
-    std::vector <arg_t> args;
+    std::vector <arg_t*> args;
     std::vector<ast_stmt_t *> body;
 
-    ast_expr_func_def_t(ast_node_t *parent)
+    explicit ast_expr_func_def_t(ast_node_t *parent)
             : ast_expr_t(ast_node_category_t::expr_func_def, parent), type(nullptr), args(), body() {}
 
     virtual ~ast_expr_func_def_t() {
         _DeletePointer(type);
-        args.clear();
+        _DeleteList(args);
         _DeleteList(body);
     }
 
     const arg_t *getArg(const String &name) const {
-        for (auto &arg: args) {
-            if (arg.name == name)
-                return &arg;
+        for (const auto &arg: args) {
+            if (arg->name == name)
+                return arg;
         }
         return nullptr;
+    }
+
+    void addArg(const String& name, ast_type_t* type) {
+        arg_t* arg = new arg_t();
+        arg->name = name;
+        arg->type = type;
+        this->args.push_back(arg);
     }
 };
 

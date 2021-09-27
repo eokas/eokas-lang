@@ -24,6 +24,10 @@
 _BeginNamespace(eokas)
 
 bool llvm_jit(ast_module_t *m) {
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+
     llvm::LLVMContext context;
 
     llvm::Module *module = llvm_encode(context, m);
@@ -31,10 +35,6 @@ bool llvm_jit(ast_module_t *m) {
         return false;
 
     module->print(llvm::errs(), nullptr);
-
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmPrinter();
-    llvm::InitializeNativeTargetAsmParser();
 
     auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(module))
             .setEngineKind(llvm::EngineKind::JIT)
@@ -56,6 +56,12 @@ bool llvm_jit(ast_module_t *m) {
 }
 
 bool llvm_aot(ast_module_t *m) {
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
+    llvm::InitializeAllAsmPrinters();
+
     llvm::LLVMContext context;
 
     llvm::Module *module = llvm_encode(context, m);
@@ -64,12 +70,6 @@ bool llvm_aot(ast_module_t *m) {
 
     // DUMP CODE
     module->print(llvm::errs(), nullptr);
-
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargets();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmParsers();
-    llvm::InitializeAllAsmPrinters();
 
     auto targetTriple = llvm::sys::getDefaultTargetTriple();
     std::string error;
@@ -80,7 +80,6 @@ bool llvm_aot(ast_module_t *m) {
     llvm::TargetOptions opt;
     auto RM = llvm::Optional<llvm::Reloc::Model>();
     auto targetMachine = target->createTargetMachine(targetTriple, CPU, features, opt, RM);
-
 
     module->setDataLayout(targetMachine->createDataLayout());
     module->setTargetTriple(targetTriple);

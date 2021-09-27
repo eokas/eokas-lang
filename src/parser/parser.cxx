@@ -562,10 +562,7 @@ bool parser_impl_t::parse_func_params(ast_expr_func_def_t *node) {
         if (type == nullptr)
             return false;
 
-        ast_expr_func_def_t::arg_t arg;
-        arg.name = name;
-        arg.type = type;
-        node->args.push_back(arg);
+        node->addArg(name, type);
     } while (this->check_token(token_t::Comma, false));
 
     if (!this->check_token(token_t::RRB))
