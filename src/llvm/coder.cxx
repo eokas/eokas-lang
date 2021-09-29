@@ -1612,6 +1612,7 @@ _BeginNamespace(eokas)
         llvm::Function *free = llvm_define_cfunc_free(context, module);
 
         llvm::Type *type_i32 = llvm::Type::getInt32Ty(context);
+        llvm::Type *type_i64 = llvm::Type::getInt64Ty(context);
         llvm::Type *type_f32 = llvm::Type::getFloatTy(context);
         llvm::Type *type_f64 = llvm::Type::getDoubleTy(context);
         llvm::Type *type_str = llvm::Type::getInt8PtrTy(context);
@@ -1627,8 +1628,15 @@ _BeginNamespace(eokas)
         llvm::Value *i = llvm::ConstantInt::get(type_i32, llvm::APInt(32, 100));
         llvm::Value *pi = llvm::ConstantFP::get(type_f64, llvm::APFloat(3.141592653));
 
-        llvm::Value *ret = llvm_invoke_code_print(entry, {pi});
+        llvm::Value *ret = llvm_invoke_code_as_string(entry, {pi});
         builder.SetInsertPoint(entry);
+
+        llvm::Value* ptr = builder.CreateAlloca(puts->getType());
+        builder.CreateStore(puts, ptr);
+        llvm::Value* vfn = builder.CreateLoad(ptr);
+        llvm::Value* retval = builder.CreateCall(puts->getFunctionType(), vfn, {ret});
+
+        //builder.CreateCall(ptr, {ret});
 
         builder.CreateRet(zero);
 
