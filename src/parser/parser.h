@@ -4,21 +4,22 @@
 #include <libarchaism/archaism.h>
 
 _BeginNamespace(eokas)
-
-class parser_t {
-public:
-    parser_t();
-
-    ~parser_t();
-
-public:
-    struct ast_module_t *parse(const char *source);
-
-    const String &error() const;
-
-private:
-    class parser_impl_t *impl;
-};
+	
+	class parser_t
+	{
+	public:
+		parser_t();
+		
+		~parser_t();
+	
+	public:
+		struct ast_module_t *parse(const char *source);
+		
+		const String &error() const;
+	
+	private:
+		class parser_impl_t *impl;
+	};
 
 _EndNamespace(eokas)
 

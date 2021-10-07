@@ -5,14 +5,16 @@
 #include "header.h"
 
 _BeginNamespace(eokas)
-
-    struct llvm_expr_t {
-        llvm::Value *value;
-        llvm::Type *type;
-
-        explicit llvm_expr_t(llvm::Value *value, llvm::Type *type = nullptr);
-        virtual ~llvm_expr_t();
-    };
+	
+	struct llvm_expr_t
+	{
+		llvm::Value *value;
+		llvm::Type *type;
+		
+		explicit llvm_expr_t(llvm::Value *value, llvm::Type *type = nullptr);
+		
+		virtual ~llvm_expr_t();
+	};
 
 
 _EndNamespace(eokas)

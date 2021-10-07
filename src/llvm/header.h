@@ -4,12 +4,17 @@
 
 #include "../ast/ast.h"
 
-namespace llvm {
-    class LLVMContext;
-    class Module;
-    class Type;
-    class Value;
-    class Function;
+namespace llvm
+{
+	class LLVMContext;
+	
+	class Module;
+	
+	class Type;
+	
+	class Value;
+	
+	class Function;
 }
 
 _BeginNamespace(eokas)
