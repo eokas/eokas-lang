@@ -1,7 +1,7 @@
 
 #include "engine.h"
 #include "coder.h"
-#include "runtime.h"
+#include "models.h"
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
@@ -23,7 +23,7 @@
 
 _BeginNamespace(eokas)
 	
-	bool llvm_jit(ast_module_t *m)
+	bool llvm_jit(ast_module_t* m)
 	{
 		llvm::InitializeNativeTarget();
 		llvm::InitializeNativeTargetAsmPrinter();
@@ -31,7 +31,7 @@ _BeginNamespace(eokas)
 		
 		llvm::LLVMContext context;
 		
-		llvm::Module *module = llvm_encode(context, m);
+		llvm::Module* module = llvm_encode(context, m);
 		if(module == nullptr)
 			return false;
 		
@@ -43,7 +43,7 @@ _BeginNamespace(eokas)
 		
 		ee->finalizeObject();
 		
-		llvm::Function *func = module->getFunction("main");
+		llvm::Function* func = module->getFunction("main");
 		if(func == nullptr)
 			return false;
 		
@@ -56,7 +56,7 @@ _BeginNamespace(eokas)
 		return true;
 	}
 	
-	bool llvm_aot(ast_module_t *m)
+	bool llvm_aot(ast_module_t* m)
 	{
 		llvm::InitializeAllTargetInfos();
 		llvm::InitializeAllTargets();
@@ -66,7 +66,7 @@ _BeginNamespace(eokas)
 		
 		llvm::LLVMContext context;
 		
-		llvm::Module *module = llvm_encode(context, m);
+		llvm::Module* module = llvm_encode(context, m);
 		if(module == nullptr)
 			return false;
 		
@@ -111,5 +111,4 @@ _BeginNamespace(eokas)
 		
 		return true;
 	}
-
 _EndNamespace(eokas)

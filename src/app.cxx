@@ -8,15 +8,15 @@ using namespace eokas;
 #include <stdio.h>
 #include <iostream>
 
-static void eokas_main(const String &file);
+static void eokas_main(const String& file);
 
 static void about(void);
 
 static void help(void);
 
-static void bad_command(const char *command);
+static void bad_command(const char* command);
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
 	Args args(argc, argv);
 	if(args.count()<2)
@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 		{
 			eokas_main(file);
 		}
-		catch (std::exception &e)
+		catch (std::exception& e)
 		{
 			printf("ERROR: %s \n", e.what());
 		}
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-static void eokas_main(const String &fileName)
+static void eokas_main(const String& fileName)
 {
 	FileStream in(fileName, "rb");
 	if(!in.open())
@@ -62,18 +62,18 @@ static void eokas_main(const String &fileName)
 	in.read(buffer.data(), buffer.size());
 	in.close();
 	
-	String source((const char *) buffer.data(), buffer.size());
+	String source((const char*) buffer.data(), buffer.size());
 	printf("=> Source code:\n");
 	printf("------------------------------------------\n");
 	printf("%s\n", source.replace("%", "%%").cstr());
 	printf("------------------------------------------\n");
 	
 	parser_t parser;
-	ast_module_t *m = parser.parse(source.cstr());
+	ast_module_t* m = parser.parse(source.cstr());
 	printf("=> Module AST: %x\n", m);
 	if(m == nullptr)
 	{
-		const String &error = parser.error();
+		const String& error = parser.error();
 		printf("ERROR: %s\n", error.cstr());
 		return;
 	}
@@ -110,7 +110,7 @@ static void help(void)
 	);
 }
 
-static void bad_command(const char *command)
+static void bad_command(const char* command)
 {
 	printf(
 		"The command '%s' is undefined in eokas. "

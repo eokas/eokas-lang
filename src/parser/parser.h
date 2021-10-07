@@ -13,14 +13,13 @@ _BeginNamespace(eokas)
 		~parser_t();
 	
 	public:
-		struct ast_module_t *parse(const char *source);
+		struct ast_module_t* parse(const char* source);
 		
-		const String &error() const;
+		const String& error() const;
 	
 	private:
-		class parser_impl_t *impl;
+		class parser_impl_t* impl;
 	};
-
 _EndNamespace(eokas)
 
 #endif//_EOKAS_PARSER_H_

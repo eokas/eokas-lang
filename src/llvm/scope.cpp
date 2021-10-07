@@ -7,7 +7,7 @@
 
 _BeginNamespace(eokas)
 	
-	llvm_scope_t::llvm_scope_t(llvm_scope_t *parent)
+	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent)
 		: parent(parent), children(), symbols(), types()
 	{ }
 	
@@ -19,14 +19,14 @@ _BeginNamespace(eokas)
 		this->symbols.clear();
 	}
 	
-	llvm_scope_t *llvm_scope_t::addChild()
+	llvm_scope_t* llvm_scope_t::addChild()
 	{
-		llvm_scope_t *child = new llvm_scope_t(this);
+		llvm_scope_t* child = new llvm_scope_t(this);
 		this->children.push_back(child);
 		return child;
 	}
 	
-	llvm_expr_t *llvm_scope_t::getSymbol(const String &name, bool lookUp)
+	llvm_expr_t* llvm_scope_t::getSymbol(const String& name, bool lookUp)
 	{
 		if(lookUp)
 		{
@@ -47,7 +47,7 @@ _BeginNamespace(eokas)
 		}
 	}
 	
-	llvm::Type *llvm_scope_t::getType(const String &name, bool lookUp)
+	llvm::Type* llvm_scope_t::getType(const String& name, bool lookUp)
 	{
 		if(lookUp)
 		{
@@ -67,5 +67,4 @@ _BeginNamespace(eokas)
 			return nullptr;
 		}
 	}
-
 _EndNamespace(eokas)

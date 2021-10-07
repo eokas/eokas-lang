@@ -8,7 +8,7 @@
 
 _BeginNamespace(eokas)
 	
-	llvm_expr_t::llvm_expr_t(llvm::Value *value, llvm::Type *type)
+	llvm_expr_t::llvm_expr_t(llvm::Value* value, llvm::Type* type)
 	{
 		this->value = value;
 		if(type != nullptr)
@@ -30,5 +30,4 @@ _BeginNamespace(eokas)
 		this->value = nullptr;
 		this->type = nullptr;
 	};
-
 _EndNamespace(eokas)

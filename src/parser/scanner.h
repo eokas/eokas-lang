@@ -22,14 +22,14 @@ _BeginNamespace(eokas)
 			BInt, XInt, DInt, Float, Str, ID, Eos,
 			Count, Unknown
 		};
-		static const char *const names[Count];
+		static const char* const names[Count];
 		
 		token_type type;
 		String value;
 		
 		token_t();
 		
-		const char *const name() const;
+		const char* const name() const;
 		
 		bool infer(token_type default_type);
 		
@@ -44,17 +44,17 @@ _BeginNamespace(eokas)
 		virtual ~scanner_t();
 	
 	public:
-		void ready(const char *source);
+		void ready(const char* source);
 		
 		void clear();
 		
-		const char *source();
+		const char* source();
 		
 		void next_token();
 		
-		token_t &token();
+		token_t& token();
 		
-		token_t &look_ahead_token();
+		token_t& look_ahead_token();
 		
 		int line();
 		
@@ -81,18 +81,17 @@ _BeginNamespace(eokas)
 		
 		void save_and_read_char();
 		
-		bool check_char(const char *charset);
+		bool check_char(const char* charset);
 	
 	private:
-		const char *m_source;
-		const char *m_position;
+		const char* m_source;
+		const char* m_position;
 		char m_current;
 		token_t m_token;
 		token_t m_look_ahead_token;
 		int m_line;
 		int m_column;
 	};
-
 _EndNamespace(eokas)
 
 #endif//_EOKAS_SCANNER_H_

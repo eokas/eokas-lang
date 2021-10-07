@@ -18,7 +18,6 @@ namespace llvm
 }
 
 _BeginNamespace(eokas)
-
 _EndNamespace(eokas)
 
 #endif//_EOKAS_LLVM_HEADER_H_

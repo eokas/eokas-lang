@@ -4,7 +4,7 @@
 _BeginNamespace(eokas)
 	
 	
-	const char *const token_t::names[] = {
+	const char* const token_t::names[] = {
 		"var", "val", "make", "schema", "struct", "proc", "func", "array",
 		"if", "else", "for", "while", "continue", "break", "return",
 		"is", "as", "true", "false",
@@ -22,7 +22,7 @@ _BeginNamespace(eokas)
 		: type(Unknown), value()
 	{ }
 	
-	const char *const token_t::name() const
+	const char* const token_t::name() const
 	{
 		if(type<Count)
 			return names[type];
@@ -64,7 +64,7 @@ _BeginNamespace(eokas)
 		this->clear();
 	}
 	
-	void scanner_t::ready(const char *source)
+	void scanner_t::ready(const char* source)
 	{
 		this->clear();
 		m_source = source;
@@ -83,7 +83,7 @@ _BeginNamespace(eokas)
 		m_column = 0;
 	}
 	
-	const char *scanner_t::source()
+	const char* scanner_t::source()
 	{
 		return m_source;
 	}
@@ -101,12 +101,12 @@ _BeginNamespace(eokas)
 		}
 	}
 	
-	token_t &scanner_t::token()
+	token_t& scanner_t::token()
 	{
 		return m_token;
 	}
 	
-	token_t &scanner_t::look_ahead_token()
+	token_t& scanner_t::look_ahead_token()
 	{
 		if(m_look_ahead_token.type == token_t::Unknown)
 		{
@@ -317,7 +317,6 @@ _BeginNamespace(eokas)
 					}
 			}
 		}
-		
 	}
 	
 	void scanner_t::scan_number()
@@ -523,10 +522,9 @@ _BeginNamespace(eokas)
 		this->read_char();
 	}
 	
-	bool scanner_t::check_char(const char *charset)
+	bool scanner_t::check_char(const char* charset)
 	{
-		const char *ptr = strchr(charset, m_current);
+		const char* ptr = strchr(charset, m_current);
 		return ptr != nullptr;
 	}
-
 _EndNamespace(eokas)
