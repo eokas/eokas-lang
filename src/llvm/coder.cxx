@@ -168,7 +168,7 @@ _BeginNamespace(eokas)
             type_f32 = llvm::Type::getFloatTy(llvm_context);
             type_f64 = llvm::Type::getDoubleTy(llvm_context);
             type_bool = llvm::Type::getInt1Ty(llvm_context);
-            type_string = llvm::Type::getInt8PtrTy(llvm_context);
+            type_string = this->define_type_string(llvm_context);
 
             const_zero = llvm::ConstantInt::get(llvm_context, llvm::APInt(32, 0));
         }
@@ -228,13 +228,24 @@ _BeginNamespace(eokas)
             return value;
         }
 
+        llvm::Type* define_type_string(llvm::LLVMContext& context)
+        {
+            llvm::StructType* stringType = llvm::StructType::create(context, "struct.string");
+
+            std::vector<llvm::Type*> body;
+            body.push_back(llvm::Type::getInt8PtrTy(context));
+            stringType->setBody(body);
+
+            return stringType;
+        }
+
         llvm::Function *define_func_print() {
             llvm::StringRef name = "print";
 
             llvm::Type *ret = llvm::Type::getInt32Ty(llvm_context);
 
             std::vector<llvm::Type *> args = {
-                    type_string
+                    llvm::PointerType::get(type_string, 0)
             };
 
             llvm::AttributeList attrs;
@@ -251,7 +262,10 @@ _BeginNamespace(eokas)
 
             llvm::Value* arg0 = funcValue->getArg(0);
 
-            llvm::Value *retval = llvm_invoke_code_print(entry, {arg0});
+            llvm::Value* i8ptr = builder.CreateStructGEP(arg0, 0);
+            llvm::Value* str = builder.CreateLoad(i8ptr);
+
+            llvm::Value *retval = llvm_invoke_code_print(entry, {str});
             builder.SetInsertPoint(entry);
 
             builder.CreateRet(retval);
@@ -1044,7 +1058,11 @@ _BeginNamespace(eokas)
         llvm_expr_t *encode_expr_string(struct ast_expr_string_t *node) {
             if(node == nullptr)
                 return nullptr;
-            return this->new_expr(llvm_builder.CreateGlobalString(node->value.cstr()));
+            auto str = llvm_builder.CreateAlloca(type_string);
+            auto ptr = llvm_builder.CreateStructGEP(str, 0);
+            auto val = llvm_builder.CreateGlobalString(node->value.cstr());
+            llvm_builder.CreateStore(val, ptr);
+            return this->new_expr(str);
         }
 
         llvm_expr_t *encode_expr_symbol_ref(struct ast_expr_symbol_ref_t *node) {

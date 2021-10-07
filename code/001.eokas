@@ -1,6 +1,3 @@
 
-var f = func(a:string):string {
-    return a;
-};
-var a = f("hello world");
+var a : string = "hello world";
 print(a);
