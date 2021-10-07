@@ -1,5 +1,6 @@
 
-var f = func():void {
-    print("hello world.");
+var f = func(a:string):string {
+    return a;
 };
-f();
+var a = f("hello world");
+print(a);
