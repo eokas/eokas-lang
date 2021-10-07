@@ -1,13 +1,7 @@
 #ifndef _EOKAS_LLVM_CODER_H_
 #define _EOKAS_LLVM_CODER_H_
 
-#include "../ast/ast.h"
-
-namespace llvm {
-    class LLVMContext;
-    class Module;
-    class DataLayout;
-}
+#include "header.h"
 
 _BeginNamespace(eokas)
 

@@ -1,5 +1,7 @@
 #include "coder.h"
 #include "runtime.h"
+#include "scope.h"
+#include "expr.h"
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
@@ -23,101 +25,6 @@
 #include <vector>
 
 _BeginNamespace(eokas)
-
-    struct llvm_expr_t {
-        llvm::Value *value;
-        llvm::Type *type;
-
-        explicit llvm_expr_t(llvm::Value *value, llvm::Type *type = nullptr) {
-            this->value = value;
-            if(type != nullptr) {
-                this->type = type;
-            } else if(llvm::isa<llvm::Function>(value)) {
-                this->type = llvm::cast<llvm::Function>(value)->getFunctionType();
-            } else {
-                this->type = value->getType();
-            }
-        }
-
-        ~llvm_expr_t() {
-            this->value = nullptr;
-            this->type = nullptr;
-        };
-    };
-
-    struct llvm_scope_t {
-        llvm_scope_t *parent;
-        std::vector<llvm_scope_t *> children;
-
-        std::map<String, llvm_expr_t *> symbols;
-        std::map<String, llvm::Type *> types;
-        std::map<String, ast_type_generic_t *> generics;
-
-        explicit llvm_scope_t(llvm_scope_t *parent)
-                : parent(parent), children(), symbols(), types(), generics() {
-        }
-
-        virtual ~llvm_scope_t() {
-            this->parent = nullptr;
-            _DeleteList(this->children);
-            this->types.clear();
-            this->symbols.clear();
-        }
-
-        llvm_scope_t *addChild() {
-            llvm_scope_t *child = new llvm_scope_t(this);
-            this->children.push_back(child);
-            return child;
-        }
-
-        llvm_expr_t *getSymbol(const String &name, bool lookUp) {
-            if(lookUp) {
-                for (auto scope = this; scope != nullptr; scope = scope->parent) {
-                    auto iter = scope->symbols.find(name);
-                    if(iter != scope->symbols.end())
-                        return iter->second;
-                }
-                return nullptr;
-            } else {
-                auto iter = this->symbols.find(name);
-                if(iter != this->symbols.end())
-                    return iter->second;
-                return nullptr;
-            }
-        }
-
-        llvm::Type *getType(const String &name, bool lookUp) {
-            if (lookUp) {
-                for (auto scope = this; scope != nullptr; scope = scope->parent) {
-                    auto iter = scope->types.find(name);
-                    if (iter != scope->types.end())
-                        return iter->second;
-                }
-                return nullptr;
-            } else {
-                auto iter = this->types.find(name);
-                if (iter != this->types.end())
-                    return iter->second;
-                return nullptr;
-            }
-        }
-
-        ast_type_generic_t *getGeneric(const String &name, bool lookUp) {
-            if (lookUp) {
-                for (auto scope = this; scope != nullptr; scope = scope->parent) {
-                    auto iter = scope->generics.find(name);
-                    if (iter != scope->generics.end())
-                        return iter->second;
-                }
-                return nullptr;
-            } else {
-                auto iter = this->generics.find(name);
-                if (iter != this->generics.end())
-                    return iter->second;
-                return nullptr;
-            }
-        }
-    };
 
     struct llvm_coder_t {
         llvm::LLVMContext &llvm_context;
@@ -1696,4 +1603,5 @@ _BeginNamespace(eokas)
         llvm::Module *llvm_module = coder.encode(module);
         return llvm_module;
     }
+
 _EndNamespace(eokas)
