@@ -1094,9 +1094,7 @@ _BeginNamespace(eokas)
 
                 for (auto &arg: func->args()) {
                     const char *name = arg.getName().data();
-                    llvm::Value *ptr = llvm_builder.CreateAlloca(arg.getType());
-                    llvm_builder.CreateStore(&arg, ptr);
-                    auto expr = this->new_expr(ptr);
+                    auto expr = this->new_expr(&arg);
                     auto pair = std::make_pair(String(name), expr);
                     this->scope->symbols.insert(pair);
                 }
@@ -1130,10 +1128,15 @@ _BeginNamespace(eokas)
             auto funcType = llvm::cast<llvm::FunctionType>(funcExpr->type);
 
             std::vector<llvm::Value *> params;
-            for (auto &arg: node->args) {
-                auto *paramE = this->encode_expr(arg);
+            for(auto i = 0; i < node->args.size(); i++) {
+                auto* paramT = funcType->getParamType(i);
+                auto *paramE = this->encode_expr(node->args.at(i));
                 if(paramE == nullptr)
                     return nullptr;
+                if(paramE->type != paramT && !paramE->type->canLosslesslyBitCastTo(paramT)) {
+                    printf("the type of param[%llu] can't cast to the param type of function.", i);
+                    return nullptr;
+                }
                 auto paramV = this->ref_value(llvm_builder, paramE->value);
                 params.push_back(paramV);
             }
@@ -1424,8 +1427,10 @@ _BeginNamespace(eokas)
                 type = vtype;
             }
 
+            if(type->isVoidTy()) {
+                printf("void type can't assign to a symbol.");
+            }
             // TODO: 校验类型合法性, 值类型是否遵循标记类型
-            // 不同的类型，需要调用不同的store命令
 
             auto symbol = llvm_builder.CreateAlloca(type, nullptr, node->name.cstr());
             llvm_builder.CreateStore(value, symbol);
@@ -1463,7 +1468,14 @@ _BeginNamespace(eokas)
             if (node == nullptr)
                 return false;
 
+            auto expectedRetType = this->func->getFunctionType()->getReturnType();
+
             if (node->value == nullptr) {
+                if(!expectedRetType->isVoidTy()) {
+                    printf("the function must return a value.\n");
+                    return false;
+                }
+
                 llvm_builder.CreateRetVoid();
                 return true;
             }
@@ -1473,8 +1485,13 @@ _BeginNamespace(eokas)
                 printf("invalid ret value.\n");
                 return false;
             }
-
             auto value = this->get_value(llvm_builder, expr->value);
+            auto actureRetType = expr->type;
+            if(actureRetType != expectedRetType && !actureRetType->canLosslesslyBitCastTo(expectedRetType)) {
+                printf("the type of return value can't cast to return type of function.\n");
+                return false;
+            }
+
             llvm_builder.CreateRet(value);
 
             return true;
