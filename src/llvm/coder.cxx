@@ -247,7 +247,7 @@ _BeginNamespace(eokas)
 				printf("condition must be a bool value.\n");
 				return nullptr;
 			}
-			auto condV = llvm_get_value(llvm_builder, condE->value);
+			auto condV = model.get_value(llvm_builder, condE->value);
 			llvm_builder.CreateCondBr(condV, trinary_true, trinary_false);
 			
 			llvm_builder.SetInsertPoint(trinary_true);
@@ -286,7 +286,7 @@ _BeginNamespace(eokas)
 			if(left == nullptr || right == nullptr)
 				return nullptr;
 			
-			auto lhs = llvm_get_value(llvm_builder, left->value);
+			auto lhs = model.get_value(llvm_builder, left->value);
 			
 			switch (node->op)
 			{
@@ -304,7 +304,7 @@ _BeginNamespace(eokas)
 					{
 						if(right == model.type_string)
 						{
-							llvm::Value* value = llvm_invoke_code_as_string(llvm_module, llvm_builder, {lhs});
+							llvm::Value* value = model.value_to_string(llvm_module, this->func, llvm_builder, lhs);
 							return this->new_expr(value);
 						}
 						return nullptr;
@@ -333,8 +333,8 @@ _BeginNamespace(eokas)
 			if(left == nullptr || right == nullptr)
 				return nullptr;
 			
-			auto lhs = llvm_get_value(llvm_builder, left->value);
-			auto rhs = llvm_get_value(llvm_builder, right->value);
+			auto lhs = model.get_value(llvm_builder, left->value);
+			auto rhs = model.get_value(llvm_builder, right->value);
 			
 			switch (node->op)
 			{
@@ -870,7 +870,7 @@ _BeginNamespace(eokas)
 			if(right == nullptr)
 				return nullptr;
 			
-			auto rhs = llvm_get_value(llvm_builder, right->value);
+			auto rhs = model.get_value(llvm_builder, right->value);
 			
 			switch (node->op)
 			{
@@ -1050,7 +1050,7 @@ _BeginNamespace(eokas)
 				return nullptr;
 			}
 			
-			auto funcPtr = llvm_get_value(llvm_builder, funcExpr->value);
+			auto funcPtr = model.get_value(llvm_builder, funcExpr->value);
 			auto funcType = llvm::cast<llvm::FunctionType>(funcExpr->type);
 			
 			std::vector<llvm::Value*> params;
@@ -1062,10 +1062,10 @@ _BeginNamespace(eokas)
 					return nullptr;
 				if(paramE->type != paramT && !paramE->type->canLosslesslyBitCastTo(paramT))
 				{
-					printf("the type of param[%llu] can't cast to the param type of function.", i);
+					printf("the type of param[%d] can't cast to the param type of function.\n", i);
 					return nullptr;
 				}
-				auto paramV = llvm_ref_value(llvm_builder, paramE->value);
+				auto paramV = model.ref_value(llvm_builder, paramE->value);
 				params.push_back(paramV);
 			}
 			
@@ -1170,7 +1170,7 @@ _BeginNamespace(eokas)
 					auto memE = this->encode_expr(memNode->second);
 					if(memE == nullptr)
 						return nullptr;
-					memV = llvm_get_value(llvm_builder, memE->value);
+					memV = model.get_value(llvm_builder, memE->value);
 				}
 				else
 				{
@@ -1194,7 +1194,7 @@ _BeginNamespace(eokas)
 			if(instanceE == nullptr || key == nullptr)
 				return nullptr;
 			
-			auto instanceV = llvm_ref_value(llvm_builder, instanceE->value);
+			auto instanceV = model.ref_value(llvm_builder, instanceE->value);
 			auto instanceType = instanceV->getType();
 			if(!(instanceType->isPointerTy() && instanceType->getPointerElementType()->isStructTy()))
 			{
@@ -1367,7 +1367,7 @@ _BeginNamespace(eokas)
 			if(expr == nullptr)
 				return false;
 			
-			auto value = llvm_get_value(llvm_builder, expr->value);
+			auto value = model.get_value(llvm_builder, expr->value);
 			llvm::Type* vtype = value->getType();
 			
 			if(type != nullptr)
@@ -1448,7 +1448,7 @@ _BeginNamespace(eokas)
 				printf("invalid ret value.\n");
 				return false;
 			}
-			auto value = llvm_get_value(llvm_builder, expr->value);
+			auto value = model.get_value(llvm_builder, expr->value);
 			auto actureRetType = expr->type;
 			if(actureRetType != expectedRetType && !actureRetType->canLosslesslyBitCastTo(expectedRetType))
 			{
@@ -1476,7 +1476,7 @@ _BeginNamespace(eokas)
 			auto condE = this->encode_expr(node->cond);
 			if(condE == nullptr)
 				return false;
-			auto condV = llvm_get_value(llvm_builder, condE->value);
+			auto condV = model.get_value(llvm_builder, condE->value);
 			if(!condV->getType()->isIntegerTy(1))
 			{
 				printf("if.cond need a bool value.\n");
@@ -1524,7 +1524,7 @@ _BeginNamespace(eokas)
 			auto condE = this->encode_expr(node->cond);
 			if(condE == nullptr)
 				return false;
-			auto condV = llvm_get_value(llvm_builder, condE->value);
+			auto condV = model.get_value(llvm_builder, condE->value);
 			if(!condV->getType()->isIntegerTy(1))
 			{
 				printf("while.cond need a bool value.\n");
@@ -1575,7 +1575,7 @@ _BeginNamespace(eokas)
 			auto condE = this->encode_expr(node->cond);
 			if(condE == nullptr)
 				return false;
-			auto condV = llvm_get_value(llvm_builder, condE->value);
+			auto condV = model.get_value(llvm_builder, condE->value);
 			if(!condV->getType()->isIntegerTy(1))
 			{
 				printf("for.cond need a bool value.\n");
@@ -1629,8 +1629,8 @@ _BeginNamespace(eokas)
 			auto leftE = this->encode_expr(node->left);
 			auto rightE = this->encode_expr(node->right);
 			
-			auto ptr = llvm_ref_value(llvm_builder, leftE->value);
-			auto val = llvm_get_value(llvm_builder, rightE->value);
+			auto ptr = model.ref_value(llvm_builder, leftE->value);
+			auto val = model.get_value(llvm_builder, rightE->value);
 			llvm_builder.CreateStore(val, ptr);
 			
 			return true;

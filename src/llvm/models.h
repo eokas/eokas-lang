@@ -41,8 +41,11 @@ _BeginNamespace(eokas)
 
 		explicit llvm_model_t(llvm::LLVMContext& context);
 		
-		llvm::Type* define_type_string();
+		llvm::Value* get_value(llvm::IRBuilder<>& builder, llvm::Value* value);
+		llvm::Value* ref_value(llvm::IRBuilder<>& builder, llvm::Value* value);
 		
+		llvm::Type* define_type_string();
+
 		llvm::Function* declare_cfunc_puts(llvm::Module* module);
 		llvm::Function* declare_cfunc_printf(llvm::Module* module);
 		llvm::Function* declare_cfunc_sprintf(llvm::Module* module);
@@ -50,16 +53,20 @@ _BeginNamespace(eokas)
 		llvm::Function* declare_cfunc_free(llvm::Module* module);
 		
 		llvm::Function* define_func_print(llvm::Module* module);
+		
+		llvm::Value* string_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* bool_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* number_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* value_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		
+		llvm::Value* cstr_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* bool_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* number_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* value_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		
+		llvm::Value* print(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args);
+		
 	};
-	
-	llvm::Value* llvm_get_value(llvm::IRBuilder<>& builder, llvm::Value* value);
-	
-	llvm::Value* llvm_ref_value(llvm::IRBuilder<>& builder, llvm::Value* value);
-	
-	llvm::Value* llvm_invoke_code_as_string(llvm::Module* module, llvm::IRBuilder<>& builder, std::vector<llvm::Value*> args);
-	
-	llvm::Value* llvm_invoke_code_print(llvm::Module* module, llvm::IRBuilder<>& builder, std::vector<llvm::Value*> args);
-
 _EndNamespace(eokas)
 
 #endif//_EOKAS_LLVM_MODELS_H_

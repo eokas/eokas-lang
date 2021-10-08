@@ -45,6 +45,32 @@ _BeginNamespace(eokas)
 		const_zero = llvm::ConstantInt::get(context, llvm::APInt(32, 0));
 	}
 	
+	llvm::Value* llvm_model_t::get_value(llvm::IRBuilder<>& builder, llvm::Value* value)
+	{
+		llvm::Type* type = value->getType();
+		while (type->isPointerTy())
+		{
+			if(llvm::isa<llvm::Function>(value))
+				break;
+			if(type->getPointerElementType()->isFunctionTy())
+				break;
+			value = builder.CreateLoad(value);
+			type = value->getType();
+		}
+		return value;
+	}
+	
+	llvm::Value* llvm_model_t::ref_value(llvm::IRBuilder<>& builder, llvm::Value* value)
+	{
+		llvm::Type* type = value->getType();
+		while (type->isPointerTy() && type->getPointerElementType()->isPointerTy())
+		{
+			value = builder.CreateLoad(value);
+			type = value->getType();
+		}
+		return value;
+	}
+	
 	llvm::Type* llvm_model_t::define_type_string()
 	{
 		llvm::StructType* stringType = llvm::StructType::create(context, "struct.string");
@@ -161,65 +187,56 @@ _BeginNamespace(eokas)
 		builder.SetInsertPoint(entry);
 		
 		llvm::Value* arg0 = funcValue->getArg(0);
-		
-		llvm::Value* i8ptr = builder.CreateStructGEP(arg0, 0);
-		llvm::Value* str = builder.CreateLoad(i8ptr);
-		
-		llvm::Value* retval = llvm_invoke_code_print(module, builder, {str});
+		llvm::Value* cstr = this->string_to_cstr(module, funcValue, builder, arg0);
+		llvm::Value* retval = this->print(module, funcValue, builder, {cstr});
 		
 		builder.CreateRet(retval);
 		
 		return funcValue;
 	}
 	
-	llvm::Value* llvm_get_value(llvm::IRBuilder<>& builder, llvm::Value* value)
+	llvm::Value* llvm_model_t::string_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		llvm::Type* type = value->getType();
-		while (type->isPointerTy())
-		{
-			if(llvm::isa<llvm::Function>(value))
-				break;
-			if(type->getPointerElementType()->isFunctionTy())
-				break;
-			value = builder.CreateLoad(value);
-			type = value->getType();
-		}
-		return value;
+		llvm::Value* ptr = builder.CreateStructGEP(type_string, val, 0);
+		llvm::Value* cstr = builder.CreateLoad(ptr);
+		return cstr;
 	}
 	
-	llvm::Value* llvm_ref_value(llvm::IRBuilder<>& builder, llvm::Value* value)
+	llvm::Value* llvm_model_t::bool_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		llvm::Type* type = value->getType();
-		while (type->isPointerTy() && type->getPointerElementType()->isPointerTy())
-		{
-			value = builder.CreateLoad(value);
-			type = value->getType();
-		}
-		return value;
+		llvm::BasicBlock* branch_begin = llvm::BasicBlock::Create(context, "branch.begin", func);
+		llvm::BasicBlock* branch_true = llvm::BasicBlock::Create(context, "branch.true", func);
+		llvm::BasicBlock* branch_false = llvm::BasicBlock::Create(context, "branch.false", func);
+		llvm::BasicBlock* branch_end = llvm::BasicBlock::Create(context, "branch.end", func);
+		
+		builder.CreateBr(branch_begin);
+		
+		builder.SetInsertPoint(branch_begin);
+		builder.CreateCondBr(val, branch_true, branch_false);
+		
+		builder.SetInsertPoint(branch_true);
+		auto val_true = builder.CreateGlobalString("true");
+		builder.CreateBr(branch_end);
+		
+		builder.SetInsertPoint(branch_false);
+		auto val_false = builder.CreateGlobalString("false");
+		builder.CreateBr(branch_end);
+		
+		builder.SetInsertPoint(branch_end);
+		
+		llvm::PHINode* phi = builder.CreatePHI(type_i8_ptr, 2);
+		phi->addIncoming(val_true, branch_true);
+		phi->addIncoming(val_false, branch_false);
+		
+		return phi;
 	}
 	
-	llvm::Value* llvm_invoke_code_as_string(llvm::Module* module, llvm::IRBuilder<>& builder, std::vector<llvm::Value*> args)
+	llvm::Value* llvm_model_t::number_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		llvm::LLVMContext& context = module->getContext();
-
-		llvm::Value* val = args[0];
 		llvm::Type* vt = val->getType();
 		
-		// val is string
-		if(vt->isPointerTy())
-		{
-			auto vit = vt->getPointerElementType();
-			if(vit->isIntegerTy(8))
-			{
-				return args[0];
-			}
-		}
-		
-		llvm::Value* str = builder.CreateAlloca(
-			llvm::ArrayType::get(
-				llvm::Type::getInt8Ty(context),
-				64
-			)
+		llvm::Value* buf = builder.CreateAlloca(
+			llvm::ArrayType::get(type_i8, 64)
 		);
 		
 		llvm::StringRef vf = "%x";
@@ -229,19 +246,69 @@ _BeginNamespace(eokas)
 		llvm::Value* fmt = builder.CreateGlobalString(vf);
 		
 		auto sprintf = module->getFunction("sprintf");
-		builder.CreateCall(sprintf, {str, fmt, val});
+		builder.CreateCall(sprintf, {buf, fmt, val});
 		
+		return buf;
+	}
+	
+	llvm::Value* llvm_model_t::value_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	{
+		llvm::Type* vt = val->getType();
+		
+		if(vt == type_string)
+			return this->string_to_cstr(module, func, builder, val);
+		
+		if(vt == type_i8_ptr)
+			return val;
+		
+		if(vt->isIntegerTy(1))
+			return this->bool_to_cstr(module, func, builder, val);
+		
+		return this->number_to_cstr(module, func, builder, val);
+	}
+	
+	llvm::Value* llvm_model_t::cstr_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	{
+		llvm::Value* str = builder.CreateAlloca(type_string);
+		llvm::Value* ptr = builder.CreateStructGEP(type_string, str, 0);
+		builder.CreateStore(val, ptr);
 		return str;
 	}
 	
-	llvm::Value* llvm_invoke_code_print(llvm::Module* module, llvm::IRBuilder<>& builder, std::vector<llvm::Value*> args)
+	llvm::Value* llvm_model_t::bool_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		llvm::LLVMContext& context = module->getContext();
+		llvm::Value* cstr = this->bool_to_cstr(module, func, builder, val);
+		return this->cstr_to_string(module, func, builder, cstr);
+	}
+	
+	llvm::Value* llvm_model_t::number_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	{
+		llvm::Value* cstr = this->number_to_cstr(module, func, builder, val);
+		return this->cstr_to_string(module, func, builder, cstr);
+	}
+	
+	llvm::Value* llvm_model_t::value_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	{
+		llvm::Type* vt = val->getType();
 		
-		llvm::Value* str = llvm_invoke_code_as_string(module, builder, args);
+		if(vt == type_string)
+			return val;
 
+		if(vt == type_i8_ptr)
+			return this->cstr_to_string(module, func, builder, val);
+		
+		if(vt->isIntegerTy(1))
+			return this->bool_to_string(module, func, builder, val);
+		
+		return this->number_to_string(module, func, builder, val);
+	}
+	
+	llvm::Value* llvm_model_t::print(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args)
+	{
+		llvm::Value* val = args[0];
+		llvm::Value* cstr = this->value_to_cstr(module, func, builder, val);
 		auto puts = module->getFunction("puts");
-		llvm::Value* ret = builder.CreateCall(puts, {str});
+		llvm::Value* ret = builder.CreateCall(puts, {cstr});
 		
 		return ret;
 	}
