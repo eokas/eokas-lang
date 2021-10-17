@@ -373,9 +373,9 @@ _BeginNamespace(eokas)
 				case ast_binary_oper_t::BitXor:
 					return this->encode_expr_binary_bitxor(lhs, rhs);
 				case ast_binary_oper_t::ShiftL:
-					return this->new_expr(llvm_builder.CreateShl(lhs, rhs));
+					return this->encode_expr_binary_bitshl(lhs, rhs);
 				case ast_binary_oper_t::ShiftR:
-					return this->new_expr(llvm_builder.CreateLShr(lhs, rhs));
+					return this->encode_expr_binary_bitshr(lhs, rhs);
 				default:
 					return nullptr;
 			}
@@ -1138,11 +1138,11 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			llvm::PointerType* structRefType = llvm::cast<llvm::PointerType>(this->encode_type(node->type));
+			auto* structRefType = llvm::cast<llvm::PointerType>(this->encode_type(node->type));
 			if(structRefType == nullptr)
 				return nullptr;
 			
-			llvm::StructType* structType = llvm::cast<llvm::StructType>(structRefType->getElementType());
+			auto* structType = llvm::cast<llvm::StructType>(structRefType->getElementType());
 			if(structType == nullptr)
 				return nullptr;
 			
@@ -1323,7 +1323,7 @@ _BeginNamespace(eokas)
 			structType->setName(structName.cstr());
 			structType->setBody(memberTypes);
 			
-			llvm::Type* structRefType = llvm::PointerType::get(structType, 0);
+			llvm::Type* structRefType = structType->getPointerTo();
 			
 			this->scope->types.insert(std::make_pair(name, structRefType));
 			this->structs.insert(std::make_pair(structType, node));
