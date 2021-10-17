@@ -665,8 +665,6 @@ func_call => '(' expr, expr, ..., expr ')'
 	ast_expr_t* parser_impl_t::parse_func_call(ast_node_t* p, ast_expr_t* primary)
 	{
 		ast_expr_func_ref_t* node = new ast_expr_func_ref_t(p);
-		node->func = primary;
-		primary->parent = node;
 		
 		if(!this->check_token(token_t::LRB))
 		{
@@ -691,6 +689,11 @@ func_call => '(' expr, expr, ..., expr ')'
 			
 			node->args.push_back(arg);
 		}
+		
+		// 确保所有解析成功后，才能将 primary 赋值给 node，
+		// 否则会出现 crash。
+		node->func = primary;
+		primary->parent = node;
 		
 		return node;
 	}
@@ -778,8 +781,6 @@ index_ref => '[' expr ']'
 	ast_expr_t* parser_impl_t::parse_index_ref(ast_node_t* p, ast_expr_t* primary)
 	{
 		ast_expr_index_ref_t* node = new ast_expr_index_ref_t(p);
-		node->obj = primary;
-		primary->parent = node;
 		
 		if(!this->check_token(token_t::LSB))
 		{
@@ -799,6 +800,9 @@ index_ref => '[' expr ']'
 			_DeletePointer(node);
 			return nullptr;
 		}
+		
+		node->obj = primary;
+		primary->parent = node;
 		
 		return node;
 	}
@@ -835,8 +839,6 @@ object_ref => '.' ID
 	ast_expr_t* parser_impl_t::parse_object_ref(ast_node_t* p, ast_expr_t* primary)
 	{
 		ast_expr_object_ref_t* node = new ast_expr_object_ref_t(p);
-		node->obj = primary;
-		primary->parent = node;
 		
 		if(!this->check_token(token_t::Dot))
 		{
@@ -853,6 +855,9 @@ object_ref => '.' ID
 		node->key = this->token().value;
 		
 		this->next_token();
+		
+		node->obj = primary;
+		primary->parent = node;
 		
 		return node;
 	}
