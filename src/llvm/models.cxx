@@ -54,6 +54,8 @@ _BeginNamespace(eokas)
 				break;
 			if(type->getPointerElementType()->isFunctionTy())
 				break;
+			if(type->getPointerElementType()->isStructTy())
+				break;
 			value = builder.CreateLoad(value);
 			type = value->getType();
 		}

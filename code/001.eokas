@@ -1,4 +1,6 @@
 
-var str = "hello world.";
+var f = func(a:string) : string {
+    return a;
+};
 
-print(str);
+print(f("hello world."));
