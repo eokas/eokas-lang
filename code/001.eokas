@@ -1,3 +1,4 @@
 
-var a : string = "hello world";
-print(a);
+var str = "hello world.";
+
+print(str);

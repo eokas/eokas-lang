@@ -137,7 +137,7 @@ _BeginNamespace(eokas)
 	{
 		llvm::StringRef name = "malloc";
 		llvm::Type* ret = type_i8_ptr;
-		std::vector<llvm::Type*> args = { type_i32 };
+		std::vector<llvm::Type*> args = { type_i64 };
 		bool varg = false;
 		
 		llvm::AttributeList attrs;
@@ -193,6 +193,21 @@ _BeginNamespace(eokas)
 		builder.CreateRet(retval);
 		
 		return funcValue;
+	}
+	
+	llvm::Value* llvm_model_t::make(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type)
+	{
+		auto mallocF = module->getFunction("malloc");
+		llvm::Constant* len = llvm::ConstantExpr::getSizeOf(type);
+		llvm::Value* ptr = builder.CreateCall(mallocF, {len});
+		llvm::Value* val = builder.CreateBitCast(ptr, type->getPointerTo());
+		return val;
+	}
+	
+	void llvm_model_t::free(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr)
+	{
+		auto freeF = module->getFunction("free");
+		builder.CreateCall(freeF, {ptr});
 	}
 	
 	llvm::Value* llvm_model_t::string_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
@@ -269,7 +284,7 @@ _BeginNamespace(eokas)
 	
 	llvm::Value* llvm_model_t::cstr_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		llvm::Value* str = builder.CreateAlloca(type_string);
+		llvm::Value* str = this->make(module, func, builder, type_string);
 		llvm::Value* ptr = builder.CreateStructGEP(type_string, str, 0);
 		builder.CreateStore(val, ptr);
 		return str;

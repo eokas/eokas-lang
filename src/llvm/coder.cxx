@@ -85,6 +85,8 @@ _BeginNamespace(eokas)
 			model.declare_cfunc_puts(llvm_module);
 			model.declare_cfunc_printf(llvm_module);
 			model.declare_cfunc_sprintf(llvm_module);
+			model.declare_cfunc_malloc(llvm_module);
+			model.declare_cfunc_free(llvm_module);
 			
 			if(!this->encode_module(m))
 			{
@@ -113,7 +115,7 @@ _BeginNamespace(eokas)
 			this->scope->types["f32"] = model.type_f32;
 			this->scope->types["f64"] = model.type_f64;
 			this->scope->types["bool"] = model.type_bool;
-			this->scope->types["string"] = model.type_string;
+			this->scope->types["string"] = model.type_string_ptr;
 			
 			this->scope->symbols["print"] = new llvm_expr_t(model.define_func_print(llvm_module));
 			
@@ -957,7 +959,8 @@ _BeginNamespace(eokas)
 		{
 			if(node == nullptr)
 				return nullptr;
-			auto str = llvm_builder.CreateAlloca(model.type_string);
+			
+			auto str = model.make(llvm_module, this->func, llvm_builder, model.type_string);
 			auto ptr = llvm_builder.CreateStructGEP(str, 0);
 			auto val = llvm_builder.CreateGlobalString(node->value.cstr());
 			llvm_builder.CreateStore(val, ptr);
