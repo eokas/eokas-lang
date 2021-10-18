@@ -7,9 +7,4 @@ namespace eokas
         : ast_node_t(category, parent)
         , type(nullptr)
     { }
-
-    ast_expr_t::~ast_expr_t()
-    {
-        this->type = nullptr;
-    }
 }

@@ -13,11 +13,11 @@ namespace eokas
 		virtual ~ast_module_t();
 
 	public:
-	    ast_expr_t* create_expr_symbol(const String& name, ast_expr_t* value);
+	    ast_expr_symbol_t* create_expr_symbol(const String& name, ast_expr_t* value);
 		
 	private:
 		std::vector<ast_node_t*> nodes;
-		ast_func_t* func;
+		ast_expr_func_t* func;
 		ast_scope_t* scope;
 	};
 }

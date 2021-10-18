@@ -107,10 +107,18 @@ namespace eokas
 	};
 	
 	class ast_scope_t;
+	
 	class ast_type_t;
+	class ast_type_ref_t;
+	class ast_type_array_t;
+	class ast_type_generic_t;
+	
 	class ast_expr_t;
-	class ast_symbol_t;
-	class ast_func_t;
+	class ast_expr_symbol_t;
+	class ast_expr_func_def_t;
+	class ast_expr_func_ref_t;
+	
+	class ast_stmt_t;
 }
 
 #endif //_EOKAS_AST_HEADER_H_
