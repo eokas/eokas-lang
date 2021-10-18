@@ -2,7 +2,7 @@
 #define _EOKAS_AST_H_
 
 #include "header.h"
-#include "scope.h"
+#include "object.h"
 #include "expr.h"
 #include "type.h"
 #include "stmt.h"

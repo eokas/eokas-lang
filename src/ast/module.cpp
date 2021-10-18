@@ -1,6 +1,6 @@
 
 #include "module.h"
-#include "scope.h"
+#include "object.h"
 #include "type.h"
 #include "expr.h"
 

@@ -1,11 +1,33 @@
 
-#ifndef _EOKAS_AST_SCOPE_H_
-#define _EOKAS_AST_SCOPE_H_
+#ifndef _EOKAS_AST_OBJECT_H_
+#define _EOKAS_AST_OBJECT_H_
 
 #include "header.h"
 
 namespace eokas
 {
+	class ast_type_t
+	{
+	private:
+		String name;
+	};
+	
+	class ast_symbol_t
+	{
+	public:
+		ast_symbol_t(const String& name, ast_type_t* type, ast_expr_t* value);
+		virtual ~ast_symbol_t();
+		
+		const String& getName() const;
+		const ast_type_t* getType() const;
+		const ast_expr_t* getValue() const;
+	
+	private:
+		String name;
+		ast_type_t* type;
+		ast_expr_t* value;
+	};
+	
 	class ast_scope_t
 	{
 	public:
@@ -28,4 +50,4 @@ namespace eokas
 	};
 }
 
-#endif //_EOKAS_AST_SCOPE_H_
+#endif //_EOKAS_AST_OBJECT_H_

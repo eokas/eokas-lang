@@ -1,8 +1,38 @@
 
-#include "scope.h"
+#include "object.h"
+
+#include <utility>
 
 namespace eokas
 {
+	ast_symbol_t::ast_symbol_t(const String&  name, ast_type_t* type, ast_expr_t* value)
+		: name(name)
+		, type(type)
+		, value(value)
+	{}
+	
+	ast_symbol_t::~ast_symbol_t()
+	{
+		this->name.clear();
+		this->type = nullptr;
+		this->value = nullptr;
+	}
+	
+	const String& ast_symbol_t::getName() const
+	{
+		return this->name;
+	}
+	
+	const ast_type_t* ast_symbol_t::getType() const
+	{
+		return this->type;
+	}
+	
+	const ast_expr_t* ast_symbol_t::getValue() const
+	{
+		return this->value;
+	}
+	
 	ast_scope_t::ast_scope_t(ast_scope_t* parent)
 		: parent(parent), children(), types(), symbols()
 	{ }
