@@ -11,6 +11,9 @@ namespace eokas
 	public:
 		ast_module_t();
 		virtual ~ast_module_t();
+
+	public:
+	    ast_expr_t* create_expr_symbol(const String& name, ast_expr_t* value);
 		
 	private:
 		std::vector<ast_node_t*> nodes;

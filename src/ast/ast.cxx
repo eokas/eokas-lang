@@ -1,4 +1,6 @@
 #include "ast.h"
 
-_BeginNamespace(eokas)
-_EndNamespace(eokas)
+namespace eokas
+{
+
+}
