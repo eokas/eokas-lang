@@ -12,11 +12,47 @@ namespace eokas
 		String name;
 	};
 	
-	class ast_symbol_t
+	class ast_expr_t
+	{
+	public:
+		explicit ast_expr_t(ast_type_t* type);
+		virtual ~ast_expr_t();
+		
+		ast_type_t* getType();
+		
+	private:
+		ast_type_t* type;
+	};
+	
+	class ast_constant_t :public ast_expr_t
+	{ };
+	
+	class ast_int_t :public ast_constant_t
+	{ };
+	
+	class ast_float_t :public ast_constant_t
+	{ };
+	
+	class ast_bool_t :public ast_constant_t
+	{ };
+	
+	class ast_string_t :public ast_constant_t
+	{ };
+	
+	class ast_object_t :public ast_constant_t
+	{ };
+	
+	class ast_array_t :public ast_constant_t
+	{ };
+	
+	class ast_func_t :public ast_constant_t
+	{ };
+	
+	class ast_symbol_t :public ast_expr_t
 	{
 	public:
 		ast_symbol_t(const String& name, ast_type_t* type, ast_expr_t* value);
-		virtual ~ast_symbol_t();
+		~ast_symbol_t() override;
 		
 		const String& getName() const;
 		const ast_type_t* getType() const;
@@ -24,7 +60,6 @@ namespace eokas
 	
 	private:
 		String name;
-		ast_type_t* type;
 		ast_expr_t* value;
 	};
 	

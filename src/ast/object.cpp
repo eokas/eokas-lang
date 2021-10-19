@@ -5,16 +5,29 @@
 
 namespace eokas
 {
+	ast_expr_t::ast_expr_t(ast_type_t* type)
+		: type(type)
+	{}
+	
+	ast_expr_t::~ast_expr_t()
+	{
+		this->type = nullptr;
+	}
+	
+	ast_type_t* ast_expr_t::getType()
+	{
+		return this->type;
+	}
+	
 	ast_symbol_t::ast_symbol_t(const String&  name, ast_type_t* type, ast_expr_t* value)
-		: name(name)
-		, type(type)
+		: ast_expr_t(type)
+		, name(name)
 		, value(value)
 	{}
 	
 	ast_symbol_t::~ast_symbol_t()
 	{
 		this->name.clear();
-		this->type = nullptr;
 		this->value = nullptr;
 	}
 	
