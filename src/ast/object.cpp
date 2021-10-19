@@ -1,51 +1,8 @@
 
 #include "object.h"
 
-#include <utility>
-
 namespace eokas
 {
-	ast_expr_t::ast_expr_t(ast_type_t* type)
-		: type(type)
-	{}
-	
-	ast_expr_t::~ast_expr_t()
-	{
-		this->type = nullptr;
-	}
-	
-	ast_type_t* ast_expr_t::getType()
-	{
-		return this->type;
-	}
-	
-	ast_symbol_t::ast_symbol_t(const String&  name, ast_type_t* type, ast_expr_t* value)
-		: ast_expr_t(type)
-		, name(name)
-		, value(value)
-	{}
-	
-	ast_symbol_t::~ast_symbol_t()
-	{
-		this->name.clear();
-		this->value = nullptr;
-	}
-	
-	const String& ast_symbol_t::getName() const
-	{
-		return this->name;
-	}
-	
-	const ast_type_t* ast_symbol_t::getType() const
-	{
-		return this->type;
-	}
-	
-	const ast_expr_t* ast_symbol_t::getValue() const
-	{
-		return this->value;
-	}
-	
 	ast_scope_t::ast_scope_t(ast_scope_t* parent)
 		: parent(parent), children(), types(), symbols()
 	{ }
@@ -90,7 +47,7 @@ namespace eokas
 		this->types.insert(std::make_pair(name, type));
 	}
 	
-	ast_symbol_t* ast_scope_t::get_symbol(const String& name, bool lookup)
+	ast_expr_symbol_def_t* ast_scope_t::get_symbol(const String& name, bool lookup)
 	{
 		if(!lookup)
 		{
@@ -110,7 +67,7 @@ namespace eokas
 		return nullptr;
 	}
 	
-	void ast_scope_t::set_symbol(const String& name, ast_symbol_t* symbol)
+	void ast_scope_t::set_symbol(const String& name, ast_expr_symbol_def_t* symbol)
 	{
 		this->symbols.insert(std::make_pair(name, symbol));
 	}

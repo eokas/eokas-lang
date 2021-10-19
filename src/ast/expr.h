@@ -10,7 +10,10 @@ namespace eokas
 	{
 		ast_type_t* type;
 		
-		ast_expr_t(ast_node_category_t category, ast_node_t* parent);
+		ast_expr_t(ast_node_category_t category, ast_node_t *parent)
+			: ast_node_t(category, parent)
+			, type(nullptr)
+		{ }
 	};
 	
 	struct ast_expr_trinary_t : public ast_expr_t
@@ -131,6 +134,11 @@ namespace eokas
 		explicit ast_expr_func_def_t(ast_node_t* parent)
 			: ast_expr_t(ast_node_category_t::expr_func_def, parent), type(nullptr), args(), body()
 		{ }
+		
+		~ast_expr_func_def_t() override
+		{
+			_DeleteList(args);
+		}
 		
 		[[nodiscard]] const arg_t* getArg(const String& name) const
 		{

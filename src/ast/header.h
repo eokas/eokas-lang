@@ -106,19 +106,33 @@ namespace eokas
 		}
 	};
 	
-	class ast_scope_t;
+	struct ast_scope_t;
 	
-	class ast_type_t;
-	class ast_type_ref_t;
-	class ast_type_array_t;
-	class ast_type_generic_t;
+	struct ast_type_t;
+	struct ast_type_ref_t;
+	struct ast_type_array_t;
+	struct ast_type_generic_t;
 	
-	class ast_expr_t;
-	class ast_expr_symbol_t;
-	class ast_expr_func_def_t;
-	class ast_expr_func_ref_t;
+	struct ast_expr_t;
+	struct ast_expr_trinary_t;
+	struct ast_expr_binary_t;
+	struct ast_expr_binary_type_t;
+	struct ast_expr_binary_value_t;
+	struct ast_expr_unary_t;
+	struct ast_expr_int_t;
+	struct ast_expr_float_t;
+	struct ast_expr_bool_t;
+	struct ast_expr_string_t;
+	struct ast_expr_symbol_ref_t;
+	struct ast_expr_func_def_t;
+	struct ast_expr_func_ref_t;
+	struct ast_expr_array_def_t;
+	struct ast_expr_index_ref_t;
+	struct ast_expr_object_def_t;
+	struct ast_expr_object_ref_t;
+	struct ast_expr_module_ref_t;
 	
-	class ast_stmt_t;
+	struct ast_stmt_t;
 }
 
 #endif //_EOKAS_AST_HEADER_H_

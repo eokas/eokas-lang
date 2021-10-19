@@ -8,7 +8,9 @@ namespace eokas
 {
 	struct ast_stmt_t : public ast_node_t
 	{
-		ast_stmt_t(ast_node_category_t category, ast_node_t* parent);
+		ast_stmt_t(ast_node_category_t category, ast_node_t* parent)
+			: ast_node_t(category, parent)
+		{ }
 	};
 	
 	struct ast_stmt_schema_member_t : public ast_stmt_t
@@ -16,7 +18,11 @@ namespace eokas
 		String name;
 		ast_type_t* type;
 		
-		explicit ast_stmt_schema_member_t(ast_node_t* parent);
+		explicit ast_stmt_schema_member_t(ast_node_t* parent)
+			: ast_stmt_t(ast_node_category_t::stmt_schema_member, parent)
+			, name("")
+			, type(nullptr)
+		{ }
 	};
 	
 	struct ast_stmt_schema_def_t : public ast_stmt_t
@@ -25,7 +31,12 @@ namespace eokas
 		ast_type_ref_t* schema;
 		std::map<String, ast_stmt_schema_member_t*> members;
 		
-		explicit ast_stmt_schema_def_t(ast_node_t* parent);
+		explicit ast_stmt_schema_def_t(ast_node_t* parent)
+			: ast_stmt_t(ast_node_category_t::stmt_schema_def, parent)
+			, name("")
+			, schema(nullptr)
+			, members()
+		{ }
 	};
 	
 	struct ast_stmt_struct_member_t : public ast_stmt_t
@@ -34,7 +45,12 @@ namespace eokas
 		ast_type_t* type;
 		ast_expr_t* value;
 		
-		explicit ast_stmt_struct_member_t(ast_node_t* parent);
+		explicit ast_stmt_struct_member_t(ast_node_t* parent)
+			: ast_stmt_t(ast_node_category_t::stmt_struct_member, parent)
+			, name("")
+			, type(nullptr)
+			, value(nullptr)
+		{ }
 	};
 	
 	struct ast_stmt_struct_def_t : public ast_stmt_t
@@ -43,7 +59,12 @@ namespace eokas
 		ast_type_ref_t* schema;
 		std::map<String, ast_stmt_struct_member_t*> members;
 		
-		explicit ast_stmt_struct_def_t(ast_node_t* parent);
+		explicit ast_stmt_struct_def_t(ast_node_t* parent)
+			: ast_stmt_t(ast_node_category_t::stmt_struct_def, parent)
+			, name("")
+			, schema(nullptr)
+			, members()
+		{ }
 	};
 	
 	struct ast_stmt_proc_def_t : public ast_stmt_t
@@ -52,7 +73,12 @@ namespace eokas
 		ast_type_t* type;
 		std::map<String, ast_type_t*> args;
 		
-		explicit ast_stmt_proc_def_t(ast_node_t* parent);
+		explicit ast_stmt_proc_def_t(ast_node_t* parent)
+			: ast_stmt_t(ast_node_category_t::stmt_proc_def, parent)
+			, name("")
+			, type(nullptr)
+			, args()
+		{ }
 	};
 	
 	struct ast_stmt_symbol_def_t : public ast_stmt_t
@@ -62,7 +88,13 @@ namespace eokas
 		ast_expr_t* value;
 		bool variable;
 		
-		explicit ast_stmt_symbol_def_t(ast_node_t* parent);
+		explicit ast_stmt_symbol_def_t(ast_node_t* parent)
+			: ast_stmt_t(ast_node_category_t::stmt_symbol_def, parent)
+			, name("")
+			, type(nullptr)
+			, value(nullptr)
+			, variable(false)
+		{ }
 	};
 	
 	struct ast_stmt_break_t : public ast_stmt_t
