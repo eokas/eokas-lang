@@ -125,7 +125,7 @@ _BeginNamespace(eokas)
 			llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", this->func);
 			llvm_builder.SetInsertPoint(entry);
 			
-			for (auto& stmt: node->stmts)
+			for (auto& stmt: node->get_func()->body)
 			{
 				if(!this->encode_stmt(stmt))
 					return false;

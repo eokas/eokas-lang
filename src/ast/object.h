@@ -17,14 +17,14 @@ namespace eokas
 		ast_type_t* get_type(const String& name, bool lookup = true);
 		void set_type(const String& name, ast_type_t* type);
 		
-		ast_expr_symbol_def_t* get_symbol(const String& name, bool lookup = true);
-		void set_symbol(const String& name, ast_expr_symbol_def_t* symbol);
+		ast_stmt_symbol_def_t* get_symbol(const String& name, bool lookup = true);
+		void set_symbol(const String& name, ast_stmt_symbol_def_t* symbol);
 		
 	private:
 		ast_scope_t* parent;
 		std::list<ast_scope_t*> children;
 		std::map<String, ast_type_t*> types;
-		std::map<String, ast_expr_symbol_def_t*> symbols;
+		std::map<String, ast_stmt_symbol_def_t*> symbols;
 	};
 }
 

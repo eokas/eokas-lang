@@ -47,7 +47,7 @@ namespace eokas
 		this->types.insert(std::make_pair(name, type));
 	}
 	
-	ast_expr_symbol_def_t* ast_scope_t::get_symbol(const String& name, bool lookup)
+	ast_stmt_symbol_def_t* ast_scope_t::get_symbol(const String& name, bool lookup)
 	{
 		if(!lookup)
 		{
@@ -67,7 +67,7 @@ namespace eokas
 		return nullptr;
 	}
 	
-	void ast_scope_t::set_symbol(const String& name, ast_expr_symbol_def_t* symbol)
+	void ast_scope_t::set_symbol(const String& name, ast_stmt_symbol_def_t* symbol)
 	{
 		this->symbols.insert(std::make_pair(name, symbol));
 	}

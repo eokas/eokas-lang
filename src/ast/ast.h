@@ -7,6 +7,7 @@
 #include "type.h"
 #include "stmt.h"
 #include "module.h"
+#include "factory.h"
 
 namespace eokas
 {

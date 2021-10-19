@@ -106,6 +106,7 @@ namespace eokas
 		}
 	};
 	
+	struct ast_factory_t;
 	struct ast_scope_t;
 	
 	struct ast_type_t;
@@ -133,6 +134,22 @@ namespace eokas
 	struct ast_expr_module_ref_t;
 	
 	struct ast_stmt_t;
+	struct ast_stmt_schema_member_t;
+	struct ast_stmt_schema_def_t;
+	struct ast_stmt_struct_member_t;
+	struct ast_stmt_struct_def_t;
+	struct ast_stmt_proc_def_t;
+	struct ast_stmt_symbol_def_t;
+	struct ast_stmt_break_t;
+	struct ast_stmt_continue_t;
+	struct ast_stmt_return_t;
+	struct ast_stmt_if_t;
+	struct ast_stmt_while_t;
+	struct ast_stmt_for_t;
+	struct ast_stmt_block_t;
+	struct ast_stmt_call_t;
+	struct ast_stmt_assign_t;
+	
 }
 
 #endif //_EOKAS_AST_HEADER_H_
