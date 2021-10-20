@@ -23,11 +23,9 @@ _BeginNamespace(eokas)
 		
 		llvm::Type* type_void;
 		llvm::Type* type_i8;
-		llvm::Type* type_i16;
 		llvm::Type* type_i32;
 		llvm::Type* type_i64;
 		llvm::Type* type_u8;
-		llvm::Type* type_u16;
 		llvm::Type* type_u32;
 		llvm::Type* type_u64;
 		llvm::Type* type_f32;
@@ -36,10 +34,22 @@ _BeginNamespace(eokas)
 		llvm::Type* type_string;
 		llvm::Type* type_i8_ptr;
 		llvm::Type* type_string_ptr;
-
-		llvm::Value* const_zero;
-
+		
+		llvm::Value* default_i8;
+		llvm::Value* default_i32;
+		llvm::Value* default_i64;
+		llvm::Value* default_u8;
+		llvm::Value* default_u16;
+		llvm::Value* default_u32;
+		llvm::Value* default_u64;
+		llvm::Value* default_f32;
+		llvm::Value* default_f64;
+		llvm::Value* default_bool;
+		llvm::Value* default_ptr;
+		
 		explicit llvm_model_t(llvm::LLVMContext& context);
+		
+		llvm::Value* get_default_value_by_type(llvm::Type* type) const;
 		
 		llvm::Value* get_value(llvm::IRBuilder<>& builder, llvm::Value* value);
 		llvm::Value* ref_value(llvm::IRBuilder<>& builder, llvm::Value* value);

@@ -28,11 +28,9 @@ _BeginNamespace(eokas)
 	{
 		type_void = llvm::Type::getVoidTy(context);
 		type_i8 = llvm::Type::getInt8Ty(context);
-		type_i16 = llvm::Type::getInt16Ty(context);
 		type_i32 = llvm::Type::getInt32Ty(context);
 		type_i64 = llvm::Type::getInt64Ty(context);
 		type_u8 = llvm::Type::getInt8Ty(context);
-		type_u16 = llvm::Type::getInt16Ty(context);
 		type_u32 = llvm::Type::getInt32Ty(context);
 		type_u64 = llvm::Type::getInt64Ty(context);
 		type_f32 = llvm::Type::getFloatTy(context);
@@ -42,7 +40,30 @@ _BeginNamespace(eokas)
 		type_i8_ptr = llvm::Type::getInt8PtrTy(context);
 		type_string_ptr = llvm::PointerType::get(type_string, 0);
 		
-		const_zero = llvm::ConstantInt::get(context, llvm::APInt(32, 0));
+		default_i8 = llvm::ConstantInt::get(context, llvm::APInt(8, 0));
+		default_i32 = llvm::ConstantInt::get(context, llvm::APInt(32, 0));
+		default_i64 = llvm::ConstantInt::get(context, llvm::APInt(64, 0));
+		default_u8 = llvm::ConstantInt::get(context, llvm::APInt(8, 0));
+		default_u32 = llvm::ConstantInt::get(context, llvm::APInt(32, 0));
+		default_u64 = llvm::ConstantInt::get(context, llvm::APInt(64, 0));
+		default_f32 = llvm::ConstantFP::get(context, llvm::APFloat(0.0f));
+		default_f64 = llvm::ConstantFP::get(context, llvm::APFloat(0.0));
+		default_bool = llvm::ConstantInt::get(context, llvm::APInt(1, 0));
+		default_ptr = llvm::ConstantPointerNull::get(type_void->getPointerTo());
+	}
+	
+	llvm::Value* llvm_model_t::get_default_value_by_type(llvm::Type* type) const
+	{
+		if(type == type_i8) return default_i8;
+		if(type == type_i32) return default_i32;
+		if(type == type_i64) return default_i64;
+		if(type == type_u8) return default_u8;
+		if(type == type_u32) return default_u32;
+		if(type == type_u64) return default_u64;
+		if(type == type_f32) return default_f32;
+		if(type == type_f64) return default_f64;
+		if(type == type_bool) return default_bool;
+		return default_ptr;
 	}
 	
 	llvm::Value* llvm_model_t::get_value(llvm::IRBuilder<>& builder, llvm::Value* value)
@@ -75,7 +96,7 @@ _BeginNamespace(eokas)
 	
 	llvm::Type* llvm_model_t::define_type_string()
 	{
-		llvm::StructType* stringType = llvm::StructType::create(context, "struct.string");
+		llvm::StructType* stringType = llvm::StructType::create(context, "Type.String.Struct");
 		
 		std::vector<llvm::Type*> body;
 		body.push_back(llvm::Type::getInt8PtrTy(context));
