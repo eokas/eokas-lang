@@ -105,11 +105,9 @@ _BeginNamespace(eokas)
 			
 			this->scope->types["void"] = model.type_void;
 			this->scope->types["i8"] = model.type_i8;
-			this->scope->types["i16"] = model.type_i16;
 			this->scope->types["i32"] = model.type_i32;
 			this->scope->types["i64"] = model.type_i64;
 			this->scope->types["u8"] = model.type_u8;
-			this->scope->types["u16"] = model.type_u16;
 			this->scope->types["u32"] = model.type_u32;
 			this->scope->types["u64"] = model.type_u64;
 			this->scope->types["f32"] = model.type_f32;
@@ -304,7 +302,7 @@ _BeginNamespace(eokas)
 				{
 					if(lhs->getType()->isSingleValueType())
 					{
-						if(right == model.type_string)
+						if(right == model.type_string_ptr)
 						{
 							llvm::Value* value = model.value_to_string(llvm_module, this->func, llvm_builder, lhs);
 							return this->new_expr(value);
@@ -1160,7 +1158,20 @@ _BeginNamespace(eokas)
 				}
 			}
 			
-			llvm::Value* objectValue = llvm_builder.CreateAlloca(structType);
+			// make object
+			llvm::Value* objectValue = model.make(llvm_module, this->func, llvm_builder, structType);
+			
+			// call constructor.
+			auto structInitName = String::format("Type.%s.Init", structDef->name.cstr());
+			auto structInitExpr = this->scope->getSymbol(structInitName, true);
+			if(structInitExpr == nullptr)
+			{
+				printf("Can not find type constructor: %s\n", structInitName.cstr());
+				return nullptr;
+			}
+			auto funcPtr = model.get_value(llvm_builder, structInitExpr->value);
+			auto funcType = llvm::cast<llvm::FunctionType>(structInitExpr->type);
+			llvm_builder.CreateCall(funcType, funcPtr, {objectValue});
 			
 			u32_t index = -1;
 			for (auto& mem: structDef->members)
@@ -1175,13 +1186,13 @@ _BeginNamespace(eokas)
 						return nullptr;
 					memV = model.get_value(llvm_builder, memE->value);
 				}
-				else
-				{
-					memV = llvm::ConstantInt::get(model.type_i32, llvm::APInt(32, 0));
-				}
 				
-				llvm::Value* memPtr = llvm_builder.CreateStructGEP(structType, objectValue, index, mem.first.cstr());
-				llvm_builder.CreateStore(memV, memPtr);
+				if(memV)
+				{
+					llvm::Value* memPtr = llvm_builder.CreateStructGEP(structType, objectValue, index,
+																	   mem.first.cstr());
+					llvm_builder.CreateStore(memV, memPtr);
+				}
 			}
 			
 			return this->new_expr(objectValue);
@@ -1306,9 +1317,9 @@ _BeginNamespace(eokas)
 			
 			std::vector<llvm::Constant*> memberNames;
 			std::vector<llvm::Type*> memberTypes;
-			for (auto node: node->members)
+			for (const auto& memNode: node->members)
 			{
-				auto mem = node.second;
+				auto mem = memNode.second;
 				const auto& memName = mem->name.cstr();
 				const auto& memType = this->encode_type(mem->type);
 				if(memType == nullptr)
@@ -1318,15 +1329,49 @@ _BeginNamespace(eokas)
 				memberTypes.push_back(memType);
 			}
 			
-			String structName = String::format("struct.%s", name.cstr());
+			String structName = String::format("Type.%s.Struct", name.cstr());
 			auto structType = llvm::StructType::create(llvm_context);
 			structType->setName(structName.cstr());
 			structType->setBody(memberTypes);
 			
-			llvm::Type* structRefType = structType->getPointerTo();
+			llvm::Type* structPtrType = structType->getPointerTo();
 			
-			this->scope->types.insert(std::make_pair(name, structRefType));
+			this->scope->types.insert(std::make_pair(name, structPtrType));
 			this->structs.insert(std::make_pair(structType, node));
+			
+			String structInitName = String::format("Type.%s.Init", name.cstr());
+			auto structInitType = llvm::FunctionType::get(model.type_void, {structPtrType}, false);
+			auto structInitFunc = llvm::Function::Create(structInitType, llvm::Function::ExternalLinkage, structInitName.cstr(), llvm_module);
+			
+			auto* old_block = llvm_builder.GetInsertBlock();
+			
+			llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", structInitFunc);
+			llvm_builder.SetInsertPoint(entry);
+			
+			llvm::Value* obj = structInitFunc->getArg(0);
+			
+			u32_t index = -1;
+			for (const auto& memNode: node->members)
+			{
+				index += 1;
+				auto mem = memNode.second;
+				if(mem->value != nullptr)
+				{
+					auto memE = this->encode_expr(mem->value);
+					if(memE == nullptr)
+						return false;
+					auto memV = model.get_value(llvm_builder, memE->value);
+					auto memP = llvm_builder.CreateStructGEP(structType, obj, index);
+					llvm_builder.CreateStore(memV, memP);
+				}
+			}
+			
+			llvm_builder.CreateRetVoid();
+			
+			llvm_builder.SetInsertPoint(old_block);
+			
+			auto structInitExpr = this->new_expr(structInitFunc, structInitType);
+			this->scope->symbols.insert(std::make_pair(structInitName, structInitExpr));
 			
 			return true;
 		}
