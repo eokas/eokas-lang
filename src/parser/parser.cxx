@@ -120,13 +120,12 @@ _BeginNamespace(eokas)
 	
 	
 	parser_impl_t::parser_impl_t()
-		: scanner(new scanner_t()), factory(new ast_factory_t()), errormsg()
+		: scanner(new scanner_t()), factory(nullptr), errormsg()
 	{ }
 	
 	parser_impl_t::~parser_impl_t()
 	{
 		this->clear();
-		_DeletePointer(this->factory);
 		_DeletePointer(this->scanner);
 	}
 	
@@ -141,7 +140,9 @@ _BeginNamespace(eokas)
 		this->clear();
 		this->scanner->ready(source);
 		
-		auto* module = new ast_module_t(this->factory);
+		auto* module = new ast_module_t();
+		this->factory = module->get_factory();
+		
 		auto* entry = module->get_func();
 		
 		this->next_token();
