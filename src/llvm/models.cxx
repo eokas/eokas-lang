@@ -22,9 +22,8 @@
 #include <vector>
 
 _BeginNamespace(eokas)
-
-	llvm_model_t::llvm_model_t(llvm::LLVMContext& context)
-		: context(context)
+	
+	llvm_model_t::llvm_model_t(llvm::LLVMContext& context) : context(context)
 	{
 		type_void = llvm::Type::getVoidTy(context);
 		type_i8 = llvm::Type::getInt8Ty(context);
@@ -54,15 +53,24 @@ _BeginNamespace(eokas)
 	
 	llvm::Value* llvm_model_t::get_default_value_by_type(llvm::Type* type) const
 	{
-		if(type == type_i8) return default_i8;
-		if(type == type_i32) return default_i32;
-		if(type == type_i64) return default_i64;
-		if(type == type_u8) return default_u8;
-		if(type == type_u32) return default_u32;
-		if(type == type_u64) return default_u64;
-		if(type == type_f32) return default_f32;
-		if(type == type_f64) return default_f64;
-		if(type == type_bool) return default_bool;
+		if(type == type_i8)
+			return default_i8;
+		if(type == type_i32)
+			return default_i32;
+		if(type == type_i64)
+			return default_i64;
+		if(type == type_u8)
+			return default_u8;
+		if(type == type_u32)
+			return default_u32;
+		if(type == type_u64)
+			return default_u64;
+		if(type == type_f32)
+			return default_f32;
+		if(type == type_f64)
+			return default_f64;
+		if(type == type_bool)
+			return default_bool;
 		return default_ptr;
 	}
 	
@@ -109,7 +117,7 @@ _BeginNamespace(eokas)
 	{
 		llvm::StringRef name = "puts";
 		llvm::Type* ret = type_i32;
-		std::vector<llvm::Type*> args = {type_i8_ptr };
+		std::vector<llvm::Type*> args = {type_i8_ptr};
 		bool varg = false;
 		
 		llvm::AttributeList attrs;
@@ -126,7 +134,7 @@ _BeginNamespace(eokas)
 	{
 		llvm::StringRef name = "printf";
 		llvm::Type* ret = type_i32;
-		std::vector<llvm::Type*> args = {type_i8_ptr };
+		std::vector<llvm::Type*> args = {type_i8_ptr};
 		bool varg = true;
 		
 		llvm::AttributeList attrs;
@@ -143,7 +151,7 @@ _BeginNamespace(eokas)
 	{
 		llvm::StringRef name = "sprintf";
 		llvm::Type* ret = type_i32;
-		std::vector<llvm::Type*> args = {type_i8_ptr, type_i8_ptr };
+		std::vector<llvm::Type*> args = {type_i8_ptr, type_i8_ptr};
 		bool varg = true;
 		
 		llvm::AttributeList attrs;
@@ -160,7 +168,7 @@ _BeginNamespace(eokas)
 	{
 		llvm::StringRef name = "malloc";
 		llvm::Type* ret = type_i8_ptr;
-		std::vector<llvm::Type*> args = { type_i64 };
+		std::vector<llvm::Type*> args = {type_i64};
 		bool varg = false;
 		
 		llvm::AttributeList attrs;
@@ -177,7 +185,7 @@ _BeginNamespace(eokas)
 	{
 		llvm::StringRef name = "free";
 		llvm::Type* ret = type_void;
-		std::vector<llvm::Type*> args = {type_i8_ptr };
+		std::vector<llvm::Type*> args = {type_i8_ptr};
 		bool varg = false;
 		
 		llvm::AttributeList attrs;
@@ -194,7 +202,7 @@ _BeginNamespace(eokas)
 	{
 		llvm::StringRef name = "print";
 		llvm::Type* ret = type_i32;
-		std::vector<llvm::Type*> args = { type_string_ptr };
+		std::vector<llvm::Type*> args = {type_string_ptr};
 		bool varg = false;
 		
 		llvm::AttributeList attrs;
@@ -273,13 +281,13 @@ _BeginNamespace(eokas)
 	{
 		llvm::Type* vt = val->getType();
 		
-		llvm::Value* buf = builder.CreateAlloca(
-			llvm::ArrayType::get(type_i8, 64)
-		);
+		llvm::Value* buf = builder.CreateAlloca(llvm::ArrayType::get(type_i8, 64));
 		
 		llvm::StringRef vf = "%x";
-		if(vt->isIntegerTy()) vf = "%d";
-		else if(vt->isFloatingPointTy()) vf = "%f";
+		if(vt->isIntegerTy())
+			vf = "%d";
+		else if(vt->isFloatingPointTy())
+			vf = "%f";
 		
 		llvm::Value* fmt = builder.CreateGlobalString(vf);
 		
@@ -331,7 +339,7 @@ _BeginNamespace(eokas)
 		
 		if(vt == type_string)
 			return val;
-
+		
 		if(vt == type_i8_ptr)
 			return this->cstr_to_string(module, func, builder, val);
 		
@@ -350,5 +358,4 @@ _BeginNamespace(eokas)
 		
 		return ret;
 	}
-	
 _EndNamespace(eokas)

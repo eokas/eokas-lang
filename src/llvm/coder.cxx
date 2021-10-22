@@ -43,8 +43,7 @@ _BeginNamespace(eokas)
 		
 		llvm::Value* const_zero;
 		
-		explicit llvm_coder_t(llvm::LLVMContext& llvm_context)
-			: llvm_context(llvm_context), llvm_builder(llvm_context), llvm_module(nullptr), model(llvm_context)
+		explicit llvm_coder_t(llvm::LLVMContext& llvm_context) : llvm_context(llvm_context), llvm_builder(llvm_context), llvm_module(nullptr), model(llvm_context)
 		{
 			this->root = new llvm_scope_t(nullptr);
 			this->scope = this->root;
@@ -420,26 +419,17 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpEQ(
-					llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-					llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateICmpEQ(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOEQ(
-					llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-					rhs)
-				);
+				return this->new_expr(llvm_builder.CreateFCmpOEQ(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOEQ(
-					lhs,
-					llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateFCmpOEQ(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -459,26 +449,17 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpNE(
-					llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-					llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateICmpNE(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpONE(
-					llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-					rhs)
-				);
+				return this->new_expr(llvm_builder.CreateFCmpONE(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpONE(
-					lhs,
-					llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateFCmpONE(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -498,26 +479,17 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpULE(
-					llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-					llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateICmpULE(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOLE(
-					llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-					rhs)
-				);
+				return this->new_expr(llvm_builder.CreateFCmpOLE(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOLE(
-					lhs,
-					llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateFCmpOLE(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -537,26 +509,17 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpUGE(
-					llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-					llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateICmpUGE(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOGE(
-					llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-					rhs)
-				);
+				return this->new_expr(llvm_builder.CreateFCmpOGE(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOGE(
-					lhs,
-					llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateFCmpOGE(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -576,26 +539,17 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpULT(
-					llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-					llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateICmpULT(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOLT(
-					llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-					rhs)
-				);
+				return this->new_expr(llvm_builder.CreateFCmpOLT(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOLT(
-					lhs,
-					llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateFCmpOLT(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -615,26 +569,17 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpUGT(
-					llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)),
-					llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateICmpUGT(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOGT(
-					llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-					rhs)
-				);
+				return this->new_expr(llvm_builder.CreateFCmpOGT(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOGT(
-					lhs,
-					llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateFCmpOGT(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -654,18 +599,12 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFAdd(
-					llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-					rhs)
-				);
+				return this->new_expr(llvm_builder.CreateFAdd(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFAdd(
-					lhs,
-					llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateFAdd(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -685,18 +624,12 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFSub(
-					llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-					rhs)
-				);
+				return this->new_expr(llvm_builder.CreateFSub(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFSub(
-					lhs,
-					llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateFSub(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -716,18 +649,12 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFMul(
-					llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-					rhs)
-				);
+				return this->new_expr(llvm_builder.CreateFMul(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFMul(
-					lhs,
-					llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateFMul(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -747,18 +674,12 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFDiv(
-					llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-					rhs)
-				);
+				return this->new_expr(llvm_builder.CreateFDiv(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFDiv(
-					lhs,
-					llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateFDiv(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -778,18 +699,12 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFRem(
-					llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)),
-					rhs)
-				);
+				return this->new_expr(llvm_builder.CreateFRem(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFRem(
-					lhs,
-					llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context)))
-				);
+				return this->new_expr(llvm_builder.CreateFRem(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -918,10 +833,7 @@ _BeginNamespace(eokas)
 			
 			if(rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateXor(
-					rhs,
-					llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF)))
-				);
+				return this->new_expr(llvm_builder.CreateXor(rhs, llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF))));
 			}
 			printf("Type of RHS is invalid.");
 			return nullptr;
@@ -1189,8 +1101,7 @@ _BeginNamespace(eokas)
 				
 				if(memV)
 				{
-					llvm::Value* memPtr = llvm_builder.CreateStructGEP(structType, objectValue, index,
-																	   mem.first.cstr());
+					llvm::Value* memPtr = llvm_builder.CreateStructGEP(structType, objectValue, index, mem.first.cstr());
 					llvm_builder.CreateStore(memV, memPtr);
 				}
 			}

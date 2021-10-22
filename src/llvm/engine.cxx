@@ -1,4 +1,3 @@
-
 #include "engine.h"
 #include "coder.h"
 #include "models.h"
@@ -37,9 +36,7 @@ _BeginNamespace(eokas)
 		
 		module->print(llvm::errs(), nullptr);
 		
-		auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(module))
-			.setEngineKind(llvm::EngineKind::JIT)
-			.create();
+		auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(module)).setEngineKind(llvm::EngineKind::JIT).create();
 		
 		ee->finalizeObject();
 		

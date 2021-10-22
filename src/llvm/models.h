@@ -1,4 +1,3 @@
-
 #ifndef _EOKAS_LLVM_MODELS_H_
 #define _EOKAS_LLVM_MODELS_H_
 
@@ -16,7 +15,7 @@ namespace llvm
 }
 
 _BeginNamespace(eokas)
-
+	
 	struct llvm_model_t
 	{
 		llvm::LLVMContext& context;
@@ -55,7 +54,7 @@ _BeginNamespace(eokas)
 		llvm::Value* ref_value(llvm::IRBuilder<>& builder, llvm::Value* value);
 		
 		llvm::Type* define_type_string();
-
+		
 		llvm::Function* declare_cfunc_puts(llvm::Module* module);
 		llvm::Function* declare_cfunc_printf(llvm::Module* module);
 		llvm::Function* declare_cfunc_sprintf(llvm::Module* module);
@@ -78,7 +77,6 @@ _BeginNamespace(eokas)
 		llvm::Value* value_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		
 		llvm::Value* print(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args);
-		
 	};
 _EndNamespace(eokas)
 

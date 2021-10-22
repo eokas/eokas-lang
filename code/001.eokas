@@ -1,6 +1,10 @@
 
-var f = func(a:string) : string {
-    return a;
+struct A {
+    var name: string = "c++";
+}
+
+var o = make A {
+    name = "eokas",
 };
 
-print(f("hello world."));
+print(o.name);

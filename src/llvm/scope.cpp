@@ -1,4 +1,3 @@
-
 #include "scope.h"
 #include "expr.h"
 
@@ -7,9 +6,9 @@
 
 _BeginNamespace(eokas)
 	
-	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent)
-		: parent(parent), children(), symbols(), types()
-	{ }
+	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent) : parent(parent), children(), symbols(), types()
+	{
+	}
 	
 	llvm_scope_t::~llvm_scope_t()
 	{
