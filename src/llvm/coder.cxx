@@ -1331,11 +1331,22 @@ _BeginNamespace(eokas)
 			
 			if(type != nullptr)
 			{
-				if(type->getTypeID() != vtype->getTypeID() && !vtype->canLosslesslyBitCastTo(type))
+				do
 				{
-					printf("type '%d' can not cast to type '%d'. \n", vtype->getTypeID(), type->getTypeID());
+					if(type == vtype)
+						break;
+					if(vtype->canLosslesslyBitCastTo(type))
+						break;
+					if(vtype->isPointerTy() && type == vtype->getPointerElementType())
+					{
+						type = vtype;
+						break;
+					}
+					
+					printf("type of value can not cast to the type of symbol.\n");
 					return false;
 				}
+				while(false);
 			}
 			else
 			{
@@ -1345,6 +1356,7 @@ _BeginNamespace(eokas)
 			if(type->isVoidTy())
 			{
 				printf("void type can't assign to a symbol.");
+				return false;
 			}
 			// TODO: 校验类型合法性, 值类型是否遵循标记类型
 			

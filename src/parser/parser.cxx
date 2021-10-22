@@ -16,95 +16,51 @@ _BeginNamespace(eokas)
 		void clear();
 		
 		ast_module_t* parse_module(const char* source);
-		
 		ast_type_t* parse_type(ast_node_t* p);
-		
 		ast_type_ref_t* parse_type_ref(ast_node_t* p);
-		
 		ast_type_array_t* parse_type_array(ast_node_t* p);
-		
 		ast_type_generic_t* parse_type_generic(ast_node_t* p);
-		
 		ast_expr_t* parse_expr(ast_node_t* p);
-		
 		ast_expr_t* parse_expr_trinary(ast_node_t* p);
-		
 		ast_expr_t* parse_expr_binary(ast_node_t* p, int priority = 1);
-		
 		ast_expr_t* parse_expr_unary(ast_node_t* p);
-		
 		ast_expr_t* parse_expr_suffixed(ast_node_t* p);
-		
 		ast_expr_t* parse_expr_primary(ast_node_t* p);
-		
 		ast_expr_t* parse_func_def(ast_node_t* p);
-		
 		bool parse_func_params(ast_expr_func_def_t* node);
-		
 		bool parse_func_body(ast_expr_func_def_t* node);
-		
 		ast_expr_t* parse_object_def(ast_node_t* p);
-		
 		ast_expr_t* parse_func_call(ast_node_t* p, ast_expr_t* primary);
-		
 		ast_expr_t* parse_array_def(ast_node_t* p);
-		
 		ast_expr_t* parse_index_ref(ast_node_t* p, ast_expr_t* primary);
-		
 		bool parse_object_field(ast_expr_object_def_t* node);
-		
 		ast_expr_t* parse_object_ref(ast_node_t* p, ast_expr_t* primary);
-		
 		ast_expr_t* parse_module_ref(ast_node_t* p);
-		
 		ast_stmt_t* parse_stmt(ast_node_t* p);
-		
 		ast_stmt_schema_def_t* parse_stmt_schema_def(ast_node_t* p);
-		
 		ast_stmt_schema_member_t* parse_stmt_schema_member(ast_node_t* p);
-		
 		ast_stmt_struct_def_t* parse_stmt_struct_def(ast_node_t* p);
-		
 		ast_stmt_struct_member_t* parse_stmt_struct_member(ast_node_t* p);
-		
 		ast_stmt_proc_def_t* parse_stmt_proc_def(ast_node_t* p);
-		
 		ast_stmt_symbol_def_t* parse_stmt_symbol_def(ast_node_t* p);
-		
 		ast_stmt_continue_t* parse_stmt_continue(ast_node_t* p);
-		
 		ast_stmt_break_t* parse_stmt_break(ast_node_t* p);
-		
 		ast_stmt_return_t* parse_stmt_return(ast_node_t* p);
-		
 		ast_stmt_if_t* parse_stmt_if(ast_node_t* p);
-		
 		ast_stmt_while_t* parse_stmt_while(ast_node_t* p);
-		
 		ast_stmt_for_t* parse_stmt_for(ast_node_t* p);
-		
 		ast_stmt_t* parse_stmt_for_init(ast_node_t* p);
-		
 		ast_expr_t* parse_stmt_for_cond(ast_node_t* p);
-		
 		ast_stmt_t* parse_stmt_for_step(ast_node_t* p);
-		
 		ast_stmt_block_t* parse_stmt_block(ast_node_t* p);
-		
 		ast_stmt_t* parse_stmt_assign_or_call(ast_node_t* p);
 		
 		void next_token();
-		
 		struct token_t& token();
-		
 		struct token_t& look_ahead_token();
-		
 		bool check_token(const token_t::token_type& tokenType, bool required = true, bool movenext = true);
-		
 		ast_unary_oper_t check_unary_oper(bool required = true, bool movenext = true);
-		
 		ast_binary_oper_t check_binary_oper(int priority, bool required = true, bool movenext = true);
-		
 		const String& error();
 	
 	private:
@@ -818,6 +774,10 @@ module_ref => 'using' '(' expr  ')'
 			case token_t::Struct:
 				stmt = this->parse_stmt_struct_def(p);
 				break;
+			case token_t::Proc:
+				stmt = this->parse_stmt_proc_def(p);
+				semicolon = true;
+				break;
 			case token_t::Var:
 			case token_t::Val:
 				stmt = this->parse_stmt_symbol_def(p);
@@ -1069,12 +1029,10 @@ module_ref => 'using' '(' expr  ')'
 			}
 			this->next_token();
 			
-			// :
+			// : type
 			if(!this->check_token(token_t::Colon))
 				return nullptr;
-			
-			// type
-			ast_type_t* argType = this->parse_type(p);
+			ast_type_t* argType = this->parse_type(node);
 			if(argType == nullptr)
 				return nullptr;
 			
@@ -1084,6 +1042,13 @@ module_ref => 'using' '(' expr  ')'
 		
 		// )
 		if(!this->check_token(token_t::RRB))
+			return nullptr;
+		
+		// : ret-type
+		if(!this->check_token(token_t::Colon))
+			return nullptr;
+		node->type = this->parse_type(node);
+		if(node->type == nullptr)
 			return nullptr;
 		
 		return node;
