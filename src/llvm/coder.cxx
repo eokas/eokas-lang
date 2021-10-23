@@ -958,21 +958,35 @@ _BeginNamespace(eokas)
 				llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", func);
 				llvm_builder.SetInsertPoint(entry);
 				
+				// self
+				auto self = this->new_expr(func, funcType->getPointerTo());
+				this->scope->symbols.insert(std::make_pair("self", self));
+				
+				// args
 				for (auto& arg: func->args())
 				{
 					const char* name = arg.getName().data();
+					if(this->scope->getSymbol(name, false) != nullptr)
+					{
+						printf("The symbol name '%s' is already existed.", name);
+						return nullptr;
+					}
 					auto expr = this->new_expr(&arg);
 					auto pair = std::make_pair(String(name), expr);
 					this->scope->symbols.insert(pair);
 				}
 				
+				// body
 				for (auto& stmt: node->body)
 				{
 					if(!this->encode_stmt(stmt))
 						return nullptr;
 				}
 				
-				llvm_builder.CreateRetVoid();
+				if(func->getReturnType()->isVoidTy())
+					llvm_builder.CreateRetVoid();
+				else
+					llvm_builder.CreateRet(model.get_default_value_by_type(func->getReturnType()));
 			}
 			
 			this->popScope();
@@ -1449,14 +1463,22 @@ _BeginNamespace(eokas)
 			llvm_builder.SetInsertPoint(if_true);
 			if(!this->encode_stmt(node->branch_true))
 				return false;
-			llvm_builder.CreateBr(if_end);
+			auto& lastOp = if_true->back();
+			if(!lastOp.isTerminator())
+			{
+				llvm_builder.CreateBr(if_end);
+			}
 			
 			if(node->branch_false != nullptr)
 			{
 				llvm_builder.SetInsertPoint(if_false);
 				if(!this->encode_stmt(node->branch_false))
 					return false;
-				llvm_builder.CreateBr(if_end);
+				auto& lastOp = if_false->back();
+				if(!lastOp.isTerminator())
+				{
+					llvm_builder.CreateBr(if_end);
+				}
 			}
 			
 			llvm_builder.SetInsertPoint(if_end);
@@ -1497,7 +1519,11 @@ _BeginNamespace(eokas)
 			llvm_builder.SetInsertPoint(while_body);
 			if(!this->encode_stmt(node->body))
 				return false;
-			llvm_builder.CreateBr(while_begin);
+			auto& lastOp = while_body->back();
+			if(!lastOp.isTerminator())
+			{
+				llvm_builder.CreateBr(while_begin);
+			}
 			
 			llvm_builder.SetInsertPoint(while_end);
 			
@@ -1548,7 +1574,11 @@ _BeginNamespace(eokas)
 			llvm_builder.SetInsertPoint(for_body);
 			if(!this->encode_stmt(node->body))
 				return false;
-			llvm_builder.CreateBr(for_step);
+			auto& lastOp = for_body->back();
+			if(!lastOp.isTerminator())
+			{
+				llvm_builder.CreateBr(for_step);
+			}
 			
 			llvm_builder.SetInsertPoint(for_step);
 			if(!this->encode_stmt(node->step))
@@ -1615,5 +1645,58 @@ _BeginNamespace(eokas)
 		llvm_coder_t coder(context);
 		llvm::Module* llvm_module = coder.encode(module);
 		return llvm_module;
+	}
+	
+	llvm::Module* llvm_encode_test(llvm::LLVMContext& context, ast_module_t* ast)
+	{
+		llvm_model_t model(context);
+		auto* module = new llvm::Module("test", context);
+		model.declare_cfunc_sprintf(module);
+		model.declare_cfunc_puts(module);
+		model.declare_cfunc_printf(module);
+		model.declare_cfunc_malloc(module);
+		model.declare_cfunc_free(module);
+
+		// test
+		llvm::FunctionType* testT = llvm::FunctionType::get(model.type_i32, {model.type_i32}, false);
+		auto testV = llvm::Function::Create(testT, llvm::Function::ExternalLinkage, "test", module);
+		{
+			llvm::IRBuilder<> builder(context);
+			llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", testV);
+			builder.SetInsertPoint(entry);
+			
+			auto arg0 = testV->getArg(0);
+			
+			llvm::BasicBlock* if_true = llvm::BasicBlock::Create(context, "if.true", testV);
+			llvm::BasicBlock* if_false = llvm::BasicBlock::Create(context, "if.false", testV);
+
+			auto cond = builder.CreateICmpSLE(arg0, builder.getInt32(0));
+			builder.CreateCondBr(cond, if_true, if_false);
+			
+			builder.SetInsertPoint(if_true);
+			builder.CreateRet(builder.getInt32(1));
+			
+			builder.SetInsertPoint(if_false);
+			auto _0 = builder.CreateSub(arg0, builder.getInt32(1));
+			auto _1 = builder.CreateCall(testV, {_0});
+			auto _2 = builder.CreateMul(arg0, _1);
+			builder.CreateRet(_2);
+		}
+		
+		// main
+		llvm::FunctionType* mainT = llvm::FunctionType::get(model.type_i32, false);
+		auto mainV = llvm::Function::Create(mainT, llvm::Function::ExternalLinkage, "main", module);
+		{
+			llvm::IRBuilder<> builder(context);
+			llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", mainV);
+			builder.SetInsertPoint(entry);
+			
+			auto ret = builder.CreateCall(testV, builder.getInt32(10));
+			
+			model.print(module, mainV, builder, {ret});
+			builder.CreateRet(builder.getInt32(0));
+		}
+		
+		return module;
 	}
 _EndNamespace(eokas)

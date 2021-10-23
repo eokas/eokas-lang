@@ -94,17 +94,14 @@ _BeginNamespace(eokas)
 		
 		llvm::legacy::PassManager pass;
 		auto fileType = llvm::CGFT_ObjectFile;
-		printf("compile 1\n");
 		if(targetMachine->addPassesToEmitFile(pass, dest, nullptr, fileType))
 		{
 			llvm::errs() << "TargetMachine can't emit a file of this type";
 			return false;
 		}
-		printf("compile 2\n");
+
 		pass.run(*module);
-		printf("compile 3\n");
 		dest.flush();
-		printf("compile 4\n");
 		
 		return true;
 	}

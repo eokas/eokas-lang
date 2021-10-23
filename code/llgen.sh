@@ -1,1 +1,1 @@
-clang++ -S -emit-llvm test.cxx
+clang++ -emit-llvm test.cxx -c -o test.bc

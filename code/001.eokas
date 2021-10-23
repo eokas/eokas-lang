@@ -1,17 +1,7 @@
 
-proc Compute(a: i32, b: i32): i32;
-
-var f = func(c: Compute, a: i32, b: i32): i32 {
-    return c(a, b);
+var foo = func(n: i32) : i32 {
+    if(n <= 0) return 1;
+    else return n * self(n - 1);
 };
 
-var add = func(a: i32, b: i32): i32 {
-    return a + b;
-};
-
-var mul = func(a: i32, b: i32): i32 {
-    return a * b;
-};
-
-print(f(add, 5, 3) as string);
-print(f(mul, 5, 3) as string);
+print(foo(10) as string);
