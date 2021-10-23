@@ -1,15 +1,17 @@
 
-struct A {
-    var id: i32;
-}
+proc Compute(a: i32, b: i32): i32;
 
-struct B : A {
-    var name: string;
-}
-
-var o = make B {
-    name = "eokas",
-    id = 12,
+var f = func(c: Compute, a: i32, b: i32): i32 {
+    return c(a, b);
 };
 
-print(o.id as string);
+var add = func(a: i32, b: i32): i32 {
+    return a + b;
+};
+
+var mul = func(a: i32, b: i32): i32 {
+    return a * b;
+};
+
+print(f(add, 5, 3) as string);
+print(f(mul, 5, 3) as string);

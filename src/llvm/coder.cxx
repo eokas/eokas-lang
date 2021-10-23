@@ -935,7 +935,10 @@ _BeginNamespace(eokas)
 				auto* argType = this->encode_type(arg->type);
 				if(argType == nullptr)
 					return nullptr;
-				argTypes.push_back(argType->type);
+				if(argType->type->isFunctionTy() || argType->type->isStructTy() || argType->type->isArrayTy())
+					argTypes.push_back(argType->type->getPointerTo());
+				else
+					argTypes.push_back(argType->type);
 			}
 			
 			llvm::FunctionType* funcType = llvm::FunctionType::get(retType->type, argTypes, false);
@@ -976,7 +979,7 @@ _BeginNamespace(eokas)
 			this->func = oldFunc;
 			llvm_builder.SetInsertPoint(oldIB);
 			
-			return this->new_expr(func, func->getFunctionType());
+			return this->new_expr(func, func->getType());
 		}
 		
 		llvm_expr_t* encode_expr_func_ref(struct ast_expr_func_ref_t* node)
@@ -992,7 +995,20 @@ _BeginNamespace(eokas)
 			}
 			
 			auto funcPtr = model.get_value(llvm_builder, funcExpr->value);
-			auto funcType = llvm::cast<llvm::FunctionType>(funcExpr->type);
+			llvm::FunctionType* funcType = nullptr;
+			if(funcExpr->type->isFunctionTy())
+			{
+				funcType = llvm::cast<llvm::FunctionType>(funcExpr->type);
+			}
+			else if(funcExpr->type->isPointerTy() && funcExpr->type->getPointerElementType()->isFunctionTy())
+			{
+				funcType = llvm::cast<llvm::FunctionType>(funcExpr->type->getPointerElementType());
+			}
+			else
+			{
+				printf("invalid function type.");
+				return nullptr;
+			}
 			
 			std::vector<llvm::Value*> params;
 			for (auto i = 0; i<node->args.size(); i++)
@@ -1279,8 +1295,9 @@ _BeginNamespace(eokas)
 			}
 			
 			llvm::FunctionType* procType = llvm::FunctionType::get(retType->type, argTypes, false);
-			
-			this->scope->types[node->name] = this->new_type(llvm_type_category_t::Basic, "Proc", procType);
+			llvm::Type* procPtrType = procType->getPointerTo();
+
+			this->scope->types[node->name] = this->new_type(llvm_type_category_t::Basic, node->name, procPtrType);
 			
 			return true;
 		}
