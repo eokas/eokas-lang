@@ -148,20 +148,6 @@ namespace eokas
 		return node;
 	}
 	
-	ast_stmt_schema_member_t* ast_factory_t::create_stmt_schema_member(ast_node_t* parent)
-	{
-		auto* node = new ast_stmt_schema_member_t(parent);
-		this->nodes.push_back(node);
-		return node;
-	}
-	
-	ast_stmt_schema_def_t* ast_factory_t::create_stmt_schema_def(ast_node_t* parent)
-	{
-		auto* node = new ast_stmt_schema_def_t(parent);
-		this->nodes.push_back(node);
-		return node;
-	}
-	
 	ast_stmt_struct_member_t* ast_factory_t::create_stmt_struct_member(ast_node_t* parent)
 	{
 		auto* node = new ast_stmt_struct_member_t(parent);

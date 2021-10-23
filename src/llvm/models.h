@@ -1,18 +1,9 @@
 #ifndef _EOKAS_LLVM_MODELS_H_
 #define _EOKAS_LLVM_MODELS_H_
 
-#include <libarchaism/archaism.h>
-#include <llvm/IR/IRBuilder.h>
+#include "header.h"
 
-namespace llvm
-{
-	class LLVMContext;
-	class Type;
-	class Value;
-	class Function;
-	class Module;
-	class BasicBlock;
-}
+#include <llvm/IR/IRBuilder.h>
 
 _BeginNamespace(eokas)
 	

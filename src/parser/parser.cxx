@@ -1,4 +1,3 @@
-
 #include "parser.h"
 #include "scanner.h"
 #include "../ast/ast.h"
@@ -37,8 +36,6 @@ _BeginNamespace(eokas)
 		ast_expr_t* parse_object_ref(ast_node_t* p, ast_expr_t* primary);
 		ast_expr_t* parse_module_ref(ast_node_t* p);
 		ast_stmt_t* parse_stmt(ast_node_t* p);
-		ast_stmt_schema_def_t* parse_stmt_schema_def(ast_node_t* p);
-		ast_stmt_schema_member_t* parse_stmt_schema_member(ast_node_t* p);
 		ast_stmt_struct_def_t* parse_stmt_struct_def(ast_node_t* p);
 		ast_stmt_struct_member_t* parse_stmt_struct_member(ast_node_t* p);
 		ast_stmt_proc_def_t* parse_stmt_proc_def(ast_node_t* p);
@@ -75,9 +72,9 @@ _BeginNamespace(eokas)
 	};
 	
 	
-	parser_impl_t::parser_impl_t()
-		: scanner(new scanner_t()), factory(nullptr), errormsg()
-	{ }
+	parser_impl_t::parser_impl_t() : scanner(new scanner_t()), factory(nullptr), errormsg()
+	{
+	}
 	
 	parser_impl_t::~parser_impl_t()
 	{
@@ -136,10 +133,10 @@ _BeginNamespace(eokas)
 			return nullptr;
 		}
 	}
-
-/**
- * type_ref := ID
-*/
+	
+	/**
+	 * type_ref := ID
+	*/
 	ast_type_ref_t* parser_impl_t::parse_type_ref(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::ID, true, false))
@@ -153,10 +150,10 @@ _BeginNamespace(eokas)
 		
 		return node;
 	}
-
-/**
- * type_array := 'array' '<' type ',' int_num '>';
-*/
+	
+	/**
+	 * type_array := 'array' '<' type ',' int_num '>';
+	*/
 	ast_type_array_t* parser_impl_t::parse_type_array(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::Array))
@@ -184,10 +181,10 @@ _BeginNamespace(eokas)
 		
 		return node;
 	}
-
-/**
- * type_generic := ID '<' type '>'
-*/
+	
+	/**
+	 * type_generic := ID '<' type '>'
+	*/
 	ast_type_generic_t* parser_impl_t::parse_type_generic(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::ID, true, false))
@@ -324,11 +321,11 @@ _BeginNamespace(eokas)
 		
 		return left;
 	}
-
-/*
-expr_unary := expr_value | expr_construct | expr_suffixed
-expr_value := int | float | str | true | false
-*/
+	
+	/*
+	expr_unary := expr_value | expr_construct | expr_suffixed
+	expr_value := int | float | str | true | false
+	*/
 	ast_expr_t* parser_impl_t::parse_expr_unary(ast_node_t* p)
 	{
 		ast_unary_oper_t oper = this->check_unary_oper(false, true);
@@ -420,10 +417,10 @@ expr_value := int | float | str | true | false
 		
 		return unary;
 	}
-
-/*
-expr_suffixed := expr_primary{ '.'ID | ':'ID | '['expr']' | '{'stat_list'}' | proc_args }
-*/
+	
+	/*
+	expr_suffixed := expr_primary{ '.'ID | ':'ID | '['expr']' | '{'stat_list'}' | proc_args }
+	*/
 	ast_expr_t* parser_impl_t::parse_expr_suffixed(ast_node_t* p)
 	{
 		ast_expr_t* primary = this->parse_expr_primary(p);
@@ -458,10 +455,10 @@ expr_suffixed := expr_primary{ '.'ID | ':'ID | '['expr']' | '{'stat_list'}' | pr
 		
 		return primary;
 	}
-
-/*
-expr_primary := ID | '(' expr ')'
-*/
+	
+	/*
+	expr_primary := ID | '(' expr ')'
+	*/
 	ast_expr_t* parser_impl_t::parse_expr_primary(ast_node_t* p)
 	{
 		if(this->check_token(token_t::LRB, false))
@@ -486,10 +483,10 @@ expr_primary := ID | '(' expr ')'
 		
 		return node;
 	}
-
-/*
-func_def => 'func' func_params func_body
-*/
+	
+	/*
+	func_def => 'func' func_params func_body
+	*/
 	ast_expr_t* parser_impl_t::parse_func_def(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::Func))
@@ -512,10 +509,10 @@ func_def => 'func' func_params func_body
 		
 		return node;
 	}
-
-/*
-func_params => '(' [ID] ')'
-*/
+	
+	/*
+	func_params => '(' [ID] ')'
+	*/
 	bool parser_impl_t::parse_func_params(ast_expr_func_def_t* node)
 	{
 		if(!this->check_token(token_t::LRB)) // (
@@ -544,7 +541,6 @@ func_params => '(' [ID] ')'
 				return false;
 			
 			node->addArg(name, type);
-			
 		} while (this->check_token(token_t::Comma, false));
 		
 		if(!this->check_token(token_t::RRB))
@@ -552,10 +548,10 @@ func_params => '(' [ID] ')'
 		
 		return true;
 	}
-
-/*
-func_body => '{' [stat] '}'
-*/
+	
+	/*
+	func_body => '{' [stat] '}'
+	*/
 	bool parser_impl_t::parse_func_body(ast_expr_func_def_t* node)
 	{
 		if(!this->check_token(token_t::LCB))
@@ -571,10 +567,10 @@ func_body => '{' [stat] '}'
 		
 		return true;
 	}
-
-/*
-func_call => '(' expr, expr, ..., expr ')'
-*/
+	
+	/*
+	func_call => '(' expr, expr, ..., expr ')'
+	*/
 	ast_expr_t* parser_impl_t::parse_func_call(ast_node_t* p, ast_expr_t* primary)
 	{
 		auto* node = factory->create_expr_func_ref(p);
@@ -601,11 +597,11 @@ func_call => '(' expr, expr, ..., expr ')'
 		
 		return node;
 	}
-
-/*
-object_def => 'make' type_ref '{' [object_field {sep object_field} [sep]] '}'
-sep => ',' | ';'
-*/
+	
+	/*
+	object_def => 'make' type_ref '{' [object_field {sep object_field} [sep]] '}'
+	sep => ',' | ';'
+	*/
 	ast_expr_t* parser_impl_t::parse_object_def(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::Make))
@@ -625,7 +621,6 @@ sep => ',' | ';'
 				break;
 			if(!this->parse_object_field(node))
 				return nullptr;
-			
 		} while (this->check_token(token_t::Comma, false));
 		
 		if(!this->check_token(token_t::RCB))
@@ -633,12 +628,12 @@ sep => ',' | ';'
 		
 		return node;
 	}
-
-
-/*
-array_def => '[' [array_field {sep array_field} [sep]] ']'
-sep => ',' | ';'
-*/
+	
+	
+	/*
+	array_def => '[' [array_field {sep array_field} [sep]] ']'
+	sep => ',' | ';'
+	*/
 	ast_expr_t* parser_impl_t::parse_array_def(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::LSB))
@@ -656,7 +651,6 @@ sep => ',' | ';'
 				return nullptr;
 			
 			node->items.push_back(expr);
-			
 		} while (this->check_token(token_t::Comma, false));
 		
 		if(!this->check_token(token_t::RSB))
@@ -664,10 +658,10 @@ sep => ',' | ';'
 		
 		return node;
 	}
-
-/*
-index_ref => '[' expr ']'
-*/
+	
+	/*
+	index_ref => '[' expr ']'
+	*/
 	ast_expr_t* parser_impl_t::parse_index_ref(ast_node_t* p, ast_expr_t* primary)
 	{
 		auto* node = factory->create_expr_index_ref(p);
@@ -687,10 +681,10 @@ index_ref => '[' expr ']'
 		
 		return node;
 	}
-
-/*
-object_field => ID '=' expr
-*/
+	
+	/*
+	object_field => ID '=' expr
+	*/
 	bool parser_impl_t::parse_object_field(ast_expr_object_def_t* node)
 	{
 		if(!this->check_token(token_t::ID, true, false))
@@ -699,8 +693,7 @@ object_field => ID '=' expr
 		const String key = this->token().value;
 		this->next_token();
 		
-		if(!this->check_token(token_t::Assign, false) &&
-		   !this->check_token(token_t::Colon, false))
+		if(!this->check_token(token_t::Assign, false) && !this->check_token(token_t::Colon, false))
 		{
 			return false;
 		}
@@ -713,10 +706,10 @@ object_field => ID '=' expr
 		
 		return true;
 	}
-
-/*
-object_ref => '.' ID
-*/
+	
+	/*
+	object_ref => '.' ID
+	*/
 	ast_expr_t* parser_impl_t::parse_object_ref(ast_node_t* p, ast_expr_t* primary)
 	{
 		auto* node = factory->create_expr_object_ref(p);
@@ -736,10 +729,10 @@ object_ref => '.' ID
 		
 		return node;
 	}
-
-/*
-module_ref => 'using' '(' expr  ')'
-*/
+	
+	/*
+	module_ref => 'using' '(' expr  ')'
+	*/
 	ast_expr_t* parser_impl_t::parse_module_ref(ast_node_t* p)
 	{
 		this->next_token(); // ignore 'using'
@@ -768,9 +761,6 @@ module_ref => 'using' '(' expr  ')'
 		
 		switch (this->token().type)
 		{
-			case token_t::Schema:
-				stmt = this->parse_stmt_schema_def(p);
-				break;
 			case token_t::Struct:
 				stmt = this->parse_stmt_struct_def(p);
 				break;
@@ -817,91 +807,10 @@ module_ref => 'using' '(' expr  ')'
 		
 		return stmt;
 	}
-
-/**
- * schema_def := 'schema' ID [':' type_ref] '{' schema_member '};';
-*/
-	ast_stmt_schema_def_t* parser_impl_t::parse_stmt_schema_def(ast_node_t* p)
-	{
-		if(!this->check_token(token_t::Schema))
-			return nullptr;
-		
-		auto* node = factory->create_stmt_schema_def(p);
-		
-		// ID
-		if(!this->check_token(token_t::ID, true, false))
-			return nullptr;
-		
-		node->name = this->token().value;
-		this->next_token();
-		
-		// : schema_ref
-		if(this->check_token(token_t::Colon, false))
-		{
-			node->schema = this->parse_type_ref(node);
-			if(node->schema == nullptr)
-				return nullptr;
-		}
-		
-		// {
-		if(!this->check_token(token_t::LCB))
-			return nullptr;
-		
-		do
-		{
-			if(this->token().type == token_t::RCB)
-				break;
-			
-			ast_stmt_schema_member_t* member = this->parse_stmt_schema_member(node);
-			if(member == nullptr)
-				return nullptr;
-
-			const String& name = member->name;
-			if(node->members.find(name) != node->members.end())
-			{
-				this->error_token_unexpected();
-				return nullptr;
-			}
-			
-			node->members[name] = member;
-			
-		} while (this->check_token(token_t::Semicolon, false));
-		
-		// }
-		if(!this->check_token(token_t::RCB))
-			return nullptr;
-		
-		return node;
-	}
-
-/**
- * schema_member := ID : type;
-*/
-	ast_stmt_schema_member_t* parser_impl_t::parse_stmt_schema_member(ast_node_t* p)
-	{
-		auto* node = factory->create_stmt_schema_member(p);
-		
-		if(this->check_token(token_t::ID, true, false))
-			return nullptr;
-		
-		node->name = this->token().value;
-		
-		this->next_token();
-		
-		// : type
-		if(!this->check_token(token_t::Colon))
-			return nullptr;
-		
-		node->type = this->parse_type(p);
-		if(node->type == nullptr)
-			return nullptr;
-		
-		return node;
-	}
-
-/**
- * struct_def := 'struct' ID [':' type_ref] '{' struct_member '};';
-*/
+	
+	/**
+	 * struct_def := 'struct' ID [':' type_ref] '{' struct_member '};';
+	*/
 	ast_stmt_struct_def_t* parser_impl_t::parse_stmt_struct_def(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::Struct))
@@ -919,8 +828,8 @@ module_ref => 'using' '(' expr  ')'
 		// : schema_ref
 		if(this->check_token(token_t::Colon, false))
 		{
-			node->schema = this->parse_type_ref(node);
-			if(node->schema == nullptr)
+			node->base = this->parse_type_ref(node);
+			if(node->base == nullptr)
 				return nullptr;
 		}
 		
@@ -945,7 +854,6 @@ module_ref => 'using' '(' expr  ')'
 			}
 			
 			node->members[name] = member;
-			
 		} while (this->check_token(token_t::Semicolon, false));
 		
 		// }
@@ -954,10 +862,10 @@ module_ref => 'using' '(' expr  ')'
 		
 		return node;
 	}
-
-/**
- * struct_member := ID [: type] = expr;
-*/
+	
+	/**
+	 * struct_member := ID : type;
+	*/
 	ast_stmt_struct_member_t* parser_impl_t::parse_stmt_struct_member(ast_node_t* p)
 	{
 		auto* node = factory->create_stmt_struct_member(p);
@@ -972,28 +880,19 @@ module_ref => 'using' '(' expr  ')'
 		this->next_token();
 		
 		// : type
-		if(this->check_token(token_t::Colon, false))
-		{
-			node->type = this->parse_type(p);
-			if(node->type == nullptr)
-				return nullptr;
-		}
-		
-		// = expr
-		if(this->check_token(token_t::Assign, false))
-		{
-			node->value = this->parse_expr(node);
-			if(node->value == nullptr)
-				return nullptr;
-		}
+		if(!this->check_token(token_t::Colon))
+			return nullptr;
+		node->type = this->parse_type(p);
+		if(node->type == nullptr)
+			return nullptr;
 		
 		return node;
 	}
-
-/**
- * proc_def := 'proc' ID '(' [func_params]* ')' ';';
- * func_params := ID ':' type_ref ','
-*/
+	
+	/**
+	 * proc_def := 'proc' ID '(' [func_params]* ')' ';';
+	 * func_params := ID ':' type_ref ','
+	*/
 	ast_stmt_proc_def_t* parser_impl_t::parse_stmt_proc_def(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::Proc))
@@ -1037,7 +936,6 @@ module_ref => 'using' '(' expr  ')'
 				return nullptr;
 			
 			node->args[argName] = argType;
-			
 		} while (this->check_token(token_t::Comma, false));
 		
 		// )
@@ -1053,14 +951,13 @@ module_ref => 'using' '(' expr  ')'
 		
 		return node;
 	}
-
-/**
- * symbol_def := 'var' | 'val' ID [: type] = expr;
-*/
+	
+	/**
+	 * symbol_def := 'var' | 'val' ID [: type] = expr;
+	*/
 	ast_stmt_symbol_def_t* parser_impl_t::parse_stmt_symbol_def(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Var, false, false) &&
-		   !this->check_token(token_t::Val, false, false))
+		if(!this->check_token(token_t::Var, false, false) && !this->check_token(token_t::Val, false, false))
 		{
 			return nullptr;
 		}
@@ -1501,9 +1398,9 @@ module_ref => 'using' '(' expr  ')'
 		}
 	}
 	
-	parser_t::parser_t()
-		: impl(new parser_impl_t())
-	{ }
+	parser_t::parser_t() : impl(new parser_impl_t())
+	{
+	}
 	
 	parser_t::~parser_t()
 	{

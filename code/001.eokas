@@ -1,6 +1,15 @@
 
-proc OnClick(event: i32): i32;
+struct A {
+    var id: i32;
+}
 
-var a : OnClick = func(): i32 {
-    return 0;
+struct B : A {
+    var name: string;
+}
+
+var o = make B {
+    name = "eokas",
+    id = 12,
 };
+
+print(o.id as string);

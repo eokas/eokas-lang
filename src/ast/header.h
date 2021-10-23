@@ -37,8 +37,6 @@ namespace eokas
 		expr_index_ref,
 		expr_module_ref,
 		
-		stmt_schema_def,
-		stmt_schema_member,
 		stmt_struct_def,
 		stmt_struct_member,
 		stmt_proc_def,
@@ -134,8 +132,6 @@ namespace eokas
 	struct ast_expr_module_ref_t;
 	
 	struct ast_stmt_t;
-	struct ast_stmt_schema_member_t;
-	struct ast_stmt_schema_def_t;
 	struct ast_stmt_struct_member_t;
 	struct ast_stmt_struct_def_t;
 	struct ast_stmt_proc_def_t;

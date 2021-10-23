@@ -6,14 +6,11 @@
 namespace llvm
 {
 	class LLVMContext;
-	
-	class Module;
-	
 	class Type;
-	
 	class Value;
-	
 	class Function;
+	class Module;
+	class BasicBlock;
 }
 
 _BeginNamespace(eokas)

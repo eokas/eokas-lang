@@ -34,8 +34,6 @@ namespace eokas
 		ast_expr_object_ref_t* create_expr_object_ref(ast_node_t* parent);
 		ast_expr_module_ref_t* create_expr_module_ref(ast_node_t* parent);
 		
-		ast_stmt_schema_member_t* create_stmt_schema_member(ast_node_t* parent);
-		ast_stmt_schema_def_t* create_stmt_schema_def(ast_node_t* parent);
 		ast_stmt_struct_member_t* create_stmt_struct_member(ast_node_t* parent);
 		ast_stmt_struct_def_t* create_stmt_struct_def(ast_node_t* parent);
 		ast_stmt_proc_def_t* create_stmt_proc_def(ast_node_t* parent);

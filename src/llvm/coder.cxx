@@ -1,7 +1,6 @@
 #include "coder.h"
+#include "object.h"
 #include "models.h"
-#include "scope.h"
-#include "expr.h"
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
@@ -33,13 +32,13 @@ _BeginNamespace(eokas)
 		llvm::Module* llvm_module;
 		llvm_model_t model;
 		std::vector<llvm_expr_t*> exprs;
+		std::vector<llvm_type_t*> types;
+		std::map<llvm::Type*, llvm_type_t*> typemappings;
 		llvm_scope_t* root;
 		llvm_scope_t* scope;
 		llvm::Function* func;
 		llvm::BasicBlock* continuePoint;
 		llvm::BasicBlock* breakPoint;
-		
-		std::map<llvm::Type*, ast_stmt_struct_def_t*> structs;
 		
 		llvm::Value* const_zero;
 		
@@ -58,6 +57,7 @@ _BeginNamespace(eokas)
 		{
 			_DeletePointer(this->scope);
 			_DeleteList(this->exprs);
+			_DeleteList(this->types);
 		}
 		
 		llvm_expr_t* new_expr(llvm::Value* value, llvm::Type* type = nullptr)
@@ -65,6 +65,30 @@ _BeginNamespace(eokas)
 			auto* expr = new llvm_expr_t(value, type);
 			this->exprs.push_back(expr);
 			return expr;
+		}
+		
+		llvm_type_t* new_type(llvm_type_category_t category, const String& name, llvm::Type* type)
+		{
+			if(category == llvm_type_category_t::Basic)
+			{
+				auto* t = new llvm_type_t();
+				t->category = category;
+				t->name = name;
+				t->type = type;
+				this->types.push_back(t);
+				return t;
+			}
+			else if(category == llvm_type_category_t::Struct)
+			{
+				auto* t = new llvm_struct_t();
+				t->category = category;
+				t->name = name;
+				t->type = type;
+				t->base = nullptr;
+				t->members.clear();
+				this->types.push_back(t);
+				return t;
+			}
 		}
 		
 		void pushScope()
@@ -102,17 +126,17 @@ _BeginNamespace(eokas)
 			
 			this->pushScope();
 			
-			this->scope->types["void"] = model.type_void;
-			this->scope->types["i8"] = model.type_i8;
-			this->scope->types["i32"] = model.type_i32;
-			this->scope->types["i64"] = model.type_i64;
-			this->scope->types["u8"] = model.type_u8;
-			this->scope->types["u32"] = model.type_u32;
-			this->scope->types["u64"] = model.type_u64;
-			this->scope->types["f32"] = model.type_f32;
-			this->scope->types["f64"] = model.type_f64;
-			this->scope->types["bool"] = model.type_bool;
-			this->scope->types["string"] = model.type_string_ptr;
+			this->scope->types["void"] = this->new_type(llvm_type_category_t::Basic, "void", model.type_void);
+			this->scope->types["i8"] = this->new_type(llvm_type_category_t::Basic, "i8", model.type_i8);
+			this->scope->types["i32"] = this->new_type(llvm_type_category_t::Basic, "i32", model.type_i32);
+			this->scope->types["i64"] = this->new_type(llvm_type_category_t::Basic, "i64", model.type_i64);
+			this->scope->types["u8"] = this->new_type(llvm_type_category_t::Basic, "u8", model.type_u8);
+			this->scope->types["u32"] = this->new_type(llvm_type_category_t::Basic, "u32", model.type_u32);
+			this->scope->types["u64"] = this->new_type(llvm_type_category_t::Basic, "u64", model.type_u64);
+			this->scope->types["f32"] = this->new_type(llvm_type_category_t::Basic, "f32", model.type_f32);;
+			this->scope->types["f64"] = this->new_type(llvm_type_category_t::Basic, "f64", model.type_f64);;
+			this->scope->types["bool"] = this->new_type(llvm_type_category_t::Basic, "bool", model.type_bool);;
+			this->scope->types["string"] = this->new_type(llvm_type_category_t::Basic, "string", model.type_string_ptr);
 			
 			this->scope->symbols["print"] = new llvm_expr_t(model.define_func_print(llvm_module));
 			
@@ -135,7 +159,7 @@ _BeginNamespace(eokas)
 			return true;
 		}
 		
-		llvm::Type* encode_type(struct ast_type_t* node)
+		llvm_type_t* encode_type(struct ast_type_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -153,7 +177,7 @@ _BeginNamespace(eokas)
 			return nullptr;
 		}
 		
-		llvm::Type* encode_type_ref(struct ast_type_ref_t* node)
+		llvm_type_t* encode_type_ref(struct ast_type_ref_t* node)
 		{
 			if(node == nullptr)
 			{
@@ -162,11 +186,11 @@ _BeginNamespace(eokas)
 			}
 			
 			const String& name = node->name;
-			llvm::Type* type = this->scope->getType(name, true);
+			auto* type = this->scope->getType(name, true);
 			return type;
 		}
 		
-		llvm::Type* encode_type_array(struct ast_type_array_t* node)
+		llvm_type_t* encode_type_array(struct ast_type_array_t* node)
 		{
 			if(node == nullptr)
 			{
@@ -174,13 +198,17 @@ _BeginNamespace(eokas)
 				return nullptr;
 			}
 			
-			llvm::Type* elementType = this->encode_type(node->elementType);
+			auto* elementType = this->encode_type(node->elementType);
 			if(elementType == nullptr)
 				return nullptr;
 			
-			llvm::Type* type = llvm::ArrayType::get(elementType, node->length);
+			llvm::Type* arrayType = llvm::ArrayType::get(elementType->type, node->length);
 			
-			return type;
+			return this->new_type(
+				llvm_type_category_t::Basic,
+				String::format("Array<%s>", elementType->name.cstr()),
+				arrayType
+			);
 		}
 		
 		llvm_expr_t* encode_expr(struct ast_expr_t* node)
@@ -291,7 +319,7 @@ _BeginNamespace(eokas)
 			{
 				case ast_binary_oper_t::Is:
 				{
-					if(right == lhs->getType())
+					if(right->type == lhs->getType())
 						return this->new_expr(llvm_builder.getTrue());
 					else
 						return this->new_expr(llvm_builder.getFalse());
@@ -301,7 +329,7 @@ _BeginNamespace(eokas)
 				{
 					if(lhs->getType()->isSingleValueType())
 					{
-						if(right == model.type_string_ptr)
+						if(right->type == model.type_string_ptr)
 						{
 							llvm::Value* value = model.value_to_string(llvm_module, this->func, llvm_builder, lhs);
 							return this->new_expr(value);
@@ -897,20 +925,20 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			llvm::Type* retType = this->encode_type(node->type);
+			auto* retType = this->encode_type(node->type);
 			if(retType == nullptr)
 				return nullptr;
 			
 			std::vector<llvm::Type*> argTypes;
 			for (auto arg: node->args)
 			{
-				llvm::Type* argType = this->encode_type(arg->type);
+				auto* argType = this->encode_type(arg->type);
 				if(argType == nullptr)
 					return nullptr;
-				argTypes.push_back(argType);
+				argTypes.push_back(argType->type);
 			}
 			
-			llvm::FunctionType* funcType = llvm::FunctionType::get(retType, argTypes, false);
+			llvm::FunctionType* funcType = llvm::FunctionType::get(retType->type, argTypes, false);
 			llvm::Function* func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "", llvm_module);
 			u32_t index = 0;
 			for (auto& arg: func->args())
@@ -1048,60 +1076,47 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			auto* structRefType = llvm::cast<llvm::PointerType>(this->encode_type(node->type));
-			if(structRefType == nullptr)
+			auto* structTypeDef = dynamic_cast<llvm_struct_t*>(this->encode_type(node->type));
+			if(structTypeDef == nullptr)
 				return nullptr;
-			
-			auto* structType = llvm::cast<llvm::StructType>(structRefType->getElementType());
-			if(structType == nullptr)
-				return nullptr;
-			
-			auto iter = this->structs.find(structType);
-			if(iter == this->structs.end())
-				return nullptr;
-			ast_stmt_struct_def_t* structDef = iter->second;
-			
-			for (auto& mem: node->members)
+
+			for (auto& objectMember: node->members)
 			{
-				if(structDef->members.find(mem.first) == structDef->members.end())
+				auto structMember = structTypeDef->getMember(objectMember.first);
+				if(structMember == nullptr)
 				{
-					printf("object member '%s' is not defined in struct.", mem.first.cstr());
+					printf("object member '%s' is not defined in struct.", objectMember.first.cstr());
 					return nullptr;
 				}
+				// todo: check object-member-type equals to struct-member-type.
 			}
 			
 			// make object
+			auto structType = structTypeDef->type->getPointerElementType();
 			llvm::Value* objectValue = model.make(llvm_module, this->func, llvm_builder, structType);
 			
-			// call constructor.
-			auto structInitName = String::format("Type.%s.Init", structDef->name.cstr());
-			auto structInitExpr = this->scope->getSymbol(structInitName, true);
-			if(structInitExpr == nullptr)
-			{
-				printf("Can not find type constructor: %s\n", structInitName.cstr());
-				return nullptr;
-			}
-			auto funcPtr = model.get_value(llvm_builder, structInitExpr->value);
-			auto funcType = llvm::cast<llvm::FunctionType>(structInitExpr->type);
-			llvm_builder.CreateCall(funcType, funcPtr, {objectValue});
-			
 			u32_t index = -1;
-			for (auto& mem: structDef->members)
+			for (auto& structMember: structTypeDef->members)
 			{
 				index += 1;
-				auto memNode = node->members.find(mem.first);
+				auto objectMember = node->members.find(structMember->name);
 				llvm::Value* memV = nullptr;
-				if(memNode != node->members.end())
+				if(objectMember != node->members.end())
 				{
-					auto memE = this->encode_expr(memNode->second);
+					auto memE = this->encode_expr(objectMember->second);
 					if(memE == nullptr)
 						return nullptr;
 					memV = model.get_value(llvm_builder, memE->value);
 				}
+				else
+				{
+					auto memT = structMember->type->type;
+					memV = model.get_default_value_by_type(memT);
+				}
 				
 				if(memV)
 				{
-					llvm::Value* memPtr = llvm_builder.CreateStructGEP(structType, objectValue, index, mem.first.cstr());
+					llvm::Value* memPtr = llvm_builder.CreateStructGEP(structType, objectValue, index, structMember->name.cstr());
 					llvm_builder.CreateStore(memV, memPtr);
 				}
 			}
@@ -1114,36 +1129,34 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			auto instanceE = this->encode_expr(node->obj);
+			auto objectE = this->encode_expr(node->obj);
 			auto key = llvm_builder.CreateGlobalString(node->key.cstr());
-			if(instanceE == nullptr || key == nullptr)
+			if(objectE == nullptr || key == nullptr)
 				return nullptr;
 			
-			auto instanceV = model.ref_value(llvm_builder, instanceE->value);
-			auto instanceType = instanceV->getType();
-			if(!(instanceType->isPointerTy() && instanceType->getPointerElementType()->isStructTy()))
+			auto objectV = model.ref_value(llvm_builder, objectE->value);
+			auto objectT = objectV->getType();
+			if(!(objectT->isPointerTy() && objectT->getPointerElementType()->isStructTy()))
 			{
-				printf("instance is not a object reference.");
+				printf("the value is not a object reference.");
 				return nullptr;
 			}
-			auto structType = instanceType->getPointerElementType();
-			auto structIter = this->structs.find(structType);
-			if(structIter == this->structs.end())
-				return nullptr;
-			
-			auto structAST = structIter->second;
-			
-			u32_t index = -1;
-			for (auto& mem: structAST->members)
+			auto structTypeIter = this->typemappings.find(objectT);
+			if(structTypeIter == this->typemappings.end())
 			{
-				index += 1;
-				if(mem.second->name == node->key)
-					break;
-			}
-			if(index<0)
+				printf("can not find the type of this value.");
 				return nullptr;
-			
-			llvm::Value* value = llvm_builder.CreateStructGEP(structType, instanceV, index);
+			}
+			auto structTypeDef = dynamic_cast<llvm_struct_t*>(structTypeIter->second);
+			auto index = structTypeDef->getMemberIndex(node->key);
+			if(index == -1)
+			{
+				printf("can not get the index of object member.");
+				return nullptr;
+			}
+
+			auto structType = structTypeDef->type->getPointerElementType();
+			llvm::Value* value = llvm_builder.CreateStructGEP(structType, objectV, index);
 			return this->new_expr(value);
 		}
 		
@@ -1154,8 +1167,6 @@ _BeginNamespace(eokas)
 			
 			switch (node->category)
 			{
-				case ast_node_category_t::stmt_schema_def:
-					return this->encode_stmt_schema_def(dynamic_cast<ast_stmt_schema_def_t*>(node));
 				case ast_node_category_t::stmt_struct_def:
 					return this->encode_stmt_struct_def(dynamic_cast<ast_stmt_struct_def_t*>(node));
 				case ast_node_category_t::stmt_proc_def:
@@ -1187,103 +1198,64 @@ _BeginNamespace(eokas)
 			return false;
 		}
 		
-		bool encode_stmt_schema_def(struct ast_stmt_schema_def_t* node)
-		{
-			if(node == nullptr)
-				return false;
-			
-			const String& name = node->name;
-			
-			std::vector<llvm::Constant*> memberNames;
-			std::vector<llvm::Type*> memberTypes;
-			auto tokenNameType = llvm::ArrayType::get(llvm::Type::getInt8Ty(llvm_context), 256);
-			auto metaType = llvm::ArrayType::get(tokenNameType, node->members.size() + 1);
-			memberNames.push_back(llvm::ConstantDataArray::getString(llvm_context, "$_meta"));
-			memberTypes.push_back(metaType);
-			for (auto node: node->members)
-			{
-				auto mem = node.second;
-				const auto& memName = mem->name.cstr();
-				const auto& memType = this->encode_type(mem->type);
-				if(memType == nullptr)
-					return false;
-				memberNames.push_back(llvm::ConstantDataArray::getString(llvm_context, memName));
-				memberTypes.push_back(memType);
-			}
-			
-			auto structType = llvm::StructType::get(llvm_context);
-			structType->setBody(memberTypes);
-			
-			this->scope->types.insert(std::make_pair(name, structType));
-			
-			return true;
-		}
-		
 		bool encode_stmt_struct_def(struct ast_stmt_struct_def_t* node)
 		{
 			if(node == nullptr)
 				return false;
 			
 			const String& name = node->name;
+
+			auto* structTypeDef = dynamic_cast<llvm_struct_t*>(this->new_type(llvm_type_category_t::Struct, name, nullptr));
 			
-			std::vector<llvm::Constant*> memberNames;
-			std::vector<llvm::Type*> memberTypes;
-			for (const auto& memNode: node->members)
+			if(node->base != nullptr)
 			{
-				auto mem = memNode.second;
-				const auto& memName = mem->name.cstr();
+				auto baseType = dynamic_cast<llvm_struct_t*>(this->encode_type(node->base));
+				if(baseType == nullptr)
+					return false;
+				for(const auto& baseMember: baseType->members)
+				{
+					auto& mem = baseMember;
+					if(structTypeDef->getMember(mem->name) != nullptr)
+					{
+						printf("member named '%s' is already exists", mem->name.cstr());
+						return false;
+					}
+					structTypeDef->addMember(mem->name, mem->type);
+				}
+			}
+			
+			for (const auto& thisMember: node->members)
+			{
+				auto& mem = thisMember.second;
+				
+				const auto& memName = mem->name;
+				if(structTypeDef->getMember(memName) != nullptr)
+				{
+					printf("member named '%s' is already exists", memName.cstr());
+					return false;
+				}
+				
 				const auto& memType = this->encode_type(mem->type);
 				if(memType == nullptr)
 					return false;
 				
-				memberNames.push_back(llvm_builder.CreateGlobalString(memName));
-				memberTypes.push_back(memType);
+				structTypeDef->addMember(memName, memType);
 			}
 			
+			std::vector<llvm::Type*> memberTypes;
+			for(auto& mem : structTypeDef->members)
+			{
+				memberTypes.push_back(mem->type->type);
+			}
 			String structName = String::format("Type.%s.Struct", name.cstr());
-			auto structType = llvm::StructType::create(llvm_context);
+			auto* structType = llvm::StructType::create(llvm_context);
 			structType->setName(structName.cstr());
 			structType->setBody(memberTypes);
+			structTypeDef->type = structType->getPointerTo();
 			
-			llvm::Type* structPtrType = structType->getPointerTo();
-			
-			this->scope->types.insert(std::make_pair(name, structPtrType));
-			this->structs.insert(std::make_pair(structType, node));
-			
-			String structInitName = String::format("Type.%s.Init", name.cstr());
-			auto structInitType = llvm::FunctionType::get(model.type_void, {structPtrType}, false);
-			auto structInitFunc = llvm::Function::Create(structInitType, llvm::Function::ExternalLinkage, structInitName.cstr(), llvm_module);
-			
-			auto* old_block = llvm_builder.GetInsertBlock();
-			
-			llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", structInitFunc);
-			llvm_builder.SetInsertPoint(entry);
-			
-			llvm::Value* obj = structInitFunc->getArg(0);
-			
-			u32_t index = -1;
-			for (const auto& memNode: node->members)
-			{
-				index += 1;
-				auto mem = memNode.second;
-				if(mem->value != nullptr)
-				{
-					auto memE = this->encode_expr(mem->value);
-					if(memE == nullptr)
-						return false;
-					auto memV = model.get_value(llvm_builder, memE->value);
-					auto memP = llvm_builder.CreateStructGEP(structType, obj, index);
-					llvm_builder.CreateStore(memV, memP);
-				}
-			}
-			
-			llvm_builder.CreateRetVoid();
-			
-			llvm_builder.SetInsertPoint(old_block);
-			
-			auto structInitExpr = this->new_expr(structInitFunc, structInitType);
-			this->scope->symbols.insert(std::make_pair(structInitName, structInitExpr));
-			
+			this->scope->types.insert(std::make_pair(name, structTypeDef));
+			this->typemappings[structTypeDef->type] = structTypeDef;
+
 			return true;
 		}
 		
@@ -1295,20 +1267,20 @@ _BeginNamespace(eokas)
 			if(this->scope->getType(node->name, false) != nullptr)
 				return false;
 			
-			llvm::Type* retType = this->encode_type(node->type);
+			auto* retType = this->encode_type(node->type);
 			
 			std::vector<llvm::Type*> argTypes;
 			for (auto arg: node->args)
 			{
-				llvm::Type* argType = this->encode_type(arg.second);
+				auto* argType = this->encode_type(arg.second);
 				if(argType == nullptr)
 					return false;
-				argTypes.push_back(argType);
+				argTypes.push_back(argType->type);
 			}
 			
-			llvm::FunctionType* procType = llvm::FunctionType::get(retType, argTypes, false);
+			llvm::FunctionType* procType = llvm::FunctionType::get(retType->type, argTypes, false);
 			
-			this->scope->types[node->name] = procType;
+			this->scope->types[node->name] = this->new_type(llvm_type_category_t::Basic, "Proc", procType);
 			
 			return true;
 		}
@@ -1327,19 +1299,21 @@ _BeginNamespace(eokas)
 				return false;
 			
 			auto value = model.get_value(llvm_builder, expr->value);
-			llvm::Type* vtype = value->getType();
 			
+			llvm::Type* stype = nullptr;
+			llvm::Type* vtype = value->getType();
 			if(type != nullptr)
 			{
+				stype = type->type;
 				do
 				{
-					if(type == vtype)
+					if(stype == vtype)
 						break;
-					if(vtype->canLosslesslyBitCastTo(type))
+					if(vtype->canLosslesslyBitCastTo(stype))
 						break;
-					if(vtype->isPointerTy() && type == vtype->getPointerElementType())
+					if(vtype->isPointerTy() && stype == vtype->getPointerElementType())
 					{
-						type = vtype;
+						stype = type->type = vtype;
 						break;
 					}
 					
@@ -1350,17 +1324,17 @@ _BeginNamespace(eokas)
 			}
 			else
 			{
-				type = vtype;
+				stype =  vtype;
 			}
 			
-			if(type->isVoidTy())
+			if(stype->isVoidTy())
 			{
 				printf("void type can't assign to a symbol.");
 				return false;
 			}
 			// TODO: 校验类型合法性, 值类型是否遵循标记类型
 			
-			auto symbol = llvm_builder.CreateAlloca(type, nullptr, node->name.cstr());
+			auto symbol = llvm_builder.CreateAlloca(stype, nullptr, node->name.cstr());
 			llvm_builder.CreateStore(value, symbol);
 			auto symbolE = this->new_expr(symbol, expr->type);
 			scope->symbols.insert(std::make_pair(node->name, symbolE));

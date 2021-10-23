@@ -1,7 +1,7 @@
 #ifndef _EOKAS_LLVM_ENGINE_H_
 #define _EOKAS_LLVM_ENGINE_H_
 
-#include "../ast/ast.h"
+#include "header.h"
 
 _BeginNamespace(eokas)
 	
