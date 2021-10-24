@@ -1164,7 +1164,7 @@ _BeginNamespace(eokas)
 			if(objectE == nullptr || key == nullptr)
 				return nullptr;
 			
-			auto objectV = model.ref_value(llvm_builder, objectE->value);
+			auto objectV = model.get_value(llvm_builder, objectE->value);
 			auto objectT = objectV->getType();
 			if(!(objectT->isPointerTy() && objectT->getPointerElementType()->isStructTy()))
 			{

@@ -1,7 +1,16 @@
 
-var foo = func(n: i32) : i32 {
-    if(n <= 0) return 1;
-    else return n * self(n - 1);
+struct A {
+    var name: string;
+}
+
+var f = func(o: A): void {
+    o.name = "eokas";
 };
 
-print(foo(10) as string);
+var o = make A {
+    name = "C++"
+};
+
+f(o);
+
+print(o.name);

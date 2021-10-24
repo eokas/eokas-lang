@@ -84,6 +84,8 @@ _BeginNamespace(eokas)
 				break;
 			if(type->getPointerElementType()->isStructTy())
 				break;
+			if(type->getPointerElementType()->isArrayTy())
+				break;
 			value = builder.CreateLoad(value);
 			type = value->getType();
 		}
@@ -95,6 +97,13 @@ _BeginNamespace(eokas)
 		llvm::Type* type = value->getType();
 		while (type->isPointerTy() && type->getPointerElementType()->isPointerTy())
 		{
+			auto rtype = type->getPointerElementType()->getPointerElementType();
+			if(rtype->isFunctionTy())
+				break;
+			if(rtype->isStructTy())
+				break;
+			if(rtype->isArrayTy())
+				break;
 			value = builder.CreateLoad(value);
 			type = value->getType();
 		}
