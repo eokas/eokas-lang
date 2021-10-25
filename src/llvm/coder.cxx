@@ -1097,8 +1097,7 @@ _BeginNamespace(eokas)
 			
 			auto objV = model.get_value(llvm_builder, objE->value);
 			auto keyV = model.get_value(llvm_builder, keyE->value);
-			/*
-			if(!objV->getType()->isArrayTy())
+			if(!objV->getType()->isPointerTy() || !objV->getType()->getPointerElementType()->isArrayTy())
 			{
 				printf("index-access is not defined on the object.");
 				return nullptr;
@@ -1108,7 +1107,7 @@ _BeginNamespace(eokas)
 				printf("the type of index is invalid.");
 				return nullptr;
 			}
-			*/
+			
 			llvm::Value* ptr = llvm_builder.CreateGEP(objV, {llvm_builder.getInt32(0), keyV});
 			return this->new_expr(ptr);
 		}
@@ -1632,6 +1631,8 @@ _BeginNamespace(eokas)
 			
 			auto leftE = this->encode_expr(node->left);
 			auto rightE = this->encode_expr(node->right);
+			if(leftE == nullptr || rightE == nullptr)
+				return false;
 			
 			auto ptr = model.ref_value(llvm_builder, leftE->value);
 			auto val = model.get_value(llvm_builder, rightE->value);
