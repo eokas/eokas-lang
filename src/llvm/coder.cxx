@@ -206,7 +206,7 @@ _BeginNamespace(eokas)
 			
 			return this->new_type(
 				llvm_type_category_t::Basic,
-				String::format("Array<%s>", elementType->name.cstr()),
+				String::format("Array<%s, %d>", elementType->name.cstr(), node->length),
 				arrayType
 			);
 		}
@@ -1049,37 +1049,40 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			printf("1 \n");
-			std::vector<llvm::Constant*> arrayItems;
-			llvm::Type* itemType = nullptr;
-			for (auto item: node->items)
+			std::vector<llvm::Constant*> arrayElements;
+			llvm::Type* elementType = nullptr;
+			for (auto element: node->elements)
 			{
-				printf("2 \n");
-				auto itemE = this->encode_expr(item);
-				if(itemE == nullptr)
+				auto elementE = this->encode_expr(element);
+				if(elementE == nullptr)
 					return nullptr;
-				auto itemV = llvm::cast<llvm::Constant>(itemE->value);
-				if(itemV == nullptr)
+				auto elementV = llvm::cast<llvm::Constant>(elementE->value);
+				if(elementV == nullptr)
 					return nullptr;
 				
-				auto thisItemType = itemV->getType();
-				if(itemType == nullptr)
+				auto thisItemType = elementV->getType();
+				if(elementType == nullptr)
 				{
-					itemType = thisItemType;
+					elementType = thisItemType;
+				}
+				else if(thisItemType != elementType)
+				{
+					printf("the type of some elements is not same as others.");
+					return nullptr;
 				}
 				
-				arrayItems.push_back(itemV);
+				arrayElements.push_back(elementV);
 			}
 			
-			if(arrayItems.empty() || itemType == nullptr)
-				itemType = llvm::Type::getInt32Ty(llvm_context);
+			if(arrayElements.empty() || elementType == nullptr)
+				elementType = llvm::Type::getInt32Ty(llvm_context);
 			
-			printf("3 \n");
-			auto arrayType = llvm::ArrayType::get(itemType, 0);
-			auto arrayValue = llvm::ConstantArray::get(arrayType, arrayItems);
+			auto arrayType = llvm::ArrayType::get(elementType, node->elements.size());
+			auto arrayValue = llvm::ConstantArray::get(arrayType, arrayElements);
+			auto arrayPtr = model.make(llvm_module, this->func, llvm_builder, arrayType);
+			llvm_builder.CreateStore(arrayValue, arrayPtr);
 			
-			printf("4 \n");
-			return this->new_expr(arrayValue);
+			return this->new_expr(arrayPtr);
 		}
 		
 		llvm_expr_t* encode_expr_index_ref(struct ast_expr_index_ref_t* node)
@@ -1092,13 +1095,22 @@ _BeginNamespace(eokas)
 			if(objE == nullptr || keyE == nullptr)
 				return nullptr;
 			
-			if(objE->type->isArrayTy() && keyE->type->isIntegerTy())
+			auto objV = model.get_value(llvm_builder, objE->value);
+			auto keyV = model.get_value(llvm_builder, keyE->value);
+			/*
+			if(!objV->getType()->isArrayTy())
 			{
-				llvm::Value* value = llvm_builder.CreateGEP(objE->value, keyE->value);
-				return this->new_expr(value);
+				printf("index-access is not defined on the object.");
+				return nullptr;
 			}
-			
-			return nullptr;
+			if(!keyV->getType()->isIntegerTy())
+			{
+				printf("the type of index is invalid.");
+				return nullptr;
+			}
+			*/
+			llvm::Value* ptr = llvm_builder.CreateGEP(objV, {llvm_builder.getInt32(0), keyV});
+			return this->new_expr(ptr);
 		}
 		
 		llvm_expr_t* encode_expr_object_def(struct ast_expr_object_def_t* node)

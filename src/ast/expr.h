@@ -171,10 +171,10 @@ namespace eokas
 	
 	struct ast_expr_array_def_t : public ast_expr_t
 	{
-		std::vector<ast_expr_t*> items;
+		std::vector<ast_expr_t*> elements;
 		
 		explicit ast_expr_array_def_t(ast_node_t* parent)
-			: ast_expr_t(ast_node_category_t::expr_array_def, parent), items()
+			: ast_expr_t(ast_node_category_t::expr_array_def, parent), elements()
 		{ }
 	};
 	

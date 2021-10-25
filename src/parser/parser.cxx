@@ -650,7 +650,7 @@ _BeginNamespace(eokas)
 			if(expr == nullptr)
 				return nullptr;
 			
-			node->items.push_back(expr);
+			node->elements.push_back(expr);
 		} while (this->check_token(token_t::Comma, false));
 		
 		if(!this->check_token(token_t::RSB))
