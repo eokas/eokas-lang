@@ -983,17 +983,21 @@ _BeginNamespace(eokas)
 						return nullptr;
 				}
 				
-				if(func->getReturnType()->isVoidTy())
-					llvm_builder.CreateRetVoid();
-				else
-					llvm_builder.CreateRet(model.get_default_value_by_type(func->getReturnType()));
+				auto& lastOp = llvm_builder.GetInsertBlock()->back();
+				if(!lastOp.isTerminator())
+				{
+					if(func->getReturnType()->isVoidTy())
+						llvm_builder.CreateRetVoid();
+					else
+						llvm_builder.CreateRet(model.get_default_value_by_type(func->getReturnType()));
+				}
 			}
 			
 			this->popScope();
 			this->func = oldFunc;
 			llvm_builder.SetInsertPoint(oldIB);
 			
-			return this->new_expr(func, func->getType());
+			return this->new_expr(func);
 		}
 		
 		llvm_expr_t* encode_expr_func_ref(struct ast_expr_func_ref_t* node)
@@ -1133,7 +1137,7 @@ _BeginNamespace(eokas)
 			}
 			
 			// make object
-			auto structType = structTypeDef->type->getPointerElementType();
+			auto structType = structTypeDef->type;
 			llvm::Value* objectValue = model.make(llvm_module, this->func, llvm_builder, structType);
 			
 			u32_t index = -1;
@@ -1182,7 +1186,7 @@ _BeginNamespace(eokas)
 				printf("the value is not a object reference.");
 				return nullptr;
 			}
-			auto structTypeIter = this->typemappings.find(objectT);
+			auto structTypeIter = this->typemappings.find(objectT->getPointerElementType());
 			if(structTypeIter == this->typemappings.end())
 			{
 				printf("can not find the type of this value.");
@@ -1196,7 +1200,7 @@ _BeginNamespace(eokas)
 				return nullptr;
 			}
 
-			auto structType = structTypeDef->type->getPointerElementType();
+			auto structType = structTypeDef->type;
 			llvm::Value* value = llvm_builder.CreateStructGEP(structType, objectV, index);
 			return this->new_expr(value);
 		}
@@ -1292,7 +1296,7 @@ _BeginNamespace(eokas)
 			auto* structType = llvm::StructType::create(llvm_context);
 			structType->setName(structName.cstr());
 			structType->setBody(memberTypes);
-			structTypeDef->type = structType->getPointerTo();
+			structTypeDef->type = structType;
 			
 			this->scope->types.insert(std::make_pair(name, structTypeDef));
 			this->typemappings[structTypeDef->type] = structTypeDef;
@@ -1376,8 +1380,11 @@ _BeginNamespace(eokas)
 			}
 			// TODO: 校验类型合法性, 值类型是否遵循标记类型
 			
-			auto symbol = llvm_builder.CreateAlloca(stype, nullptr, node->name.cstr());
+			llvm::Value* symbol = llvm_builder.CreateAlloca(stype);
 			llvm_builder.CreateStore(value, symbol);
+			symbol = model.ref_value(llvm_builder, symbol);
+			symbol->setName(node->name.cstr());
+			
 			auto symbolE = this->new_expr(symbol, expr->type);
 			scope->symbols.insert(std::make_pair(node->name, symbolE));
 			
@@ -1436,7 +1443,7 @@ _BeginNamespace(eokas)
 				return false;
 			}
 			auto value = model.get_value(llvm_builder, expr->value);
-			auto actureRetType = expr->type;
+			auto actureRetType = value->getType();
 			if(actureRetType != expectedRetType && !actureRetType->canLosslesslyBitCastTo(expectedRetType))
 			{
 				printf("the type of return value can't cast to return type of function.\n");

@@ -97,6 +97,7 @@ _BeginNamespace(eokas)
 		llvm::Type* type = value->getType();
 		while (type->isPointerTy() && type->getPointerElementType()->isPointerTy())
 		{
+			/*
 			auto rtype = type->getPointerElementType()->getPointerElementType();
 			if(rtype->isFunctionTy())
 				break;
@@ -104,6 +105,7 @@ _BeginNamespace(eokas)
 				break;
 			if(rtype->isArrayTy())
 				break;
+			 */
 			value = builder.CreateLoad(value);
 			type = value->getType();
 		}

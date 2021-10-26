@@ -1,4 +1,9 @@
 
-var l : array<i32, 4> = [1, 2, 3, 4];
-l[2] = 10;
-print(l[2] as string);
+var a = [1, 2, 3];
+
+var f = func(a: array<i32, 3>): i32 {
+    a[1] = 12;
+    return a[1];
+};
+
+print(f(a) as string);
