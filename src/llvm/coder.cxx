@@ -36,7 +36,7 @@ _BeginNamespace(eokas)
 		std::map<llvm::Type*, llvm_type_t*> typemappings;
 		llvm_scope_t* root;
 		llvm_scope_t* scope;
-		llvm::Function* func;
+		llvm_func_t* func;
 		llvm::BasicBlock* continuePoint;
 		llvm::BasicBlock* breakPoint;
 		
@@ -62,33 +62,42 @@ _BeginNamespace(eokas)
 		
 		llvm_expr_t* new_expr(llvm::Value* value, llvm::Type* type = nullptr)
 		{
-			auto* expr = new llvm_expr_t(value, type);
-			this->exprs.push_back(expr);
+            llvm_expr_t* expr = nullptr;
+            if(value->getType()->isPointerTy() && value->getType()->getPointerElementType()->isFunctionTy())
+            {
+                expr = new llvm_func_t(value, type);
+            }
+            else
+            {
+                expr = new llvm_expr_t(value, type);
+            }
+            if(expr != nullptr)
+            {
+                this->exprs.push_back(expr);
+            }
 			return expr;
 		}
 		
-		llvm_type_t* new_type(llvm_type_category_t category, const String& name, llvm::Type* type)
+		llvm_type_t* new_type(const String& name, llvm::Type* type)
 		{
-			if(category == llvm_type_category_t::Basic)
-			{
-				auto* t = new llvm_type_t();
-				t->category = category;
-				t->name = name;
-				t->type = type;
-				this->types.push_back(t);
-				return t;
-			}
-			else if(category == llvm_type_category_t::Struct)
-			{
-				auto* t = new llvm_struct_t();
-				t->category = category;
-				t->name = name;
-				t->type = type;
-				t->base = nullptr;
-				t->members.clear();
-				this->types.push_back(t);
-				return t;
-			}
+            if(type->isStructTy() || (type->isPointerTy() && type->getPointerElementType()->isStructTy()))
+            {
+                auto* t = new llvm_struct_t();
+                t->name = name;
+                t->type = type;
+                t->base = nullptr;
+                t->members.clear();
+                this->types.push_back(t);
+                return t;
+            }
+            else
+            {
+                auto* t = new llvm_type_t();
+                t->name = name;
+                t->type = type;
+                this->types.push_back(t);
+                return t;
+            }
 		}
 		
 		void pushScope(llvm::Function* f = nullptr)
@@ -123,27 +132,28 @@ _BeginNamespace(eokas)
 		{
 			if(node == nullptr)
 				return false;
-
-			this->scope->types["void"] = this->new_type(llvm_type_category_t::Basic, "void", model.type_void);
-			this->scope->types["i8"] = this->new_type(llvm_type_category_t::Basic, "i8", model.type_i8);
-			this->scope->types["i32"] = this->new_type(llvm_type_category_t::Basic, "i32", model.type_i32);
-			this->scope->types["i64"] = this->new_type(llvm_type_category_t::Basic, "i64", model.type_i64);
-			this->scope->types["u8"] = this->new_type(llvm_type_category_t::Basic, "u8", model.type_u8);
-			this->scope->types["u32"] = this->new_type(llvm_type_category_t::Basic, "u32", model.type_u32);
-			this->scope->types["u64"] = this->new_type(llvm_type_category_t::Basic, "u64", model.type_u64);
-			this->scope->types["f32"] = this->new_type(llvm_type_category_t::Basic, "f32", model.type_f32);;
-			this->scope->types["f64"] = this->new_type(llvm_type_category_t::Basic, "f64", model.type_f64);;
-			this->scope->types["bool"] = this->new_type(llvm_type_category_t::Basic, "bool", model.type_bool);;
-			this->scope->types["string"] = this->new_type(llvm_type_category_t::Basic, "string", model.type_string_ptr);
+            
+            this->scope->addType("void", this->new_type("void", model.type_void));
+			this->scope->addType("i8", this->new_type("i8", model.type_i8));
+			this->scope->addType("i32", this->new_type("i32", model.type_i32));
+			this->scope->addType("i64", this->new_type("i64", model.type_i64));
+			this->scope->addType("u8", this->new_type("u8", model.type_u8));
+			this->scope->addType("u32", this->new_type("u32", model.type_u32));
+			this->scope->addType("u64", this->new_type("u64", model.type_u64));
+			this->scope->addType("f32", this->new_type("f32", model.type_f32));;
+			this->scope->addType("f64", this->new_type("f64", model.type_f64));;
+			this->scope->addType("bool", this->new_type("bool", model.type_bool));;
+			this->scope->addType("string", this->new_type("string", model.type_string_ptr));
 			
-			this->scope->symbols["print"] = new llvm_expr_t(model.define_func_print(llvm_module));
+			this->scope->addSymbol("print", this->new_expr(model.define_func_print(llvm_module)));
 			
 			llvm::FunctionType* funcType = llvm::FunctionType::get(model.type_i32, false);
-			this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", llvm_module);
+			llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", llvm_module);
+            this->func = dynamic_cast<llvm_func_t*>(this->new_expr(funcPtr));
 
-            this->pushScope(this->func);
+            this->pushScope(funcPtr);
             {
-                llvm::BasicBlock *entry = llvm::BasicBlock::Create(llvm_context, "entry", this->func);
+                llvm::BasicBlock *entry = llvm::BasicBlock::Create(llvm_context, "entry", funcPtr);
                 llvm_builder.SetInsertPoint(entry);
 
                 for (auto &stmt: node->get_func()->body) {
@@ -151,7 +161,14 @@ _BeginNamespace(eokas)
                         return false;
                 }
 
-                llvm_builder.CreateRet(const_zero);
+                auto& lastOp = llvm_builder.GetInsertBlock()->back();
+                if(!lastOp.isTerminator())
+                {
+                    if(funcPtr->getReturnType()->isVoidTy())
+                        llvm_builder.CreateRetVoid();
+                    else
+                        llvm_builder.CreateRet(model.get_default_value_by_type(funcPtr->getReturnType()));
+                }
             }
 			this->popScope();
 			
@@ -204,7 +221,6 @@ _BeginNamespace(eokas)
 			llvm::Type* arrayType = llvm::ArrayType::get(elementType->type, node->length);
 			
 			return this->new_type(
-				llvm_type_category_t::Basic,
 				String::format("Array<%s, %d>", elementType->name.cstr(), node->length),
 				arrayType
 			);
@@ -257,11 +273,12 @@ _BeginNamespace(eokas)
 		{
 			if(node == nullptr)
 				return nullptr;
-			
-			llvm::BasicBlock* trinary_begin = llvm::BasicBlock::Create(llvm_context, "trinary.begin", this->func);
-			llvm::BasicBlock* trinary_true = llvm::BasicBlock::Create(llvm_context, "trinary.true", this->func);
-			llvm::BasicBlock* trinary_false = llvm::BasicBlock::Create(llvm_context, "trinary.false", this->func);
-			llvm::BasicBlock* trinary_end = llvm::BasicBlock::Create(llvm_context, "trinary.end", this->func);
+
+
+			llvm::BasicBlock* trinary_begin = llvm::BasicBlock::Create(llvm_context, "trinary.begin", this->scope->func);
+			llvm::BasicBlock* trinary_true = llvm::BasicBlock::Create(llvm_context, "trinary.true", this->scope->func);
+			llvm::BasicBlock* trinary_false = llvm::BasicBlock::Create(llvm_context, "trinary.false", this->scope->func);
+			llvm::BasicBlock* trinary_end = llvm::BasicBlock::Create(llvm_context, "trinary.end", this->scope->func);
 			
 			llvm_builder.CreateBr(trinary_begin);
 			llvm_builder.SetInsertPoint(trinary_begin);
@@ -330,7 +347,7 @@ _BeginNamespace(eokas)
 					{
 						if(right->type == model.type_string_ptr)
 						{
-							llvm::Value* value = model.value_to_string(llvm_module, this->func, llvm_builder, lhs);
+							llvm::Value* value = model.value_to_string(llvm_module, this->scope->func, llvm_builder, lhs);
 							return this->new_expr(value);
 						}
 						return nullptr;
@@ -897,7 +914,7 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			auto str = model.make(llvm_module, this->func, llvm_builder, model.type_string);
+			auto str = model.make(llvm_module, this->scope->func, llvm_builder, model.type_string);
 			auto ptr = llvm_builder.CreateStructGEP(str, 0);
 			auto val = llvm_builder.CreateGlobalString(node->value.cstr());
 			llvm_builder.CreateStore(val, ptr);
@@ -915,6 +932,12 @@ _BeginNamespace(eokas)
 				printf("symbol '%s' is undefined.\n", node->name.cstr());
 				return nullptr;
 			}
+
+            // up-value
+            if(symbol->scope->func != this->func->value)
+            {
+                this->func->upvals.add(node->name, symbol);
+            }
 			
 			return symbol;
 		}
@@ -942,7 +965,8 @@ _BeginNamespace(eokas)
 			
 			llvm::FunctionType* funcType = llvm::FunctionType::get(retType->type, argTypes, false);
 			llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "", llvm_module);
-			u32_t index = 0;
+
+            u32_t index = 0;
 			for (auto& arg: funcPtr->args())
 			{
 				const char* name = node->args[index++]->name.cstr();
@@ -951,37 +975,38 @@ _BeginNamespace(eokas)
 			
 			auto oldFunc = this->func;
 			auto oldIB = llvm_builder.GetInsertBlock();
-			this->func = funcPtr;
-			this->pushScope(funcPtr);
+
+            this->func = dynamic_cast<llvm_func_t*>(this->new_expr(funcPtr));
+
+            this->pushScope(funcPtr);
 			{
 				llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", funcPtr);
 				llvm_builder.SetInsertPoint(entry);
 				
 				// self
 				auto self = this->new_expr(funcPtr, funcType->getPointerTo());
-				this->scope->symbols.insert(std::make_pair("self", self));
+                this->scope->addSymbol("self", self);
 				
 				// args
 				for (auto& arg: funcPtr->args())
 				{
 					const char* name = arg.getName().data();
-					if(this->scope->getSymbol(name, false) != nullptr)
-					{
-						printf("The symbol name '%s' is already existed.", name);
-						return nullptr;
-					}
 					auto expr = this->new_expr(&arg);
-					auto pair = std::make_pair(String(name), expr);
-					this->scope->symbols.insert(pair);
+                    if(!this->scope->addSymbol(name, expr))
+                    {
+                        printf("The symbol name '%s' is already existed.", name);
+                        return nullptr;
+                    }
 				}
 				
 				// body
+                llvm::BasicBlock* body = llvm::BasicBlock::Create(llvm_context, "body", funcPtr);
+                llvm_builder.SetInsertPoint(body);
 				for (auto& stmt: node->body)
 				{
 					if(!this->encode_stmt(stmt))
 						return nullptr;
 				}
-				
 				auto& lastOp = llvm_builder.GetInsertBlock()->back();
 				if(!lastOp.isTerminator())
 				{
@@ -990,9 +1015,27 @@ _BeginNamespace(eokas)
 					else
 						llvm_builder.CreateRet(model.get_default_value_by_type(funcPtr->getReturnType()));
 				}
+
+                // up-value
+                llvm_builder.SetInsertPoint(entry);
+                for (auto& upval : this->func->upvals.table)
+                {
+                    const String& name = upval.first;
+                    llvm_expr_t* expr = upval.second;
+
+                    llvm::Value* val = model.get_value(llvm_builder, expr->value);
+                    llvm::Value* ptr = llvm_builder.CreateAlloca(val->getType());
+                    llvm_builder.CreateStore(val, ptr);
+                    if(!this->scope->addSymbol(name, this->new_expr(val)))
+                    {
+                        printf("The symbol name '%s' is already existed.", name.cstr());
+                        return nullptr;
+                    }
+                }
+                llvm_builder.CreateBr(body);
 			}
-			
 			this->popScope();
+
 			this->func = oldFunc;
 			llvm_builder.SetInsertPoint(oldIB);
 			
@@ -1082,7 +1125,7 @@ _BeginNamespace(eokas)
 			
 			auto arrayType = llvm::ArrayType::get(elementType, node->elements.size());
 			auto arrayValue = llvm::ConstantArray::get(arrayType, arrayElements);
-			auto arrayPtr = model.make(llvm_module, this->func, llvm_builder, arrayType);
+			auto arrayPtr = model.make(llvm_module, this->scope->func, llvm_builder, arrayType);
 			llvm_builder.CreateStore(arrayValue, arrayPtr);
 			
 			return this->new_expr(arrayPtr);
@@ -1137,7 +1180,7 @@ _BeginNamespace(eokas)
 			
 			// make object
 			auto structType = structTypeDef->type;
-			llvm::Value* objectValue = model.make(llvm_module, this->func, llvm_builder, structType);
+			llvm::Value* objectValue = model.make(llvm_module, this->scope->func, llvm_builder, structType);
 			
 			u32_t index = -1;
 			for (auto& structMember: structTypeDef->members)
@@ -1249,7 +1292,7 @@ _BeginNamespace(eokas)
 			
 			const String& name = node->name;
 
-			auto* structTypeDef = dynamic_cast<llvm_struct_t*>(this->new_type(llvm_type_category_t::Struct, name, nullptr));
+			auto* structTypeDef = dynamic_cast<llvm_struct_t*>(this->new_type(name, nullptr));
 			
 			if(node->base != nullptr)
 			{
@@ -1297,7 +1340,11 @@ _BeginNamespace(eokas)
 			structType->setBody(memberTypes);
 			structTypeDef->type = structType;
 			
-			this->scope->types.insert(std::make_pair(name, structTypeDef));
+			if(!this->scope->addType(name, structTypeDef))
+            {
+                printf("There is a same type named %s in this scope.", name.cstr());
+                return false;
+            }
 			this->typemappings[structTypeDef->type] = structTypeDef;
 
 			return true;
@@ -1325,7 +1372,7 @@ _BeginNamespace(eokas)
 			llvm::FunctionType* procType = llvm::FunctionType::get(retType->type, argTypes, false);
 			llvm::Type* procPtrType = procType->getPointerTo();
 
-			this->scope->types[node->name] = this->new_type(llvm_type_category_t::Basic, node->name, procPtrType);
+			this->scope->addType(node->name, this->new_type(node->name, procPtrType));
 			
 			return true;
 		}
@@ -1385,7 +1432,11 @@ _BeginNamespace(eokas)
 			symbol->setName(node->name.cstr());
 			
 			auto symbolE = this->new_expr(symbol, expr->type);
-			scope->symbols.insert(std::make_pair(node->name, symbolE));
+			if(!scope->addSymbol(node->name, symbolE))
+            {
+                printf("There is a symbol named %s in this scope.", node->name.cstr());
+                return false;
+            }
 			
 			return true;
 		}
@@ -1421,7 +1472,7 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			auto expectedRetType = this->func->getFunctionType()->getReturnType();
+			auto expectedRetType = this->scope->func->getFunctionType()->getReturnType();
 			
 			if(node->value == nullptr)
 			{
@@ -1459,10 +1510,10 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			llvm::BasicBlock* if_begin = llvm::BasicBlock::Create(llvm_context, "if.begin", this->func);
-			llvm::BasicBlock* if_true = llvm::BasicBlock::Create(llvm_context, "if.true", this->func);
-			llvm::BasicBlock* if_false = llvm::BasicBlock::Create(llvm_context, "if.false", this->func);
-			llvm::BasicBlock* if_end = llvm::BasicBlock::Create(llvm_context, "if.end", this->func);
+			llvm::BasicBlock* if_begin = llvm::BasicBlock::Create(llvm_context, "if.begin", this->scope->func);
+			llvm::BasicBlock* if_true = llvm::BasicBlock::Create(llvm_context, "if.true", this->scope->func);
+			llvm::BasicBlock* if_false = llvm::BasicBlock::Create(llvm_context, "if.false", this->scope->func);
+			llvm::BasicBlock* if_end = llvm::BasicBlock::Create(llvm_context, "if.end", this->scope->func);
 			
 			llvm_builder.CreateBr(if_begin);
 			llvm_builder.SetInsertPoint(if_begin);
@@ -1510,9 +1561,9 @@ _BeginNamespace(eokas)
 			
 			this->pushScope();
 			
-			llvm::BasicBlock* while_begin = llvm::BasicBlock::Create(llvm_context, "while.begin", this->func);
-			llvm::BasicBlock* while_body = llvm::BasicBlock::Create(llvm_context, "while.body", this->func);
-			llvm::BasicBlock* while_end = llvm::BasicBlock::Create(llvm_context, "while.end", this->func);
+			llvm::BasicBlock* while_begin = llvm::BasicBlock::Create(llvm_context, "while.begin", this->scope->func);
+			llvm::BasicBlock* while_body = llvm::BasicBlock::Create(llvm_context, "while.body", this->scope->func);
+			llvm::BasicBlock* while_end = llvm::BasicBlock::Create(llvm_context, "while.end", this->scope->func);
 			
 			auto oldContinuePoint = this->continuePoint;
 			auto oldBreakPoint = this->breakPoint;
@@ -1559,11 +1610,11 @@ _BeginNamespace(eokas)
 			
 			this->pushScope();
 			
-			llvm::BasicBlock* for_init = llvm::BasicBlock::Create(llvm_context, "for.init", this->func);
-			llvm::BasicBlock* for_test = llvm::BasicBlock::Create(llvm_context, "for.test", this->func);
-			llvm::BasicBlock* for_step = llvm::BasicBlock::Create(llvm_context, "for.step", this->func);
-			llvm::BasicBlock* for_body = llvm::BasicBlock::Create(llvm_context, "for.body", this->func);
-			llvm::BasicBlock* for_end = llvm::BasicBlock::Create(llvm_context, "for.end", this->func);
+			llvm::BasicBlock* for_init = llvm::BasicBlock::Create(llvm_context, "for.init", this->scope->func);
+			llvm::BasicBlock* for_test = llvm::BasicBlock::Create(llvm_context, "for.test", this->scope->func);
+			llvm::BasicBlock* for_step = llvm::BasicBlock::Create(llvm_context, "for.step", this->scope->func);
+			llvm::BasicBlock* for_body = llvm::BasicBlock::Create(llvm_context, "for.body", this->scope->func);
+			llvm::BasicBlock* for_end = llvm::BasicBlock::Create(llvm_context, "for.end", this->scope->func);
 			
 			auto oldContinuePoint = this->continuePoint;
 			auto oldBreakPoint = this->breakPoint;

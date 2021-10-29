@@ -1,9 +1,12 @@
 
-var a = [1, 2, 3];
+proc F(): i32;
 
-var f = func(a: array<i32, 3>): i32 {
-    a[1] = 12;
-    return a[1];
+var f = func() : F {
+    var a = 12;
+
+    return func(): i32 {
+        return a;
+    };
 };
 
-print(f(a) as string);
+print(f()() as string);

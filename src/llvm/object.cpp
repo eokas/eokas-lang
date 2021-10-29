@@ -14,10 +14,6 @@ _BeginNamespace(eokas)
 		{
 			this->type = type;
 		}
-		else if(llvm::isa<llvm::Function>(value))
-		{
-			this->type = llvm::cast<llvm::Function>(value)->getFunctionType();
-		}
 		else
 		{
 			this->type = value->getType();
@@ -43,8 +39,6 @@ _BeginNamespace(eokas)
 		this->parent = nullptr;
         this->func = nullptr;
 		_DeleteList(this->children);
-		this->types.clear();
-		this->symbols.clear();
 	}
 	
 	llvm_scope_t* llvm_scope_t::addChild(llvm::Function* f)
@@ -53,6 +47,16 @@ _BeginNamespace(eokas)
 		this->children.push_back(child);
 		return child;
 	}
+
+    bool llvm_scope_t::addSymbol(const String& name, llvm_expr_t* expr)
+    {
+        bool ret = this->symbols.add(name, expr);
+        if(ret)
+        {
+            expr->scope = this;
+        }
+        return ret;
+    }
 	
 	llvm_expr_t* llvm_scope_t::getSymbol(const String& name, bool lookup)
 	{
@@ -60,20 +64,27 @@ _BeginNamespace(eokas)
 		{
 			for (auto scope = this; scope != nullptr; scope = scope->parent)
 			{
-				auto iter = scope->symbols.find(name);
-				if(iter != scope->symbols.end())
-					return iter->second;
+                auto symbol = scope->symbols.get(name);
+                if(symbol != nullptr)
+                    return symbol;
 			}
 			return nullptr;
 		}
 		else
 		{
-			auto iter = this->symbols.find(name);
-			if(iter != this->symbols.end())
-				return iter->second;
-			return nullptr;
+			return this->symbols.get(name);
 		}
 	}
+
+    bool llvm_scope_t::addType(const String& name, llvm_type_t* type)
+    {
+        bool ret = this->types.add(name, type);
+        if(ret)
+        {
+            type->scope = this;
+        }
+        return ret;
+    }
 	
 	llvm_type_t* llvm_scope_t::getType(const String& name, bool lookup)
 	{
@@ -81,18 +92,15 @@ _BeginNamespace(eokas)
 		{
 			for (auto scope = this; scope != nullptr; scope = scope->parent)
 			{
-				auto iter = scope->types.find(name);
-				if(iter != scope->types.end())
-					return iter->second;
+                auto type = scope->types.get(name);
+                if(type != nullptr)
+                    return type;
 			}
 			return nullptr;
 		}
 		else
 		{
-			auto iter = this->types.find(name);
-			if(iter != this->types.end())
-				return iter->second;
-			return nullptr;
+			return this->types.get(name);
 		}
 	}
 	

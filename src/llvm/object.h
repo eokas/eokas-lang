@@ -4,15 +4,57 @@
 #include "header.h"
 
 _BeginNamespace(eokas)
-	
-	struct llvm_expr_t
+
+    template<typename T>
+    struct table_t
+    {
+        std::map<String, T*> table;
+
+        explicit table_t()
+            :table()
+        {}
+
+        ~table_t()
+        {
+            this->table.clear();
+        }
+
+        bool add(const String& name, T* object)
+        {
+            if(this->table.find(name) != this->table.end())
+                return false;
+            this->table.insert(std::make_pair(name, object));
+            return true;
+        }
+
+        T* get(const String& name)
+        {
+            auto iter = this->table.find(name);
+            if(iter == this->table.end())
+                return nullptr;
+            return iter->second;
+        }
+    };
+
+    struct llvm_expr_t
 	{
-		llvm::Value* value;
-		llvm::Type* type;
+		llvm::Value* value = nullptr;
+		llvm::Type* type = nullptr;
+        struct llvm_scope_t* scope = nullptr;
 		
 		explicit llvm_expr_t(llvm::Value* value, llvm::Type* type = nullptr);
 		virtual ~llvm_expr_t();
 	};
+
+    struct llvm_func_t : llvm_expr_t
+    {
+        table_t<llvm_expr_t> upvals;
+
+        explicit llvm_func_t(llvm::Value* value, llvm::Type* type = nullptr)
+            : llvm_expr_t(value, type)
+            , upvals()
+        {}
+    };
 
 	enum class llvm_type_category_t
 	{
@@ -25,6 +67,7 @@ _BeginNamespace(eokas)
 		llvm_type_category_t category = llvm_type_category_t::Basic;
 		String name = "";
 		llvm::Type* type = nullptr;
+        llvm_scope_t* scope = nullptr;
 		
 		virtual ~llvm_type_t()
 		{
@@ -91,14 +134,18 @@ _BeginNamespace(eokas)
         llvm::Function* func;
 		std::vector<llvm_scope_t*> children;
 
-		std::map<String, llvm_expr_t*> symbols;
-		std::map<String, llvm_type_t*> types;
-		
+        table_t<llvm_expr_t> symbols;
+        table_t<llvm_type_t> types;
+
 		explicit llvm_scope_t(llvm_scope_t* parent, llvm::Function* func);
 		virtual ~llvm_scope_t();
 		
 		llvm_scope_t* addChild(llvm::Function* f = nullptr);
+
+        bool addSymbol(const String& name, llvm_expr_t* expr);
 		llvm_expr_t* getSymbol(const String& name, bool lookup);
+
+        bool addType(const String& name, llvm_type_t* type);
 		llvm_type_t* getType(const String& name, bool lookup);
 	};
 	
