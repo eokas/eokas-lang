@@ -30,9 +30,10 @@ _BeginNamespace(eokas)
 		this->type = nullptr;
 	}
 	
-	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent)
+	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent, llvm::Function* func)
 		: parent(parent)
-		, children()
+        , func(func)
+        , children()
 		, symbols()
 		, types()
 	{ }
@@ -40,14 +41,15 @@ _BeginNamespace(eokas)
 	llvm_scope_t::~llvm_scope_t()
 	{
 		this->parent = nullptr;
+        this->func = nullptr;
 		_DeleteList(this->children);
 		this->types.clear();
 		this->symbols.clear();
 	}
 	
-	llvm_scope_t* llvm_scope_t::addChild()
+	llvm_scope_t* llvm_scope_t::addChild(llvm::Function* f)
 	{
-		auto* child = new llvm_scope_t(this);
+		auto* child = new llvm_scope_t(this, f != nullptr ? f : this->func);
 		this->children.push_back(child);
 		return child;
 	}

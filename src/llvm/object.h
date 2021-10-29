@@ -88,15 +88,16 @@ _BeginNamespace(eokas)
 	struct llvm_scope_t
 	{
 		llvm_scope_t* parent;
+        llvm::Function* func;
 		std::vector<llvm_scope_t*> children;
-		
+
 		std::map<String, llvm_expr_t*> symbols;
 		std::map<String, llvm_type_t*> types;
 		
-		explicit llvm_scope_t(llvm_scope_t* parent);
+		explicit llvm_scope_t(llvm_scope_t* parent, llvm::Function* func);
 		virtual ~llvm_scope_t();
 		
-		llvm_scope_t* addChild();
+		llvm_scope_t* addChild(llvm::Function* f = nullptr);
 		llvm_expr_t* getSymbol(const String& name, bool lookup);
 		llvm_type_t* getType(const String& name, bool lookup);
 	};

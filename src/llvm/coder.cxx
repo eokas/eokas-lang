@@ -44,7 +44,7 @@ _BeginNamespace(eokas)
 		
 		explicit llvm_coder_t(llvm::LLVMContext& llvm_context) : llvm_context(llvm_context), llvm_builder(llvm_context), llvm_module(nullptr), model(llvm_context)
 		{
-			this->root = new llvm_scope_t(nullptr);
+			this->root = new llvm_scope_t(nullptr, nullptr);
 			this->scope = this->root;
 			this->func = nullptr;
 			this->continuePoint = nullptr;
@@ -91,9 +91,9 @@ _BeginNamespace(eokas)
 			}
 		}
 		
-		void pushScope()
+		void pushScope(llvm::Function* f = nullptr)
 		{
-			this->scope = this->scope->addChild();
+			this->scope = this->scope->addChild(f);
 		}
 		
 		void popScope()
@@ -123,9 +123,7 @@ _BeginNamespace(eokas)
 		{
 			if(node == nullptr)
 				return false;
-			
-			this->pushScope();
-			
+
 			this->scope->types["void"] = this->new_type(llvm_type_category_t::Basic, "void", model.type_void);
 			this->scope->types["i8"] = this->new_type(llvm_type_category_t::Basic, "i8", model.type_i8);
 			this->scope->types["i32"] = this->new_type(llvm_type_category_t::Basic, "i32", model.type_i32);
@@ -142,18 +140,19 @@ _BeginNamespace(eokas)
 			
 			llvm::FunctionType* funcType = llvm::FunctionType::get(model.type_i32, false);
 			this->func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", llvm_module);
-			
-			llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", this->func);
-			llvm_builder.SetInsertPoint(entry);
-			
-			for (auto& stmt: node->get_func()->body)
-			{
-				if(!this->encode_stmt(stmt))
-					return false;
-			}
-			
-			llvm_builder.CreateRet(const_zero);
-			
+
+            this->pushScope(this->func);
+            {
+                llvm::BasicBlock *entry = llvm::BasicBlock::Create(llvm_context, "entry", this->func);
+                llvm_builder.SetInsertPoint(entry);
+
+                for (auto &stmt: node->get_func()->body) {
+                    if (!this->encode_stmt(stmt))
+                        return false;
+                }
+
+                llvm_builder.CreateRet(const_zero);
+            }
 			this->popScope();
 			
 			return true;
@@ -942,9 +941,9 @@ _BeginNamespace(eokas)
 			}
 			
 			llvm::FunctionType* funcType = llvm::FunctionType::get(retType->type, argTypes, false);
-			llvm::Function* func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "", llvm_module);
+			llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "", llvm_module);
 			u32_t index = 0;
-			for (auto& arg: func->args())
+			for (auto& arg: funcPtr->args())
 			{
 				const char* name = node->args[index++]->name.cstr();
 				arg.setName(name);
@@ -952,18 +951,18 @@ _BeginNamespace(eokas)
 			
 			auto oldFunc = this->func;
 			auto oldIB = llvm_builder.GetInsertBlock();
-			this->func = func;
-			this->pushScope();
+			this->func = funcPtr;
+			this->pushScope(funcPtr);
 			{
-				llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", func);
+				llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", funcPtr);
 				llvm_builder.SetInsertPoint(entry);
 				
 				// self
-				auto self = this->new_expr(func, funcType->getPointerTo());
+				auto self = this->new_expr(funcPtr, funcType->getPointerTo());
 				this->scope->symbols.insert(std::make_pair("self", self));
 				
 				// args
-				for (auto& arg: func->args())
+				for (auto& arg: funcPtr->args())
 				{
 					const char* name = arg.getName().data();
 					if(this->scope->getSymbol(name, false) != nullptr)
@@ -986,10 +985,10 @@ _BeginNamespace(eokas)
 				auto& lastOp = llvm_builder.GetInsertBlock()->back();
 				if(!lastOp.isTerminator())
 				{
-					if(func->getReturnType()->isVoidTy())
+					if(funcPtr->getReturnType()->isVoidTy())
 						llvm_builder.CreateRetVoid();
 					else
-						llvm_builder.CreateRet(model.get_default_value_by_type(func->getReturnType()));
+						llvm_builder.CreateRet(model.get_default_value_by_type(funcPtr->getReturnType()));
 				}
 			}
 			
@@ -997,7 +996,7 @@ _BeginNamespace(eokas)
 			this->func = oldFunc;
 			llvm_builder.SetInsertPoint(oldIB);
 			
-			return this->new_expr(func);
+			return this->new_expr(funcPtr);
 		}
 		
 		llvm_expr_t* encode_expr_func_ref(struct ast_expr_func_ref_t* node)
