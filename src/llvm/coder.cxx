@@ -1603,10 +1603,17 @@ _BeginNamespace(eokas)
 			llvm_builder.CreateCondBr(condV, while_body, while_end);
 			
 			llvm_builder.SetInsertPoint(while_body);
-			if(!this->encode_stmt(node->body))
-				return false;
-			auto& lastOp = while_body->back();
-			if(!lastOp.isTerminator())
+			if(node->body != nullptr)
+			{
+				if(!this->encode_stmt(node->body))
+					return false;
+				auto& lastOp = while_body->back();
+				if(!lastOp.isTerminator())
+				{
+					llvm_builder.CreateBr(while_begin);
+				}
+			}
+			else
 			{
 				llvm_builder.CreateBr(while_begin);
 			}
@@ -1658,10 +1665,17 @@ _BeginNamespace(eokas)
 			llvm_builder.CreateCondBr(condV, for_body, for_end);
 			
 			llvm_builder.SetInsertPoint(for_body);
-			if(!this->encode_stmt(node->body))
-				return false;
-			auto& lastOp = for_body->back();
-			if(!lastOp.isTerminator())
+			if(node->body != nullptr)
+			{
+				if(!this->encode_stmt(node->body))
+					return false;
+				auto& lastOp = for_body->back();
+				if(!lastOp.isTerminator())
+				{
+					llvm_builder.CreateBr(for_step);
+				}
+			}
+			else
 			{
 				llvm_builder.CreateBr(for_step);
 			}
