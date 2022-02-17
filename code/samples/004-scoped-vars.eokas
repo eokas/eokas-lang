@@ -1,0 +1,17 @@
+
+/*
+ print: 1 2 3 2 1
+*/
+
+var a = 1;
+print(a as string);
+{
+    var a = 2;
+    print(a as string);
+    {
+        var a = 3;
+        print(a as string);
+    }
+    print(a as string);
+}
+print(a as string);

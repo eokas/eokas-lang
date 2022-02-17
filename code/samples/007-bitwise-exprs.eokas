@@ -1,0 +1,11 @@
+
+var x = 0x0F0F;
+var y = 0xF0F0;
+
+print((x |< 4) as string); // 0x0F0F0
+print((y >| 4) as string); // 0x00F0F
+print((x | y) as string); // 0xFFFF
+print((x & y) as string); // 0x0
+print((x ^ y) as string); // 0xFFFF
+
+

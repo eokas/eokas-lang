@@ -7,3 +7,5 @@ print((a || b) as string); // true
 print((!a) as string); // false
 print((!b) as string); // true
 print((!a || b && a) as string); // false
+
+print( a || b ? "true" : "false"); // true
