@@ -271,11 +271,11 @@ _BeginNamespace(eokas)
 		builder.CreateCondBr(val, branch_true, branch_false);
 		
 		builder.SetInsertPoint(branch_true);
-		auto val_true = builder.CreateGlobalString("true");
+		auto val_true = builder.CreateGlobalStringPtr("true");
 		builder.CreateBr(branch_end);
 		
 		builder.SetInsertPoint(branch_false);
-		auto val_false = builder.CreateGlobalString("false");
+		auto val_false = builder.CreateGlobalStringPtr("false");
 		builder.CreateBr(branch_end);
 		
 		builder.SetInsertPoint(branch_end);

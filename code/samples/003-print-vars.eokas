@@ -1,0 +1,15 @@
+
+var x = 12;
+print(x as string);
+
+var y = 12.99;
+print(y as string);
+
+var t = true;
+print(t as string);
+
+var f = false;
+print(f as string);
+
+var s = "hello eokas.";
+print(s);
