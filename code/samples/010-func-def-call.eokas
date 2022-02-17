@@ -1,0 +1,26 @@
+
+var add = func(x: i32, y: i32): i32 {
+    return x + y;
+};
+
+var sub = func(x: i32, y: i32): i32 {
+    return x - y;
+};
+
+var mul = func(x: i32, y: i32): i32 {
+    return x * y;
+};
+
+var div = func(x: i32, y: i32): i32 {
+    return x / y;
+};
+
+var mod = func(x: i32, y: i32): i32 {
+    return x % y;
+};
+
+print(add(12, 5) as string); // 17
+print(sub(12, 5) as string); // 7
+print(mul(12, 5) as string); // 60
+print(div(12, 5) as string); // 2
+print(mod(12, 5) as string); // 2

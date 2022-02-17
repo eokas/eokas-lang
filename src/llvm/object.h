@@ -44,6 +44,8 @@ _BeginNamespace(eokas)
 		
 		explicit llvm_expr_t(llvm::Value* value, llvm::Type* type = nullptr);
 		virtual ~llvm_expr_t();
+		
+		bool is_symbol() const;
 	};
 
     struct llvm_func_t : llvm_expr_t

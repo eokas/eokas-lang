@@ -26,6 +26,15 @@ _BeginNamespace(eokas)
 		this->type = nullptr;
 	}
 	
+	bool llvm_expr_t::is_symbol() const
+	{
+		if(this->type == nullptr || this->value == nullptr)
+			return false;
+		auto vt = this->value->getType();
+		return vt->isPointerTy()
+			&& vt->getPointerElementType() == this->type;
+	}
+	
 	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent, llvm::Function* func)
 		: parent(parent)
         , func(func)

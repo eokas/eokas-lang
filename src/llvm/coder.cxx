@@ -1082,7 +1082,12 @@ _BeginNamespace(eokas)
 					printf("the type of param[%d] can't cast to the param type of function.\n", i);
 					return nullptr;
 				}
-				auto paramV = model.ref_value(llvm_builder, paramE->value);
+				llvm::Value* paramV = paramE->value;
+				if(paramE->is_symbol())
+				{
+					paramV = llvm_builder.CreateLoad(paramE->value);
+				}
+				paramV = model.ref_value(llvm_builder, paramV);
 				params.push_back(paramV);
 			}
 			
@@ -1528,18 +1533,27 @@ _BeginNamespace(eokas)
 			}
 			llvm_builder.CreateCondBr(condV, if_true, if_false);
 			
+			// if-true
 			llvm_builder.SetInsertPoint(if_true);
-			if(!this->encode_stmt(node->branch_true))
-				return false;
-			auto& lastOp = if_true->back();
-			if(!lastOp.isTerminator())
+			if(node->branch_true != nullptr)
+			{
+				if(!this->encode_stmt(node->branch_true))
+					return false;
+				auto& lastOp = if_true->back();
+				if(!lastOp.isTerminator())
+				{
+					llvm_builder.CreateBr(if_end);
+				}
+			}
+			else
 			{
 				llvm_builder.CreateBr(if_end);
 			}
 			
+			// if-false
+			llvm_builder.SetInsertPoint(if_false);
 			if(node->branch_false != nullptr)
 			{
-				llvm_builder.SetInsertPoint(if_false);
 				if(!this->encode_stmt(node->branch_false))
 					return false;
 				auto& lastOp = if_false->back();
@@ -1547,6 +1561,10 @@ _BeginNamespace(eokas)
 				{
 					llvm_builder.CreateBr(if_end);
 				}
+			}
+			else
+			{
+				llvm_builder.CreateBr(if_end);
 			}
 			
 			llvm_builder.SetInsertPoint(if_end);
