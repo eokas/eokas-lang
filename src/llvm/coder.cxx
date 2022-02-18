@@ -1100,23 +1100,27 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			std::vector<llvm::Constant*> arrayElements;
-			llvm::Type* elementType = nullptr;
+			std::vector<llvm::Value*> arrayElements;
+			llvm::Type* arrayElementType = nullptr;
 			for (auto element: node->elements)
 			{
 				auto elementE = this->encode_expr(element);
 				if(elementE == nullptr)
 					return nullptr;
-				auto elementV = llvm::cast<llvm::Constant>(elementE->value);
-				if(elementV == nullptr)
-					return nullptr;
 				
-				auto thisItemType = elementV->getType();
-				if(elementType == nullptr)
+				auto elementV = elementE->value;
+				if(elementE->is_symbol())
 				{
-					elementType = thisItemType;
+					elementV = llvm_builder.CreateLoad(elementE->value);
 				}
-				else if(thisItemType != elementType)
+				
+				auto elementT = elementV->getType();
+				if(arrayElementType == nullptr)
+				{
+					arrayElementType = elementT;
+				}
+				
+				else if(arrayElementType != elementT)
 				{
 					printf("the type of some elements is not same as others.");
 					return nullptr;
@@ -1125,13 +1129,17 @@ _BeginNamespace(eokas)
 				arrayElements.push_back(elementV);
 			}
 			
-			if(arrayElements.empty() || elementType == nullptr)
-				elementType = llvm::Type::getInt32Ty(llvm_context);
+			if(arrayElements.empty() || arrayElementType == nullptr)
+				arrayElementType = llvm::Type::getInt32Ty(llvm_context);
 			
-			auto arrayType = llvm::ArrayType::get(elementType, node->elements.size());
-			auto arrayValue = llvm::ConstantArray::get(arrayType, arrayElements);
+			auto arrayType = llvm::ArrayType::get(arrayElementType, node->elements.size());
 			auto arrayPtr = model.make(llvm_module, this->scope->func, llvm_builder, arrayType);
-			llvm_builder.CreateStore(arrayValue, arrayPtr);
+			for(u32_t i = 0; i < arrayElements.size(); i++)
+			{
+				auto elementV = arrayElements.at(i);
+				auto elementP = llvm_builder.CreateConstGEP2_32(arrayType, arrayPtr, 0, i);
+				llvm_builder.CreateStore(elementV, elementP);
+			}
 			
 			return this->new_expr(arrayPtr);
 		}
