@@ -57,40 +57,28 @@ _BeginNamespace(eokas)
             , upvals()
         {}
     };
-
-	enum class llvm_type_category_t
-	{
-		Basic,
-		Struct
-	};
-
-	struct llvm_type_t
-	{
-		llvm_type_category_t category = llvm_type_category_t::Basic;
-		String name = "";
-		llvm::Type* type = nullptr;
-        llvm_scope_t* scope = nullptr;
-		
-		virtual ~llvm_type_t()
-		{
-			this->type = nullptr;
-		}
-	};
 	
-	struct llvm_struct_t :public llvm_type_t
+	struct llvm_type_t
 	{
 		struct member_t
 		{
 			String name = "";
-			llvm_type_t* type = {};
+			llvm_type_t* type = nullptr;
 		};
 		
-		llvm_struct_t* base = nullptr;
+		String name = "";
+		llvm::Type* type = nullptr;
+		llvm_type_t* base = nullptr;
 		std::vector<member_t*> members = {};
+        llvm_scope_t* scope = nullptr;
 		
-		~llvm_struct_t() override
+		virtual ~llvm_type_t()
 		{
-			_DeleteList(this->members);
+			this->name = "";
+			this->type = nullptr;
+			this->base = nullptr;
+			this->members.clear();
+			this->scope = nullptr;
 		}
 		
 		member_t* addMember(const String& name, llvm_type_t* type)
@@ -102,7 +90,8 @@ _BeginNamespace(eokas)
 			return m;
 		}
 		
-		[[nodiscard]] member_t* getMember(const String& name) const
+		[[nodiscard]]
+		member_t* getMember(const String& name) const
 		{
 			for(auto& m : this->members)
 			{
@@ -112,7 +101,8 @@ _BeginNamespace(eokas)
 			return nullptr;
 		}
 		
-		[[nodiscard]] size_t getMemberIndex(const String& name) const
+		[[nodiscard]]
+		size_t getMemberIndex(const String& name) const
 		{
 			for(size_t index = 0; index < this->members.size(); index++)
 			{
@@ -122,7 +112,8 @@ _BeginNamespace(eokas)
 			return -1;
 		}
 		
-		[[nodiscard]] member_t* getMember(u32_t index) const
+		[[nodiscard]]
+		member_t* getMember(u32_t index) const
 		{
 			if(index >= this->members.size())
 				return nullptr;

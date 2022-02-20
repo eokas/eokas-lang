@@ -251,6 +251,15 @@ _BeginNamespace(eokas)
 		builder.CreateCall(freeF, {ptr});
 	}
 	
+	llvm::Value* llvm_model_t::make_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr)
+	{
+		auto str = this->make(module, func, builder, this->type_string);
+		auto memberPtr = builder.CreateStructGEP(str, 0);
+		auto memberVal = builder.CreateGlobalString(cstr);
+		builder.CreateStore(memberVal, memberPtr);
+		return str;
+	}
+	
 	llvm::Value* llvm_model_t::string_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
 		llvm::Value* ptr = builder.CreateStructGEP(type_string, val, 0);

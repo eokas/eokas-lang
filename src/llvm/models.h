@@ -56,6 +56,7 @@ _BeginNamespace(eokas)
 		
 		llvm::Value* make(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type);
 		void free(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr);
+		llvm::Value* make_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr);
 		
 		llvm::Value* string_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		llvm::Value* bool_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);

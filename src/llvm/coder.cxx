@@ -80,24 +80,13 @@ _BeginNamespace(eokas)
 		
 		llvm_type_t* new_type(const String& name, llvm::Type* type)
 		{
-            if(type->isStructTy() || (type->isPointerTy() && type->getPointerElementType()->isStructTy()))
-            {
-                auto* t = new llvm_struct_t();
-                t->name = name;
-                t->type = type;
-                t->base = nullptr;
-                t->members.clear();
-                this->types.push_back(t);
-                return t;
-            }
-            else
-            {
-                auto* t = new llvm_type_t();
-                t->name = name;
-                t->type = type;
-                this->types.push_back(t);
-                return t;
-            }
+			auto* t = new llvm_type_t();
+			t->name = name;
+			t->type = type;
+			t->base = nullptr;
+			t->members.clear();
+			this->types.push_back(t);
+			return t;
 		}
 		
 		void pushScope(llvm::Function* f = nullptr)
@@ -914,10 +903,14 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			auto str = model.make(llvm_module, this->scope->func, llvm_builder, model.type_string);
-			auto ptr = llvm_builder.CreateStructGEP(str, 0);
-			auto val = llvm_builder.CreateGlobalString(node->value.cstr());
-			llvm_builder.CreateStore(val, ptr);
+			auto str = model.make_string
+			(
+				llvm_module,
+				this->scope->func,
+				llvm_builder,
+				node->value.cstr()
+			);
+			
 			return this->new_expr(str);
 		}
 		
@@ -1176,7 +1169,7 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			auto* structTypeDef = dynamic_cast<llvm_struct_t*>(this->encode_type(node->type));
+			auto* structTypeDef = this->encode_type(node->type);
 			if(structTypeDef == nullptr)
 				return nullptr;
 
@@ -1247,7 +1240,7 @@ _BeginNamespace(eokas)
 				printf("can not find the type of this value.");
 				return nullptr;
 			}
-			auto structTypeDef = dynamic_cast<llvm_struct_t*>(structTypeIter->second);
+			auto structTypeDef = structTypeIter->second;
 			auto index = structTypeDef->getMemberIndex(node->key);
 			if(index == -1)
 			{
@@ -1305,11 +1298,11 @@ _BeginNamespace(eokas)
 			
 			const String& name = node->name;
 
-			auto* structTypeDef = dynamic_cast<llvm_struct_t*>(this->new_type(name, nullptr));
+			auto* structTypeDef = this->new_type(name, nullptr);
 			
 			if(node->base != nullptr)
 			{
-				auto baseType = dynamic_cast<llvm_struct_t*>(this->encode_type(node->base));
+				auto baseType = this->encode_type(node->base);
 				if(baseType == nullptr)
 					return false;
 				for(const auto& baseMember: baseType->members)

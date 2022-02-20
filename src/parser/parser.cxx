@@ -629,6 +629,30 @@ _BeginNamespace(eokas)
 		return node;
 	}
 	
+	/*
+	object_field => ID '=' expr
+	*/
+	bool parser_impl_t::parse_object_field(ast_expr_object_def_t* node)
+	{
+		if(!this->check_token(token_t::ID, true, false))
+			return false;
+		
+		const String key = this->token().value;
+		this->next_token();
+		
+		if(!this->check_token(token_t::Assign, false) && !this->check_token(token_t::Colon, false))
+		{
+			return false;
+		}
+		
+		ast_expr_t* expr = this->parse_expr(node);
+		if(expr == nullptr)
+			return false;
+		
+		node->members[key] = expr;
+		
+		return true;
+	}
 	
 	/*
 	array_def => '[' [array_field {sep array_field} [sep]] ']'
@@ -680,31 +704,6 @@ _BeginNamespace(eokas)
 		primary->parent = node;
 		
 		return node;
-	}
-	
-	/*
-	object_field => ID '=' expr
-	*/
-	bool parser_impl_t::parse_object_field(ast_expr_object_def_t* node)
-	{
-		if(!this->check_token(token_t::ID, true, false))
-			return false;
-		
-		const String key = this->token().value;
-		this->next_token();
-		
-		if(!this->check_token(token_t::Assign, false) && !this->check_token(token_t::Colon, false))
-		{
-			return false;
-		}
-		
-		ast_expr_t* expr = this->parse_expr(node);
-		if(expr == nullptr)
-			return false;
-		
-		node->members[key] = expr;
-		
-		return true;
 	}
 	
 	/*
