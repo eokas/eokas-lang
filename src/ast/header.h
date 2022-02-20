@@ -45,8 +45,7 @@ namespace eokas
 		stmt_continue,
 		stmt_return,
 		stmt_if,
-		stmt_while,
-		stmt_for,
+		stmt_loop,
 		stmt_block,
 		stmt_assign,
 		stmt_call,
@@ -140,8 +139,7 @@ namespace eokas
 	struct ast_stmt_continue_t;
 	struct ast_stmt_return_t;
 	struct ast_stmt_if_t;
-	struct ast_stmt_while_t;
-	struct ast_stmt_for_t;
+	struct ast_stmt_loop_t;
 	struct ast_stmt_block_t;
 	struct ast_stmt_call_t;
 	struct ast_stmt_assign_t;

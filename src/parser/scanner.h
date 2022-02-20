@@ -10,7 +10,7 @@ _BeginNamespace(eokas)
 		enum token_type
 		{
 			Var, Val, Make, Struct, Proc, Func, Array,
-			If, Else, For, While, Continue, Break, Return,
+			If, Else, Loop, Continue, Break, Return,
 			Is, As, True, False,
 			Comma, Semicolon, Colon, Question, At, Pound, Dollar,
 			Add, Sub, Mul, Div, Mod, Xor, Flip,

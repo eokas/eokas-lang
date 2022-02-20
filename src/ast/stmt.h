@@ -104,25 +104,15 @@ namespace eokas
 		{ }
 	};
 	
-	struct ast_stmt_while_t : public ast_stmt_t
-	{
-		ast_expr_t* cond;
-		ast_stmt_t* body;
-		
-		explicit ast_stmt_while_t(ast_node_t* parent)
-			: ast_stmt_t(ast_node_category_t::stmt_while, parent), cond(nullptr), body(nullptr)
-		{ }
-	};
-	
-	struct ast_stmt_for_t : public ast_stmt_t
+	struct ast_stmt_loop_t : public ast_stmt_t
 	{
 		ast_stmt_t* init;
 		ast_expr_t* cond;
 		ast_stmt_t* step;
 		ast_stmt_t* body;
 		
-		explicit ast_stmt_for_t(ast_node_t* parent)
-			: ast_stmt_t(ast_node_category_t::stmt_for, parent), init(nullptr), cond(nullptr), step(nullptr), body(
+		explicit ast_stmt_loop_t(ast_node_t* parent)
+			: ast_stmt_t(ast_node_category_t::stmt_loop, parent), init(nullptr), cond(nullptr), step(nullptr), body(
 			nullptr)
 		{ }
 	};

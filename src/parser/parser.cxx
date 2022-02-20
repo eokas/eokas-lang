@@ -44,11 +44,10 @@ _BeginNamespace(eokas)
 		ast_stmt_break_t* parse_stmt_break(ast_node_t* p);
 		ast_stmt_return_t* parse_stmt_return(ast_node_t* p);
 		ast_stmt_if_t* parse_stmt_if(ast_node_t* p);
-		ast_stmt_while_t* parse_stmt_while(ast_node_t* p);
-		ast_stmt_for_t* parse_stmt_for(ast_node_t* p);
-		ast_stmt_t* parse_stmt_for_init(ast_node_t* p);
-		ast_expr_t* parse_stmt_for_cond(ast_node_t* p);
-		ast_stmt_t* parse_stmt_for_step(ast_node_t* p);
+		ast_stmt_loop_t* parse_stmt_loop(ast_node_t* p);
+		ast_stmt_t* parse_stmt_loop_init(ast_node_t* p);
+		ast_expr_t* parse_stmt_loop_cond(ast_node_t* p);
+		ast_stmt_t* parse_stmt_loop_step(ast_node_t* p);
 		ast_stmt_block_t* parse_stmt_block(ast_node_t* p);
 		ast_stmt_t* parse_stmt_assign_or_call(ast_node_t* p);
 		
@@ -787,11 +786,8 @@ _BeginNamespace(eokas)
 			case token_t::If:
 				stmt = this->parse_stmt_if(p);
 				break;
-			case token_t::While:
-				stmt = this->parse_stmt_while(p);
-				break;
-			case token_t::For:
-				stmt = this->parse_stmt_for(p);
+			case token_t::Loop:
+				stmt = this->parse_stmt_loop(p);
 				break;
 			case token_t::LCB:
 				stmt = this->parse_stmt_block(p);
@@ -1060,49 +1056,25 @@ _BeginNamespace(eokas)
 		return node;
 	}
 	
-	ast_stmt_while_t* parser_impl_t::parse_stmt_while(ast_node_t* p)
+	ast_stmt_loop_t* parser_impl_t::parse_stmt_loop(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::While))
+		if(!this->check_token(token_t::Loop))
 			return nullptr;
 		
-		auto* node = factory->create_stmt_while(p);
+		auto* node = factory->create_stmt_loop(p);
 		
 		if(!this->check_token(token_t::LRB))
 			return nullptr;
 		
-		node->cond = this->parse_expr(node);
-		if(node->cond == nullptr)
-			return nullptr;
-		
-		if(!this->check_token(token_t::RRB))
-			return nullptr;
-		
-		node->body = this->parse_stmt(node);
-		if(node->body == nullptr)
-			return nullptr;
-		
-		return node;
-	}
-	
-	ast_stmt_for_t* parser_impl_t::parse_stmt_for(ast_node_t* p)
-	{
-		if(!this->check_token(token_t::For))
-			return nullptr;
-		
-		auto* node = factory->create_stmt_for(p);
-		
-		if(!this->check_token(token_t::LRB))
-			return nullptr;
-		
-		node->init = this->parse_stmt_for_init(node);
+		node->init = this->parse_stmt_loop_init(node);
 		if(node->init == nullptr)
 			return nullptr;
 		
-		node->cond = this->parse_stmt_for_cond(node);
+		node->cond = this->parse_stmt_loop_cond(node);
 		if(node->cond == nullptr)
 			return nullptr;
 		
-		node->step = this->parse_stmt_for_step(node);
+		node->step = this->parse_stmt_loop_step(node);
 		if(node->step == nullptr)
 			return nullptr;
 		
@@ -1116,7 +1088,7 @@ _BeginNamespace(eokas)
 		return node;
 	}
 	
-	ast_stmt_t* parser_impl_t::parse_stmt_for_init(ast_node_t* p)
+	ast_stmt_t* parser_impl_t::parse_stmt_loop_init(ast_node_t* p)
 	{
 		ast_stmt_t* stmt = this->parse_stmt_symbol_def(p);
 		if(stmt == nullptr)
@@ -1128,7 +1100,7 @@ _BeginNamespace(eokas)
 		return stmt;
 	}
 	
-	ast_expr_t* parser_impl_t::parse_stmt_for_cond(ast_node_t* p)
+	ast_expr_t* parser_impl_t::parse_stmt_loop_cond(ast_node_t* p)
 	{
 		ast_expr_t* cond = this->parse_expr(p);
 		if(cond == nullptr)
@@ -1140,7 +1112,7 @@ _BeginNamespace(eokas)
 		return cond;
 	}
 	
-	ast_stmt_t* parser_impl_t::parse_stmt_for_step(ast_node_t* p)
+	ast_stmt_t* parser_impl_t::parse_stmt_loop_step(ast_node_t* p)
 	{
 		ast_stmt_t* stmt = nullptr;
 		switch (this->token().type)

@@ -42,8 +42,7 @@ namespace eokas
 		ast_stmt_continue_t* create_stmt_continue(ast_node_t* parent);
 		ast_stmt_return_t* create_stmt_return(ast_node_t* parent);
 		ast_stmt_if_t* create_stmt_if(ast_node_t* parent);
-		ast_stmt_while_t* create_stmt_while(ast_node_t* parent);
-		ast_stmt_for_t* create_stmt_for(ast_node_t* parent);
+		ast_stmt_loop_t* create_stmt_loop(ast_node_t* parent);
 		ast_stmt_block_t* create_stmt_block(ast_node_t* parent);
 		ast_stmt_call_t* create_stmt_call(ast_node_t* parent);
 		ast_stmt_assign_t* create_stmt_assign(ast_node_t* parent);

@@ -1,16 +1,7 @@
 
-struct Object {
-    var name: string;
+var a = 0;
+
+print("for-loop:");
+loop(var i = 0; i < 10; i=i+1) {
+    print(i as string);
 }
-
-struct Asset : Object {
-    var path: string;
-}
-
-var asset = make Asset{
-    name = "eokas",
-    path = "https://asset.example.com"
-};
-
-print(asset.name);
-print(asset.path);

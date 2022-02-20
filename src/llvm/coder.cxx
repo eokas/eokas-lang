@@ -1274,10 +1274,8 @@ _BeginNamespace(eokas)
 					return this->encode_stmt_return(dynamic_cast<ast_stmt_return_t*>(node));
 				case ast_node_category_t::stmt_if:
 					return this->encode_stmt_if(dynamic_cast<ast_stmt_if_t*>(node));
-				case ast_node_category_t::stmt_while:
-					return this->encode_stmt_while(dynamic_cast<ast_stmt_while_t*>(node));
-				case ast_node_category_t::stmt_for:
-					return this->encode_stmt_for(dynamic_cast<ast_stmt_for_t*>(node));
+				case ast_node_category_t::stmt_loop:
+					return this->encode_stmt_loop(dynamic_cast<ast_stmt_loop_t*>(node));
 				case ast_node_category_t::stmt_block:
 					return this->encode_stmt_block(dynamic_cast<ast_stmt_block_t*>(node));
 				case ast_node_category_t::stmt_assign:
@@ -1573,63 +1571,7 @@ _BeginNamespace(eokas)
 			return true;
 		}
 		
-		bool encode_stmt_while(struct ast_stmt_while_t* node)
-		{
-			if(node == nullptr)
-				return false;
-			
-			this->pushScope();
-			
-			llvm::BasicBlock* while_begin = llvm::BasicBlock::Create(llvm_context, "while.begin", this->scope->func);
-			llvm::BasicBlock* while_body = llvm::BasicBlock::Create(llvm_context, "while.body", this->scope->func);
-			llvm::BasicBlock* while_end = llvm::BasicBlock::Create(llvm_context, "while.end", this->scope->func);
-			
-			auto oldContinuePoint = this->continuePoint;
-			auto oldBreakPoint = this->breakPoint;
-			
-			this->continuePoint = while_begin;
-			this->breakPoint = while_end;
-			
-			llvm_builder.CreateBr(while_begin);
-			llvm_builder.SetInsertPoint(while_begin);
-			auto condE = this->encode_expr(node->cond);
-			if(condE == nullptr)
-				return false;
-			auto condV = model.get_value(llvm_builder, condE->value);
-			if(!condV->getType()->isIntegerTy(1))
-			{
-				printf("while.cond need a bool value.\n");
-				return false;
-			}
-			llvm_builder.CreateCondBr(condV, while_body, while_end);
-			
-			llvm_builder.SetInsertPoint(while_body);
-			if(node->body != nullptr)
-			{
-				if(!this->encode_stmt(node->body))
-					return false;
-				auto& lastOp = while_body->back();
-				if(!lastOp.isTerminator())
-				{
-					llvm_builder.CreateBr(while_begin);
-				}
-			}
-			else
-			{
-				llvm_builder.CreateBr(while_begin);
-			}
-			
-			llvm_builder.SetInsertPoint(while_end);
-			
-			this->continuePoint = oldContinuePoint;
-			this->breakPoint = oldBreakPoint;
-			
-			this->popScope();
-			
-			return true;
-		}
-		
-		bool encode_stmt_for(struct ast_stmt_for_t* node)
+		bool encode_stmt_loop(struct ast_stmt_loop_t* node)
 		{
 			if(node == nullptr)
 				return false;

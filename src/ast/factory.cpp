@@ -204,16 +204,9 @@ namespace eokas
 		return node;
 	}
 	
-	ast_stmt_while_t* ast_factory_t::create_stmt_while(ast_node_t* parent)
+	ast_stmt_loop_t* ast_factory_t::create_stmt_loop(ast_node_t* parent)
 	{
-		auto* node = new ast_stmt_while_t(parent);
-		this->nodes.push_back(node);
-		return node;
-	}
-	
-	ast_stmt_for_t* ast_factory_t::create_stmt_for(ast_node_t* parent)
-	{
-		auto* node = new ast_stmt_for_t(parent);
+		auto* node = new ast_stmt_loop_t(parent);
 		this->nodes.push_back(node);
 		return node;
 	}
