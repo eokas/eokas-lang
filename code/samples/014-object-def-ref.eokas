@@ -1,0 +1,10 @@
+
+struct Object {
+    var name: string;
+}
+
+var obj = make Object{
+    name = "eokas"
+};
+
+print(obj.name);
