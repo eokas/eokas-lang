@@ -70,7 +70,7 @@ static void eokas_main(const String& fileName)
 	
 	parser_t parser;
 	ast_module_t* m = parser.parse(source.cstr());
-	printf("=> Module AST: %x\n", m);
+	printf("=> Module AST: %X\n", m);
 	if(m == nullptr)
 	{
 		const String& error = parser.error();

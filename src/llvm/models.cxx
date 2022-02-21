@@ -22,58 +22,290 @@
 
 _BeginNamespace(eokas)
 	
-	llvm_model_t::llvm_model_t(llvm::LLVMContext& context) : context(context)
+	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent, llvm::Function* func)
+		: parent(parent)
+		, func(func)
+		, children()
+		, symbols()
+		, types()
+	{ }
+	
+	llvm_scope_t::~llvm_scope_t()
 	{
-		type_void = llvm::Type::getVoidTy(context);
-		type_i8 = llvm::Type::getInt8Ty(context);
-		type_i32 = llvm::Type::getInt32Ty(context);
-		type_i64 = llvm::Type::getInt64Ty(context);
-		type_u8 = llvm::Type::getInt8Ty(context);
-		type_u32 = llvm::Type::getInt32Ty(context);
-		type_u64 = llvm::Type::getInt64Ty(context);
-		type_f32 = llvm::Type::getFloatTy(context);
-		type_f64 = llvm::Type::getDoubleTy(context);
-		type_bool = llvm::Type::getInt1Ty(context);
-		type_string = this->define_type_string();
-		type_i8_ptr = llvm::Type::getInt8PtrTy(context);
-		type_string_ptr = llvm::PointerType::get(type_string, 0);
+		this->parent = nullptr;
+		this->func = nullptr;
+		_DeleteList(this->children);
+	}
+	
+	llvm_scope_t* llvm_scope_t::addChild(llvm::Function* f)
+	{
+		auto* child = new llvm_scope_t(this, f != nullptr ? f : this->func);
+		this->children.push_back(child);
+		return child;
+	}
+	
+	bool llvm_scope_t::addSymbol(const String& name, llvm_expr_t* expr)
+	{
+		bool ret = this->symbols.add(name, expr);
+		if(ret)
+		{
+			expr->scope = this;
+		}
+		return ret;
+	}
+	
+	llvm_expr_t* llvm_scope_t::getSymbol(const String& name, bool lookup)
+	{
+		if(lookup)
+		{
+			for (auto scope = this; scope != nullptr; scope = scope->parent)
+			{
+				auto symbol = scope->symbols.get(name);
+				if(symbol != nullptr)
+					return symbol;
+			}
+			return nullptr;
+		}
+		else
+		{
+			return this->symbols.get(name);
+		}
+	}
+	
+	bool llvm_scope_t::addType(const String& name, llvm_type_t* type)
+	{
+		bool ret = this->types.add(name, type);
+		if(ret)
+		{
+			type->scope = this;
+		}
+		return ret;
+	}
+	
+	llvm_type_t* llvm_scope_t::getType(const String& name, bool lookup)
+	{
+		if(lookup)
+		{
+			for (auto scope = this; scope != nullptr; scope = scope->parent)
+			{
+				auto type = scope->types.get(name);
+				if(type != nullptr)
+					return type;
+			}
+			return nullptr;
+		}
+		else
+		{
+			return this->types.get(name);
+		}
+	}
+	
+	llvm_type_t::llvm_type_t(llvm::LLVMContext& context, const String& name, llvm::Type* handle, llvm::Value* defval)
+		:context(context)
+		,name(name)
+		,members()
+		,handle(handle)
+		,defval(defval)
+		,scope(nullptr)
+	{ }
+	
+	llvm_type_t::~llvm_type_t() noexcept
+	{
+		_DeleteList(this->members);
+	}
+	
+	llvm_type_t::member_t* llvm_type_t::add_member(const String& name, llvm_type_t* type)
+	{
+		auto* m = new member_t();
+		m->name = name;
+		m->type = type;
+		this->members.push_back(m);
 		
-		default_i8 = llvm::ConstantInt::get(context, llvm::APInt(8, 0));
-		default_i32 = llvm::ConstantInt::get(context, llvm::APInt(32, 0));
-		default_i64 = llvm::ConstantInt::get(context, llvm::APInt(64, 0));
-		default_u8 = llvm::ConstantInt::get(context, llvm::APInt(8, 0));
-		default_u32 = llvm::ConstantInt::get(context, llvm::APInt(32, 0));
-		default_u64 = llvm::ConstantInt::get(context, llvm::APInt(64, 0));
-		default_f32 = llvm::ConstantFP::get(context, llvm::APFloat(0.0f));
-		default_f64 = llvm::ConstantFP::get(context, llvm::APFloat(0.0));
-		default_bool = llvm::ConstantInt::get(context, llvm::APInt(1, 0));
-		default_ptr = llvm::ConstantPointerNull::get(type_void->getPointerTo());
+		return m;
 	}
 	
-	llvm::Value* llvm_model_t::get_default_value_by_type(llvm::Type* type) const
+	llvm_type_t::member_t* llvm_type_t::get_member(const String& name) const
 	{
-		if(type == type_i8)
-			return default_i8;
-		if(type == type_i32)
-			return default_i32;
-		if(type == type_i64)
-			return default_i64;
-		if(type == type_u8)
-			return default_u8;
-		if(type == type_u32)
-			return default_u32;
-		if(type == type_u64)
-			return default_u64;
-		if(type == type_f32)
-			return default_f32;
-		if(type == type_f64)
-			return default_f64;
-		if(type == type_bool)
-			return default_bool;
-		return default_ptr;
+		for(auto& m : this->members)
+		{
+			if(m->name == name)
+				return m;
+		}
+		return nullptr;
 	}
 	
-	llvm::Value* llvm_model_t::get_value(llvm::IRBuilder<>& builder, llvm::Value* value)
+	llvm_type_t::member_t* llvm_type_t::get_member(size_t index) const
+	{
+		if(index >= this->members.size())
+			return nullptr;
+		return this->members.at(index);
+	}
+	
+	size_t llvm_type_t::get_member_index(const String& name) const
+	{
+		for(size_t index = 0; index < this->members.size(); index++)
+		{
+			if(this->members.at(index)->name == name)
+				return index;
+		}
+		return -1;
+	}
+	
+	void llvm_type_t::resolve(bool force)
+	{
+		if(force || this->handle == nullptr)
+		{
+			llvm::StructType* type = llvm::StructType::create(context, this->name.cstr());
+			std::vector<llvm::Type*> body;
+			for (auto& member: this->members)
+			{
+				member->type->resolve();
+				body.push_back(member->type->handle);
+			}
+			type->setBody(body);
+			
+			this->handle = type;
+		}
+		
+		if(force || this->defval == nullptr)
+		{
+			auto structType = llvm::cast<llvm::StructType>(this->handle);
+			auto structRefType = structType->getPointerTo();
+			this->defval = llvm::ConstantPointerNull::get(structRefType);
+		}
+	}
+	
+	void llvm_type_t::ref(llvm_type_t* element_type)
+	{
+		auto handle = llvm::PointerType::get(element_type->handle, 0);
+		auto defval = llvm::ConstantPointerNull::get(handle);
+		this->handle = handle;
+		this->defval = defval;
+	}
+	
+	llvm_expr_t::llvm_expr_t(llvm::Value* value, llvm::Type* type)
+	{
+		this->value = value;
+		if(type != nullptr)
+		{
+			this->type = type;
+		}
+		else
+		{
+			this->type = value->getType();
+		}
+	}
+	
+	llvm_expr_t::~llvm_expr_t()
+	{
+		this->value = nullptr;
+		this->type = nullptr;
+	}
+	
+	bool llvm_expr_t::is_symbol() const
+	{
+		if(this->type == nullptr || this->value == nullptr)
+			return false;
+		auto vt = this->value->getType();
+		return vt->isPointerTy()
+			   && vt->getPointerElementType() == this->type;
+	}
+	
+	llvm_module_t::llvm_module_t(const String& name, llvm::LLVMContext& context)
+		:context(context)
+		,module(name.cstr(), context)
+		,root(new llvm_scope_t(nullptr, nullptr))
+	{
+		type_void = this->new_type("void", llvm::Type::getVoidTy(context), llvm::ConstantInt::get(context, llvm::APInt(8, 0)));
+		type_i8 = this->new_type("i8", llvm::Type::getInt8Ty(context), llvm::ConstantInt::get(context, llvm::APInt(8, 0)));
+		type_i16 = this->new_type("i16", llvm::Type::getInt16Ty(context), llvm::ConstantInt::get(context, llvm::APInt(16, 0)));
+		type_i32 = this->new_type("i32", llvm::Type::getInt32Ty(context), llvm::ConstantInt::get(context, llvm::APInt(32, 0)));
+		type_i64 = this->new_type("i64", llvm::Type::getInt64Ty(context), llvm::ConstantInt::get(context, llvm::APInt(64, 0)));
+		type_u8 = this->new_type("u8", llvm::Type::getInt8Ty(context), llvm::ConstantInt::get(context, llvm::APInt(8, 0)));
+		type_u16 = this->new_type("u16", llvm::Type::getInt16Ty(context), llvm::ConstantInt::get(context, llvm::APInt(16, 0)));
+		type_u32 = this->new_type("u32", llvm::Type::getInt32Ty(context), llvm::ConstantInt::get(context, llvm::APInt(32, 0)));
+		type_u64 = this->new_type("u64", llvm::Type::getInt64Ty(context), llvm::ConstantInt::get(context, llvm::APInt(64, 0)));
+		type_f32 = this->new_type("f32", llvm::Type::getFloatTy(context), llvm::ConstantFP::get(context, llvm::APFloat(0.0f)));
+		type_f64 = this->new_type("f64", llvm::Type::getDoubleTy(context), llvm::ConstantFP::get(context, llvm::APFloat(0.0)));
+		type_bool = this->new_type("bool", llvm::Type::getInt1Ty(context),
+		llvm::ConstantInt::get(context, llvm::APInt(1, 0)));
+		
+		type_i8_ref = this->new_type("ref<i8>", nullptr, nullptr);
+		type_i8_ref->ref(type_i8);
+		
+		type_string = this->new_type("string", nullptr, nullptr);
+		type_string->add_member("data", type_i8_ref);
+		type_string->resolve();
+		
+		type_string_ref = this->new_type("ref<string>", nullptr, nullptr);
+		type_string_ref->ref(type_string);
+		
+		this->declare_func_puts();
+		this->declare_func_printf();
+		this->declare_func_sprintf();
+		this->declare_func_malloc();
+		this->declare_func_free();
+		
+		this->root->addType("void", type_void);
+		this->root->addType("i8", type_i8);
+		this->root->addType("i32", type_i32);
+		this->root->addType("i64", type_i64);
+		this->root->addType("u8", type_u8);
+		this->root->addType("u32", type_u32);
+		this->root->addType("u64", type_u64);
+		this->root->addType("f32", type_f32);;
+		this->root->addType("f64", type_f64);;
+		this->root->addType("bool", type_bool);;
+		this->root->addType("string", type_string_ref);
+		
+		this->root->addSymbol("print", this->new_expr(this->define_func_print()));
+	}
+	
+	llvm_module_t::~llvm_module_t() noexcept
+	{
+		_DeleteList(this->exprs);
+		_DeleteList(this->types);
+		_DeletePointer(root);
+	}
+	
+	llvm_type_t* llvm_module_t::new_type(const String& name, llvm::Type* handle, llvm::Value* defval)
+	{
+		auto* t = new llvm_type_t(context, name, handle, defval);
+		this->types.push_back(t);
+		return t;
+	}
+	
+	llvm_expr_t* llvm_module_t::new_expr(llvm::Value* value, llvm::Type* type)
+	{
+		llvm_expr_t* expr = nullptr;
+		if(value->getType()->isPointerTy() && value->getType()->getPointerElementType()->isFunctionTy())
+		{
+			expr = new llvm_func_t(value, type);
+		}
+		else
+		{
+			expr = new llvm_expr_t(value, type);
+		}
+		
+		this->exprs.push_back(expr);
+		
+		return expr;
+	}
+	
+	void llvm_module_t::map_type(llvm::Type* handle, llvm_type_t* type)
+	{
+		this->typemappings[handle] = type;
+	}
+	
+	llvm_type_t* llvm_module_t::get_type(llvm::Type* handle)
+	{
+		auto iter = this->typemappings.find(handle);
+		if(iter == this->typemappings.end())
+			return nullptr;
+		return iter->second;
+	}
+	
+	llvm::Value* llvm_module_t::get_value(llvm::IRBuilder<>& builder, llvm::Value* value)
 	{
 		llvm::Type* type = value->getType();
 		while (type->isPointerTy())
@@ -92,7 +324,7 @@ _BeginNamespace(eokas)
 		return value;
 	}
 	
-	llvm::Value* llvm_model_t::ref_value(llvm::IRBuilder<>& builder, llvm::Value* value)
+	llvm::Value* llvm_module_t::ref_value(llvm::IRBuilder<>& builder, llvm::Value* value)
 	{
 		llvm::Type* type = value->getType();
 		while (type->isPointerTy() && type->getPointerElementType()->isPointerTy())
@@ -112,162 +344,136 @@ _BeginNamespace(eokas)
 		return value;
 	}
 	
-	llvm::Type* llvm_model_t::define_type_string()
+	llvm::Function* llvm_module_t::declare_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg)
 	{
-		llvm::StructType* stringType = llvm::StructType::create(context, "Type.String.Struct");
-		
-		std::vector<llvm::Type*> body;
-		body.push_back(llvm::Type::getInt8PtrTy(context));
-		stringType->setBody(body);
-		
-		return stringType;
-	}
-	
-	llvm::Function* llvm_model_t::declare_cfunc_puts(llvm::Module* module)
-	{
-		llvm::StringRef name = "puts";
-		llvm::Type* ret = type_i32;
-		std::vector<llvm::Type*> args = {type_i8_ptr};
-		bool varg = false;
-		
 		llvm::AttributeList attrs;
 		
 		auto funcType = llvm::FunctionType::get(ret, args, varg);
-		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, module);
+		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name.cstr(), module);
 		funcValue->setCallingConv(llvm::CallingConv::C);
 		funcValue->setAttributes(attrs);
 		
 		return funcValue;
 	}
 	
-	llvm::Function* llvm_model_t::declare_cfunc_printf(llvm::Module* module)
+	llvm::Function* llvm_module_t::declare_func_puts()
 	{
-		llvm::StringRef name = "printf";
-		llvm::Type* ret = type_i32;
-		std::vector<llvm::Type*> args = {type_i8_ptr};
+		String name = "puts";
+		llvm::Type* ret = type_i32->handle;
+		std::vector<llvm::Type*> args = {type_i8_ref->handle};
+		bool varg = false;
+		
+		return this->declare_func(name, ret, args, varg);
+	}
+	
+	llvm::Function* llvm_module_t::declare_func_printf()
+	{
+		String name = "printf";
+		llvm::Type* ret = type_i32->handle;
+		std::vector<llvm::Type*> args = {type_i8_ref->handle};
 		bool varg = true;
 		
-		llvm::AttributeList attrs;
-		
-		auto funcType = llvm::FunctionType::get(ret, args, varg);
-		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, module);
-		funcValue->setCallingConv(llvm::CallingConv::C);
-		funcValue->setAttributes(attrs);
-		
-		return funcValue;
+		return this->declare_func(name, ret, args, varg);
 	}
 	
-	llvm::Function* llvm_model_t::declare_cfunc_sprintf(llvm::Module* module)
+	llvm::Function* llvm_module_t::declare_func_sprintf()
 	{
-		llvm::StringRef name = "sprintf";
-		llvm::Type* ret = type_i32;
-		std::vector<llvm::Type*> args = {type_i8_ptr, type_i8_ptr};
+		String name = "sprintf";
+		llvm::Type* ret = type_i32->handle;
+		std::vector<llvm::Type*> args = {type_i8_ref->handle, type_i8_ref->handle};
 		bool varg = true;
 		
-		llvm::AttributeList attrs;
-		
-		auto funcType = llvm::FunctionType::get(ret, args, varg);
-		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, module);
-		funcValue->setCallingConv(llvm::CallingConv::C);
-		funcValue->setAttributes(attrs);
-		
-		return funcValue;
+		return this->declare_func(name, ret, args, varg);
 	}
 	
-	llvm::Function* llvm_model_t::declare_cfunc_malloc(llvm::Module* module)
+	llvm::Function* llvm_module_t::declare_func_malloc()
 	{
-		llvm::StringRef name = "malloc";
-		llvm::Type* ret = type_i8_ptr;
-		std::vector<llvm::Type*> args = {type_i64};
+		String name = "malloc";
+		llvm::Type* ret = type_i8_ref->handle;
+		std::vector<llvm::Type*> args = {type_i64->handle};
 		bool varg = false;
 		
-		llvm::AttributeList attrs;
-		
-		auto funcType = llvm::FunctionType::get(ret, args, varg);
-		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, module);
-		funcValue->setCallingConv(llvm::CallingConv::C);
-		funcValue->setAttributes(attrs);
-		
-		return funcValue;
+		return this->declare_func(name, ret, args, varg);
 	}
 	
-	llvm::Function* llvm_model_t::declare_cfunc_free(llvm::Module* module)
+	llvm::Function* llvm_module_t::declare_func_free()
 	{
-		llvm::StringRef name = "free";
-		llvm::Type* ret = type_void;
-		std::vector<llvm::Type*> args = {type_i8_ptr};
+		String name = "free";
+		llvm::Type* ret = type_void->handle;
+		std::vector<llvm::Type*> args = {type_i8_ref->handle};
 		bool varg = false;
 		
-		llvm::AttributeList attrs;
-		
-		auto funcType = llvm::FunctionType::get(ret, args, varg);
-		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, module);
-		funcValue->setCallingConv(llvm::CallingConv::C);
-		funcValue->setAttributes(attrs);
-		
-		return funcValue;
+		return this->declare_func(name, ret, args, varg);
 	}
 	
-	llvm::Function* llvm_model_t::define_func_print(llvm::Module* module)
+	llvm::Function* llvm_module_t::define_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg, const llvm_code_delegate_t& body)
 	{
-		llvm::StringRef name = "print";
-		llvm::Type* ret = type_i32;
-		std::vector<llvm::Type*> args = {type_string_ptr};
-		bool varg = false;
-		
 		llvm::AttributeList attrs;
 		
 		auto funcType = llvm::FunctionType::get(ret, args, varg);
-		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, module);
+		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name.cstr(), module);
 		funcValue->setCallingConv(llvm::CallingConv::C);
 		funcValue->setAttributes(attrs);
 		
 		llvm::IRBuilder<> builder(context);
 		
-		llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", funcValue);
-		builder.SetInsertPoint(entry);
-		
-		llvm::Value* arg0 = funcValue->getArg(0);
-		llvm::Value* cstr = this->string_to_cstr(module, funcValue, builder, arg0);
-		llvm::Value* retval = this->print(module, funcValue, builder, {cstr});
-		
-		builder.CreateRet(retval);
+		body(context, module, funcValue, builder);
 		
 		return funcValue;
 	}
 	
-	llvm::Value* llvm_model_t::make(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type)
+	llvm::Function* llvm_module_t::define_func_print()
 	{
-		auto mallocF = module->getFunction("malloc");
+		String name = "print";
+		llvm::Type* ret = type_i32->handle;
+		std::vector<llvm::Type*> args = {type_string_ref->handle};
+		bool varg = false;
+		
+		return this->define_func(name, ret, args, varg, [&](llvm::LLVMContext& context, llvm::Module& module, llvm::Function* func, llvm::IRBuilder<>& builder)->void
+		{
+			llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", func);
+			builder.SetInsertPoint(entry);
+			
+			llvm::Value* arg0 = func->getArg(0);
+			llvm::Value* cstr = this->string_to_cstr(func, builder, arg0);
+			llvm::Value* retval = this->print(func, builder, {cstr});
+			
+			builder.CreateRet(retval);
+		});
+	}
+	
+	llvm::Value* llvm_module_t::make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type)
+	{
+		auto mallocF = module.getFunction("malloc");
 		llvm::Constant* len = llvm::ConstantExpr::getSizeOf(type);
 		llvm::Value* ptr = builder.CreateCall(mallocF, {len});
 		llvm::Value* val = builder.CreateBitCast(ptr, type->getPointerTo());
 		return val;
 	}
 	
-	void llvm_model_t::free(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr)
+	void llvm_module_t::free(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr)
 	{
-		auto freeF = module->getFunction("free");
+		auto freeF = module.getFunction("free");
 		builder.CreateCall(freeF, {ptr});
 	}
 	
-	llvm::Value* llvm_model_t::make_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr)
+	llvm::Value* llvm_module_t::make_string(llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr)
 	{
-		auto str = this->make(module, func, builder, this->type_string);
+		auto str = this->make(func, builder, this->type_string->handle);
 		auto memberPtr = builder.CreateStructGEP(str, 0);
 		auto memberVal = builder.CreateGlobalString(cstr);
 		builder.CreateStore(memberVal, memberPtr);
 		return str;
 	}
 	
-	llvm::Value* llvm_model_t::string_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::string_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		llvm::Value* ptr = builder.CreateStructGEP(type_string, val, 0);
+		llvm::Value* ptr = builder.CreateStructGEP(type_string->handle, val, 0);
 		llvm::Value* cstr = builder.CreateLoad(ptr);
 		return cstr;
 	}
 	
-	llvm::Value* llvm_model_t::bool_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::bool_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
 		llvm::BasicBlock* branch_begin = llvm::BasicBlock::Create(context, "branch.begin", func);
 		llvm::BasicBlock* branch_true = llvm::BasicBlock::Create(context, "branch.true", func);
@@ -289,18 +495,18 @@ _BeginNamespace(eokas)
 		
 		builder.SetInsertPoint(branch_end);
 		
-		llvm::PHINode* phi = builder.CreatePHI(type_i8_ptr, 2);
+		llvm::PHINode* phi = builder.CreatePHI(type_i8_ref->handle, 2);
 		phi->addIncoming(val_true, branch_true);
 		phi->addIncoming(val_false, branch_false);
 		
 		return phi;
 	}
 	
-	llvm::Value* llvm_model_t::number_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::number_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
 		llvm::Type* vt = val->getType();
 		
-		llvm::Value* buf = builder.CreateAlloca(llvm::ArrayType::get(type_i8, 64));
+		llvm::Value* buf = builder.CreateAlloca(llvm::ArrayType::get(type_i8->handle, 64));
 		
 		llvm::StringRef vf = "%x";
 		if(vt->isIntegerTy())
@@ -310,69 +516,69 @@ _BeginNamespace(eokas)
 		
 		llvm::Value* fmt = builder.CreateGlobalString(vf);
 		
-		auto sprintf = module->getFunction("sprintf");
+		auto sprintf = module.getFunction("sprintf");
 		builder.CreateCall(sprintf, {buf, fmt, val});
 		
 		return buf;
 	}
 	
-	llvm::Value* llvm_model_t::value_to_cstr(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::value_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
 		llvm::Type* vt = val->getType();
 		
-		if(vt == type_string)
-			return this->string_to_cstr(module, func, builder, val);
+		if(vt == type_string->handle)
+			return this->string_to_cstr(func, builder, val);
 		
-		if(vt == type_i8_ptr)
+		if(vt == type_i8_ref->handle)
 			return val;
 		
 		if(vt->isIntegerTy(1))
-			return this->bool_to_cstr(module, func, builder, val);
+			return this->bool_to_cstr(func, builder, val);
 		
-		return this->number_to_cstr(module, func, builder, val);
+		return this->number_to_cstr(func, builder, val);
 	}
 	
-	llvm::Value* llvm_model_t::cstr_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::cstr_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		llvm::Value* str = this->make(module, func, builder, type_string);
-		llvm::Value* ptr = builder.CreateStructGEP(type_string, str, 0);
+		llvm::Value* str = this->make(func, builder, type_string->handle);
+		llvm::Value* ptr = builder.CreateStructGEP(type_string->handle, str, 0);
 		builder.CreateStore(val, ptr);
 		return str;
 	}
 	
-	llvm::Value* llvm_model_t::bool_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::bool_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		llvm::Value* cstr = this->bool_to_cstr(module, func, builder, val);
-		return this->cstr_to_string(module, func, builder, cstr);
+		llvm::Value* cstr = this->bool_to_cstr(func, builder, val);
+		return this->cstr_to_string(func, builder, cstr);
 	}
 	
-	llvm::Value* llvm_model_t::number_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::number_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		llvm::Value* cstr = this->number_to_cstr(module, func, builder, val);
-		return this->cstr_to_string(module, func, builder, cstr);
+		llvm::Value* cstr = this->number_to_cstr(func, builder, val);
+		return this->cstr_to_string(func, builder, cstr);
 	}
 	
-	llvm::Value* llvm_model_t::value_to_string(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::value_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
 		llvm::Type* vt = val->getType();
 		
-		if(vt == type_string)
+		if(vt == type_string->handle)
 			return val;
 		
-		if(vt == type_i8_ptr)
-			return this->cstr_to_string(module, func, builder, val);
+		if(vt == type_i8_ref->handle)
+			return this->cstr_to_string(func, builder, val);
 		
 		if(vt->isIntegerTy(1))
-			return this->bool_to_string(module, func, builder, val);
+			return this->bool_to_string(func, builder, val);
 		
-		return this->number_to_string(module, func, builder, val);
+		return this->number_to_string(func, builder, val);
 	}
 	
-	llvm::Value* llvm_model_t::print(llvm::Module* module, llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args)
+	llvm::Value* llvm_module_t::print(llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args)
 	{
 		llvm::Value* val = args[0];
-		llvm::Value* cstr = this->value_to_cstr(module, func, builder, val);
-		auto puts = module->getFunction("puts");
+		llvm::Value* cstr = this->value_to_cstr(func, builder, val);
+		auto puts = module.getFunction("puts");
 		llvm::Value* ret = builder.CreateCall(puts, {cstr});
 		
 		return ret;

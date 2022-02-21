@@ -1,5 +1,4 @@
 #include "coder.h"
-#include "object.h"
 #include "models.h"
 
 #include <llvm/ADT/APFloat.h>
@@ -27,67 +26,30 @@ _BeginNamespace(eokas)
 	
 	struct llvm_coder_t
 	{
-		llvm::LLVMContext& llvm_context;
-		llvm::IRBuilder<> llvm_builder;
-		llvm::Module* llvm_module;
-		llvm_model_t model;
-		std::vector<llvm_expr_t*> exprs;
-		std::vector<llvm_type_t*> types;
-		std::map<llvm::Type*, llvm_type_t*> typemappings;
-		llvm_scope_t* root;
+		llvm::LLVMContext& context;
+		llvm::IRBuilder<> builder;
+		
+		llvm_module_t* module;
+
 		llvm_scope_t* scope;
 		llvm_func_t* func;
+		
 		llvm::BasicBlock* continuePoint;
 		llvm::BasicBlock* breakPoint;
 		
-		llvm::Value* const_zero;
-		
-		explicit llvm_coder_t(llvm::LLVMContext& llvm_context) : llvm_context(llvm_context), llvm_builder(llvm_context), llvm_module(nullptr), model(llvm_context)
+		explicit llvm_coder_t(llvm::LLVMContext& context)
+			: context(context)
+			, builder(context)
+			, module(nullptr)
 		{
-			this->root = new llvm_scope_t(nullptr, nullptr);
-			this->scope = this->root;
+			this->scope = nullptr;
 			this->func = nullptr;
 			this->continuePoint = nullptr;
 			this->breakPoint = nullptr;
-			
-			const_zero = llvm::ConstantInt::get(llvm_context, llvm::APInt(32, 0));
 		}
 		
 		virtual ~llvm_coder_t()
-		{
-			_DeletePointer(this->scope);
-			_DeleteList(this->exprs);
-			_DeleteList(this->types);
-		}
-		
-		llvm_expr_t* new_expr(llvm::Value* value, llvm::Type* type = nullptr)
-		{
-            llvm_expr_t* expr = nullptr;
-            if(value->getType()->isPointerTy() && value->getType()->getPointerElementType()->isFunctionTy())
-            {
-                expr = new llvm_func_t(value, type);
-            }
-            else
-            {
-                expr = new llvm_expr_t(value, type);
-            }
-            if(expr != nullptr)
-            {
-                this->exprs.push_back(expr);
-            }
-			return expr;
-		}
-		
-		llvm_type_t* new_type(const String& name, llvm::Type* type)
-		{
-			auto* t = new llvm_type_t();
-			t->name = name;
-			t->type = type;
-			t->base = nullptr;
-			t->members.clear();
-			this->types.push_back(t);
-			return t;
-		}
+		{ }
 		
 		void pushScope(llvm::Function* f = nullptr)
 		{
@@ -99,64 +61,46 @@ _BeginNamespace(eokas)
 			this->scope = this->scope->parent;
 		}
 		
-		llvm::Module* encode(struct ast_module_t* m)
+		llvm_module_t* encode(struct ast_module_t* m)
 		{
-			this->llvm_module = new llvm::Module("eokas", llvm_context);
-			
-			model.declare_cfunc_puts(llvm_module);
-			model.declare_cfunc_printf(llvm_module);
-			model.declare_cfunc_sprintf(llvm_module);
-			model.declare_cfunc_malloc(llvm_module);
-			model.declare_cfunc_free(llvm_module);
+			this->module = new llvm_module_t("eokas", context);
+			this->scope = this->module->root;
 			
 			if(!this->encode_module(m))
 			{
-				_DeletePointer(this->llvm_module);
+				_DeletePointer(this->module);
 				return nullptr;
 			}
-			return this->llvm_module;
+			return this->module;
 		}
 		
 		bool encode_module(struct ast_module_t* node)
 		{
 			if(node == nullptr)
 				return false;
-            
-            this->scope->addType("void", this->new_type("void", model.type_void));
-			this->scope->addType("i8", this->new_type("i8", model.type_i8));
-			this->scope->addType("i32", this->new_type("i32", model.type_i32));
-			this->scope->addType("i64", this->new_type("i64", model.type_i64));
-			this->scope->addType("u8", this->new_type("u8", model.type_u8));
-			this->scope->addType("u32", this->new_type("u32", model.type_u32));
-			this->scope->addType("u64", this->new_type("u64", model.type_u64));
-			this->scope->addType("f32", this->new_type("f32", model.type_f32));;
-			this->scope->addType("f64", this->new_type("f64", model.type_f64));;
-			this->scope->addType("bool", this->new_type("bool", model.type_bool));;
-			this->scope->addType("string", this->new_type("string", model.type_string_ptr));
 			
-			this->scope->addSymbol("print", this->new_expr(model.define_func_print(llvm_module)));
+			llvm_type_t* mainRet = module->type_i32;
+			std::vector<llvm::Type*> mainArgs;
+			llvm::Function* mainPtr = module->declare_func("main", mainRet->handle, mainArgs, false);
+			this->func = dynamic_cast<llvm_func_t*>(module->new_expr(mainPtr));
 			
-			llvm::FunctionType* funcType = llvm::FunctionType::get(model.type_i32, false);
-			llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", llvm_module);
-            this->func = dynamic_cast<llvm_func_t*>(this->new_expr(funcPtr));
-
-            this->pushScope(funcPtr);
+			this->pushScope(mainPtr);
             {
-                llvm::BasicBlock *entry = llvm::BasicBlock::Create(llvm_context, "entry", funcPtr);
-                llvm_builder.SetInsertPoint(entry);
+                llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", mainPtr);
+                builder.SetInsertPoint(entry);
 
                 for (auto &stmt: node->get_func()->body) {
                     if (!this->encode_stmt(stmt))
                         return false;
                 }
 
-                auto& lastOp = llvm_builder.GetInsertBlock()->back();
+                auto& lastOp = builder.GetInsertBlock()->back();
                 if(!lastOp.isTerminator())
                 {
-                    if(funcPtr->getReturnType()->isVoidTy())
-                        llvm_builder.CreateRetVoid();
+                    if(mainPtr->getReturnType()->isVoidTy())
+                        builder.CreateRetVoid();
                     else
-                        llvm_builder.CreateRet(model.get_default_value_by_type(funcPtr->getReturnType()));
+                        builder.CreateRet(mainRet->defval);
                 }
             }
 			this->popScope();
@@ -207,12 +151,10 @@ _BeginNamespace(eokas)
 			if(elementType == nullptr)
 				return nullptr;
 			
-			llvm::Type* arrayType = llvm::ArrayType::get(elementType->type, node->length);
-			
-			return this->new_type(
-				String::format("Array<%s, %d>", elementType->name.cstr(), node->length),
-				arrayType
-			);
+			String name = String::format("Array<%s, %d>", elementType->name.cstr(), node->length);
+			llvm::Type* handle = llvm::ArrayType::get(elementType->handle, node->length);
+			llvm::Value* defval = llvm::ConstantPointerNull::get(handle->getPointerTo());
+			return module->new_type(name, handle, defval);
 		}
 		
 		llvm_expr_t* encode_expr(struct ast_expr_t* node)
@@ -264,13 +206,13 @@ _BeginNamespace(eokas)
 				return nullptr;
 
 
-			llvm::BasicBlock* trinary_begin = llvm::BasicBlock::Create(llvm_context, "trinary.begin", this->scope->func);
-			llvm::BasicBlock* trinary_true = llvm::BasicBlock::Create(llvm_context, "trinary.true", this->scope->func);
-			llvm::BasicBlock* trinary_false = llvm::BasicBlock::Create(llvm_context, "trinary.false", this->scope->func);
-			llvm::BasicBlock* trinary_end = llvm::BasicBlock::Create(llvm_context, "trinary.end", this->scope->func);
+			llvm::BasicBlock* trinary_begin = llvm::BasicBlock::Create(context, "trinary.begin", this->scope->func);
+			llvm::BasicBlock* trinary_true = llvm::BasicBlock::Create(context, "trinary.true", this->scope->func);
+			llvm::BasicBlock* trinary_false = llvm::BasicBlock::Create(context, "trinary.false", this->scope->func);
+			llvm::BasicBlock* trinary_end = llvm::BasicBlock::Create(context, "trinary.end", this->scope->func);
 			
-			llvm_builder.CreateBr(trinary_begin);
-			llvm_builder.SetInsertPoint(trinary_begin);
+			builder.CreateBr(trinary_begin);
+			builder.SetInsertPoint(trinary_begin);
 			llvm_expr_t* condE = this->encode_expr(node->cond);
 			if(condE == nullptr)
 				return nullptr;
@@ -279,33 +221,33 @@ _BeginNamespace(eokas)
 				printf("condition must be a bool value.\n");
 				return nullptr;
 			}
-			auto condV = model.get_value(llvm_builder, condE->value);
-			llvm_builder.CreateCondBr(condV, trinary_true, trinary_false);
+			auto condV = module->get_value(builder, condE->value);
+			builder.CreateCondBr(condV, trinary_true, trinary_false);
 			
-			llvm_builder.SetInsertPoint(trinary_true);
+			builder.SetInsertPoint(trinary_true);
 			llvm_expr_t* trueE = this->encode_expr(node->branch_true);
 			if(trueE == nullptr)
 				return nullptr;
-			llvm_builder.CreateBr(trinary_end);
+			builder.CreateBr(trinary_end);
 			
-			llvm_builder.SetInsertPoint(trinary_false);
+			builder.SetInsertPoint(trinary_false);
 			llvm_expr_t* falseE = this->encode_expr(node->branch_false);
 			if(falseE == nullptr)
 				return nullptr;
-			llvm_builder.CreateBr(trinary_end);
+			builder.CreateBr(trinary_end);
 			
-			llvm_builder.SetInsertPoint(trinary_end);
+			builder.SetInsertPoint(trinary_end);
 			if(trueE->type != falseE->type)
 			{
 				printf("type of true-branch must be the same as false-branch.\n");
 				return nullptr;
 			}
 			
-			llvm::PHINode* phi = llvm_builder.CreatePHI(trueE->type, 2);
+			llvm::PHINode* phi = builder.CreatePHI(trueE->type, 2);
 			phi->addIncoming(trueE->value, trinary_true);
 			phi->addIncoming(falseE->value, trinary_false);
 			
-			return this->new_expr(phi);
+			return module->new_expr(phi);
 		}
 		
 		llvm_expr_t* encode_expr_binary_type(struct ast_expr_binary_type_t* node)
@@ -318,26 +260,26 @@ _BeginNamespace(eokas)
 			if(left == nullptr || right == nullptr)
 				return nullptr;
 			
-			auto lhs = model.get_value(llvm_builder, left->value);
+			auto lhs = module->get_value(builder, left->value);
 			
 			switch (node->op)
 			{
 				case ast_binary_oper_t::Is:
 				{
-					if(right->type == lhs->getType())
-						return this->new_expr(llvm_builder.getTrue());
+					if(right->handle == lhs->getType())
+						return module->new_expr(builder.getTrue());
 					else
-						return this->new_expr(llvm_builder.getFalse());
+						return module->new_expr(builder.getFalse());
 				}
 					break;
 				case ast_binary_oper_t::As:
 				{
 					if(lhs->getType()->isSingleValueType())
 					{
-						if(right->type == model.type_string_ptr)
+						if(right->handle == module->type_string_ref->handle)
 						{
-							llvm::Value* value = model.value_to_string(llvm_module, this->scope->func, llvm_builder, lhs);
-							return this->new_expr(value);
+							llvm::Value* value = module->value_to_string(this->scope->func, builder, lhs);
+							return module->new_expr(value);
 						}
 						return nullptr;
 					}
@@ -365,8 +307,8 @@ _BeginNamespace(eokas)
 			if(left == nullptr || right == nullptr)
 				return nullptr;
 			
-			auto lhs = model.get_value(llvm_builder, left->value);
-			auto rhs = model.get_value(llvm_builder, right->value);
+			auto lhs = module->get_value(builder, left->value);
+			auto rhs = module->get_value(builder, right->value);
 			
 			switch (node->op)
 			{
@@ -422,7 +364,7 @@ _BeginNamespace(eokas)
 				return nullptr;
 			}
 			
-			return this->new_expr(llvm_builder.CreateOr(lhs, rhs));
+			return module->new_expr(builder.CreateOr(lhs, rhs));
 		}
 		
 		llvm_expr_t* encode_expr_binary_and(llvm::Value* lhs, llvm::Value* rhs)
@@ -436,7 +378,7 @@ _BeginNamespace(eokas)
 				return nullptr;
 			}
 			
-			return this->new_expr(llvm_builder.CreateAnd(lhs, rhs));
+			return module->new_expr(builder.CreateAnd(lhs, rhs));
 		}
 		
 		llvm_expr_t* encode_expr_binary_eq(llvm::Value* lhs, llvm::Value* rhs)
@@ -445,24 +387,24 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateICmpEQ(lhs, rhs));
+				return module->new_expr(builder.CreateICmpEQ(lhs, rhs));
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFCmpOEQ(lhs, rhs));
+				return module->new_expr(builder.CreateFCmpOEQ(lhs, rhs));
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpEQ(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
+				return module->new_expr(builder.CreateICmpEQ(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOEQ(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
+				return module->new_expr(builder.CreateFCmpOEQ(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOEQ(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
+				return module->new_expr(builder.CreateFCmpOEQ(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -475,24 +417,24 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateICmpNE(lhs, rhs));
+				return module->new_expr(builder.CreateICmpNE(lhs, rhs));
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFCmpONE(lhs, rhs));
+				return module->new_expr(builder.CreateFCmpONE(lhs, rhs));
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpNE(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
+				return module->new_expr(builder.CreateICmpNE(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpONE(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
+				return module->new_expr(builder.CreateFCmpONE(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpONE(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
+				return module->new_expr(builder.CreateFCmpONE(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -505,24 +447,24 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateICmpSLE(lhs, rhs));
+				return module->new_expr(builder.CreateICmpSLE(lhs, rhs));
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFCmpOLE(lhs, rhs));
+				return module->new_expr(builder.CreateFCmpOLE(lhs, rhs));
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpULE(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
+				return module->new_expr(builder.CreateICmpULE(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOLE(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
+				return module->new_expr(builder.CreateFCmpOLE(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOLE(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
+				return module->new_expr(builder.CreateFCmpOLE(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -535,24 +477,24 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateICmpSGE(lhs, rhs));
+				return module->new_expr(builder.CreateICmpSGE(lhs, rhs));
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFCmpOGE(lhs, rhs));
+				return module->new_expr(builder.CreateFCmpOGE(lhs, rhs));
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpUGE(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
+				return module->new_expr(builder.CreateICmpUGE(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOGE(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
+				return module->new_expr(builder.CreateFCmpOGE(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOGE(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
+				return module->new_expr(builder.CreateFCmpOGE(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -565,24 +507,24 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateICmpSLT(lhs, rhs));
+				return module->new_expr(builder.CreateICmpSLT(lhs, rhs));
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFCmpOLT(lhs, rhs));
+				return module->new_expr(builder.CreateFCmpOLT(lhs, rhs));
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpULT(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
+				return module->new_expr(builder.CreateICmpULT(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOLT(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
+				return module->new_expr(builder.CreateFCmpOLT(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOLT(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
+				return module->new_expr(builder.CreateFCmpOLT(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -595,24 +537,24 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateICmpSGT(lhs, rhs));
+				return module->new_expr(builder.CreateICmpSGT(lhs, rhs));
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFCmpOGT(lhs, rhs));
+				return module->new_expr(builder.CreateFCmpOGT(lhs, rhs));
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->new_expr(llvm_builder.CreateICmpUGT(llvm_builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(llvm_context)), llvm_builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(llvm_context))));
+				return module->new_expr(builder.CreateICmpUGT(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOGT(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
+				return module->new_expr(builder.CreateFCmpOGT(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFCmpOGT(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
+				return module->new_expr(builder.CreateFCmpOGT(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -625,19 +567,19 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateAdd(lhs, rhs));
+				return module->new_expr(builder.CreateAdd(lhs, rhs));
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFAdd(lhs, rhs));
+				return module->new_expr(builder.CreateFAdd(lhs, rhs));
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFAdd(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
+				return module->new_expr(builder.CreateFAdd(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFAdd(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
+				return module->new_expr(builder.CreateFAdd(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -650,19 +592,19 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateSub(lhs, rhs));
+				return module->new_expr(builder.CreateSub(lhs, rhs));
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFSub(lhs, rhs));
+				return module->new_expr(builder.CreateFSub(lhs, rhs));
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFSub(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
+				return module->new_expr(builder.CreateFSub(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFSub(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
+				return module->new_expr(builder.CreateFSub(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -675,19 +617,19 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateMul(lhs, rhs));
+				return module->new_expr(builder.CreateMul(lhs, rhs));
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFMul(lhs, rhs));
+				return module->new_expr(builder.CreateFMul(lhs, rhs));
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFMul(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
+				return module->new_expr(builder.CreateFMul(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFMul(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
+				return module->new_expr(builder.CreateFMul(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -700,19 +642,19 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateSDiv(lhs, rhs));
+				return module->new_expr(builder.CreateSDiv(lhs, rhs));
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFMul(lhs, rhs));
+				return module->new_expr(builder.CreateFMul(lhs, rhs));
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFDiv(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
+				return module->new_expr(builder.CreateFDiv(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFDiv(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
+				return module->new_expr(builder.CreateFDiv(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -725,19 +667,19 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateSRem(lhs, rhs));
+				return module->new_expr(builder.CreateSRem(lhs, rhs));
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFRem(lhs, rhs));
+				return module->new_expr(builder.CreateFRem(lhs, rhs));
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->new_expr(llvm_builder.CreateFRem(llvm_builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(llvm_context)), rhs));
+				return module->new_expr(builder.CreateFRem(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs));
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateFRem(lhs, llvm_builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(llvm_context))));
+				return module->new_expr(builder.CreateFRem(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -750,7 +692,7 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateAnd(lhs, rhs));
+				return module->new_expr(builder.CreateAnd(lhs, rhs));
 			
 			printf("Type of LHS or RHS is invalid.");
 			return nullptr;
@@ -762,7 +704,7 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateOr(lhs, rhs));
+				return module->new_expr(builder.CreateOr(lhs, rhs));
 			
 			printf("Type of LHS or RHS is invalid.");
 			return nullptr;
@@ -774,7 +716,7 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateXor(lhs, rhs));
+				return module->new_expr(builder.CreateXor(lhs, rhs));
 			
 			printf("Type of LHS or RHS is invalid.");
 			return nullptr;
@@ -786,7 +728,7 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateShl(lhs, rhs));
+				return module->new_expr(builder.CreateShl(lhs, rhs));
 			
 			printf("Type of LHS or RHS is invalid.");
 			return nullptr;
@@ -802,7 +744,7 @@ _BeginNamespace(eokas)
 				// 逻辑右移：在左边补 0
 				// 算术右移：在左边补 符号位
 				// 我们采用逻辑右移
-				return this->new_expr(llvm_builder.CreateLShr(lhs, rhs));
+				return module->new_expr(builder.CreateLShr(lhs, rhs));
 			}
 			
 			printf("Type of LHS or RHS is invalid.");
@@ -818,12 +760,12 @@ _BeginNamespace(eokas)
 			if(right == nullptr)
 				return nullptr;
 			
-			auto rhs = model.get_value(llvm_builder, right->value);
+			auto rhs = module->get_value(builder, right->value);
 			
 			switch (node->op)
 			{
 				case ast_unary_oper_t::Pos:
-					return this->new_expr(rhs);
+					return module->new_expr(rhs);
 				case ast_unary_oper_t::Neg:
 					return this->encode_expr_unary_neg(rhs);
 				case ast_unary_oper_t::Not:
@@ -840,10 +782,10 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(rtype->isIntegerTy())
-				return this->new_expr(llvm_builder.CreateNeg(rhs));
+				return module->new_expr(builder.CreateNeg(rhs));
 			
 			if(rtype->isFloatingPointTy())
-				return this->new_expr(llvm_builder.CreateFNeg(rhs));
+				return module->new_expr(builder.CreateFNeg(rhs));
 			
 			printf("Type of RHS is invalid.");
 			return nullptr;
@@ -854,7 +796,7 @@ _BeginNamespace(eokas)
 			auto rtype = rhs->getType();
 			
 			if(rtype->isIntegerTy() && rtype->getIntegerBitWidth() == 1)
-				return this->new_expr(llvm_builder.CreateNot(rhs));
+				return module->new_expr(builder.CreateNot(rhs));
 			
 			printf("Type of RHS is invalid.");
 			return nullptr;
@@ -866,7 +808,7 @@ _BeginNamespace(eokas)
 			
 			if(rtype->isIntegerTy())
 			{
-				return this->new_expr(llvm_builder.CreateXor(rhs, llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF))));
+				return module->new_expr(builder.CreateXor(rhs, llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF))));
 			}
 			printf("Type of RHS is invalid.");
 			return nullptr;
@@ -880,7 +822,7 @@ _BeginNamespace(eokas)
 			u64_t vals = *((u64_t*) &(node->value));
 			u32_t bits = vals>0xFFFFFFFF ? 64 : 32;
 			
-			return this->new_expr(llvm::ConstantInt::get(llvm_context, llvm::APInt(bits, node->value)));
+			return module->new_expr(llvm::ConstantInt::get(context, llvm::APInt(bits, node->value)));
 		}
 		
 		llvm_expr_t* encode_expr_float(struct ast_expr_float_t* node)
@@ -888,14 +830,14 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			return this->new_expr(llvm::ConstantFP::get(llvm_context, llvm::APFloat(node->value)));
+			return module->new_expr(llvm::ConstantFP::get(context, llvm::APFloat(node->value)));
 		}
 		
 		llvm_expr_t* encode_expr_bool(struct ast_expr_bool_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
-			return this->new_expr(llvm::ConstantInt::getBool(llvm_context, node->value));
+			return module->new_expr(llvm::ConstantInt::getBool(context, node->value));
 		}
 		
 		llvm_expr_t* encode_expr_string(struct ast_expr_string_t* node)
@@ -903,15 +845,9 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			auto str = model.make_string
-			(
-				llvm_module,
-				this->scope->func,
-				llvm_builder,
-				node->value.cstr()
-			);
+			auto str = module->make_string(this->scope->func, builder, node->value.cstr());
 			
-			return this->new_expr(str);
+			return module->new_expr(str);
 		}
 		
 		llvm_expr_t* encode_expr_symbol_ref(struct ast_expr_symbol_ref_t* node)
@@ -950,14 +886,14 @@ _BeginNamespace(eokas)
 				auto* argType = this->encode_type(arg->type);
 				if(argType == nullptr)
 					return nullptr;
-				if(argType->type->isFunctionTy() || argType->type->isStructTy() || argType->type->isArrayTy())
-					argTypes.push_back(argType->type->getPointerTo());
+				if(argType->handle->isFunctionTy() || argType->handle->isStructTy() || argType->handle->isArrayTy())
+					argTypes.push_back(argType->handle->getPointerTo());
 				else
-					argTypes.push_back(argType->type);
+					argTypes.push_back(argType->handle);
 			}
 			
-			llvm::FunctionType* funcType = llvm::FunctionType::get(retType->type, argTypes, false);
-			llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "", llvm_module);
+			llvm::FunctionType* funcType = llvm::FunctionType::get(retType->handle, argTypes, false);
+			llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "", module->module);
 
             u32_t index = 0;
 			for (auto& arg: funcPtr->args())
@@ -967,24 +903,24 @@ _BeginNamespace(eokas)
 			}
 			
 			auto oldFunc = this->func;
-			auto oldIB = llvm_builder.GetInsertBlock();
+			auto oldIB = builder.GetInsertBlock();
 
-            this->func = dynamic_cast<llvm_func_t*>(this->new_expr(funcPtr));
+            this->func = dynamic_cast<llvm_func_t*>(module->new_expr(funcPtr));
 
             this->pushScope(funcPtr);
 			{
-				llvm::BasicBlock* entry = llvm::BasicBlock::Create(llvm_context, "entry", funcPtr);
-				llvm_builder.SetInsertPoint(entry);
+				llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", funcPtr);
+				builder.SetInsertPoint(entry);
 				
 				// self
-				auto self = this->new_expr(funcPtr, funcType->getPointerTo());
+				auto self = module->new_expr(funcPtr, funcType->getPointerTo());
                 this->scope->addSymbol("self", self);
 				
 				// args
 				for (auto& arg: funcPtr->args())
 				{
 					const char* name = arg.getName().data();
-					auto expr = this->new_expr(&arg);
+					auto expr = module->new_expr(&arg);
                     if(!this->scope->addSymbol(name, expr))
                     {
                         printf("The symbol name '%s' is already existed.", name);
@@ -993,46 +929,46 @@ _BeginNamespace(eokas)
 				}
 				
 				// body
-                llvm::BasicBlock* body = llvm::BasicBlock::Create(llvm_context, "body", funcPtr);
-                llvm_builder.SetInsertPoint(body);
+                llvm::BasicBlock* body = llvm::BasicBlock::Create(context, "body", funcPtr);
+                builder.SetInsertPoint(body);
 				for (auto& stmt: node->body)
 				{
 					if(!this->encode_stmt(stmt))
 						return nullptr;
 				}
-				auto& lastOp = llvm_builder.GetInsertBlock()->back();
+				auto& lastOp = builder.GetInsertBlock()->back();
 				if(!lastOp.isTerminator())
 				{
 					if(funcPtr->getReturnType()->isVoidTy())
-						llvm_builder.CreateRetVoid();
+						builder.CreateRetVoid();
 					else
-						llvm_builder.CreateRet(model.get_default_value_by_type(funcPtr->getReturnType()));
+						builder.CreateRet(retType->defval);
 				}
 
                 // up-value
-                llvm_builder.SetInsertPoint(entry);
+                builder.SetInsertPoint(entry);
                 for (auto& upval : this->func->upvals.table)
                 {
                     const String& name = upval.first;
                     llvm_expr_t* expr = upval.second;
 
-                    llvm::Value* val = model.get_value(llvm_builder, expr->value);
-                    llvm::Value* ptr = llvm_builder.CreateAlloca(val->getType());
-                    llvm_builder.CreateStore(val, ptr);
-                    if(!this->scope->addSymbol(name, this->new_expr(val)))
+                    llvm::Value* val = module->get_value(builder, expr->value);
+                    llvm::Value* ptr = builder.CreateAlloca(val->getType());
+                    builder.CreateStore(val, ptr);
+                    if(!this->scope->addSymbol(name, module->new_expr(val)))
                     {
                         printf("The symbol name '%s' is already existed.", name.cstr());
                         return nullptr;
                     }
                 }
-                llvm_builder.CreateBr(body);
+                builder.CreateBr(body);
 			}
 			this->popScope();
 
 			this->func = oldFunc;
-			llvm_builder.SetInsertPoint(oldIB);
+			builder.SetInsertPoint(oldIB);
 			
-			return this->new_expr(funcPtr);
+			return module->new_expr(funcPtr);
 		}
 		
 		llvm_expr_t* encode_expr_func_ref(struct ast_expr_func_ref_t* node)
@@ -1047,7 +983,7 @@ _BeginNamespace(eokas)
 				return nullptr;
 			}
 			
-			auto funcPtr = model.get_value(llvm_builder, funcExpr->value);
+			auto funcPtr = module->get_value(builder, funcExpr->value);
 			llvm::FunctionType* funcType = nullptr;
 			if(funcExpr->type->isFunctionTy())
 			{
@@ -1078,14 +1014,14 @@ _BeginNamespace(eokas)
 				llvm::Value* paramV = paramE->value;
 				if(paramE->is_symbol())
 				{
-					paramV = llvm_builder.CreateLoad(paramE->value);
+					paramV = builder.CreateLoad(paramE->value);
 				}
-				paramV = model.ref_value(llvm_builder, paramV);
+				paramV = module->ref_value(builder, paramV);
 				params.push_back(paramV);
 			}
 			
-			llvm::Value* retval = llvm_builder.CreateCall(funcType, funcPtr, params);
-			return this->new_expr(retval);
+			llvm::Value* retval = builder.CreateCall(funcType, funcPtr, params);
+			return module->new_expr(retval);
 		}
 		
 		llvm_expr_t* encode_expr_array_def(struct ast_expr_array_def_t* node)
@@ -1104,7 +1040,7 @@ _BeginNamespace(eokas)
 				auto elementV = elementE->value;
 				if(elementE->is_symbol())
 				{
-					elementV = llvm_builder.CreateLoad(elementE->value);
+					elementV = builder.CreateLoad(elementE->value);
 				}
 				
 				auto elementT = elementV->getType();
@@ -1123,18 +1059,18 @@ _BeginNamespace(eokas)
 			}
 			
 			if(arrayElements.empty() || arrayElementType == nullptr)
-				arrayElementType = llvm::Type::getInt32Ty(llvm_context);
+				arrayElementType = llvm::Type::getInt32Ty(context);
 			
 			auto arrayType = llvm::ArrayType::get(arrayElementType, node->elements.size());
-			auto arrayPtr = model.make(llvm_module, this->scope->func, llvm_builder, arrayType);
+			auto arrayPtr = module->make(this->scope->func, builder, arrayType);
 			for(u32_t i = 0; i < arrayElements.size(); i++)
 			{
 				auto elementV = arrayElements.at(i);
-				auto elementP = llvm_builder.CreateConstGEP2_32(arrayType, arrayPtr, 0, i);
-				llvm_builder.CreateStore(elementV, elementP);
+				auto elementP = builder.CreateConstGEP2_32(arrayType, arrayPtr, 0, i);
+				builder.CreateStore(elementV, elementP);
 			}
 			
-			return this->new_expr(arrayPtr);
+			return module->new_expr(arrayPtr);
 		}
 		
 		llvm_expr_t* encode_expr_index_ref(struct ast_expr_index_ref_t* node)
@@ -1147,8 +1083,8 @@ _BeginNamespace(eokas)
 			if(objE == nullptr || keyE == nullptr)
 				return nullptr;
 			
-			auto objV = model.get_value(llvm_builder, objE->value);
-			auto keyV = model.get_value(llvm_builder, keyE->value);
+			auto objV = module->get_value(builder, objE->value);
+			auto keyV = module->get_value(builder, keyE->value);
 			if(!objV->getType()->isPointerTy() || !objV->getType()->getPointerElementType()->isArrayTy())
 			{
 				printf("index-access is not defined on the object.");
@@ -1160,8 +1096,8 @@ _BeginNamespace(eokas)
 				return nullptr;
 			}
 			
-			llvm::Value* ptr = llvm_builder.CreateGEP(objV, {llvm_builder.getInt32(0), keyV});
-			return this->new_expr(ptr);
+			llvm::Value* ptr = builder.CreateGEP(objV, {builder.getInt32(0), keyV});
+			return module->new_expr(ptr);
 		}
 		
 		llvm_expr_t* encode_expr_object_def(struct ast_expr_object_def_t* node)
@@ -1175,7 +1111,7 @@ _BeginNamespace(eokas)
 
 			for (auto& objectMember: node->members)
 			{
-				auto structMember = structTypeDef->getMember(objectMember.first);
+				auto structMember = structTypeDef->get_member(objectMember.first);
 				if(structMember == nullptr)
 				{
 					printf("object member '%s' is not defined in struct.", objectMember.first.cstr());
@@ -1185,8 +1121,8 @@ _BeginNamespace(eokas)
 			}
 			
 			// make object
-			auto structType = structTypeDef->type;
-			llvm::Value* objectValue = model.make(llvm_module, this->scope->func, llvm_builder, structType);
+			auto structType = structTypeDef->handle;
+			llvm::Value* objectValue = module->make(this->scope->func, builder, structType);
 			
 			u32_t index = -1;
 			for (auto& structMember: structTypeDef->members)
@@ -1199,22 +1135,21 @@ _BeginNamespace(eokas)
 					auto memE = this->encode_expr(objectMember->second);
 					if(memE == nullptr)
 						return nullptr;
-					memV = model.get_value(llvm_builder, memE->value);
+					memV = module->get_value(builder, memE->value);
 				}
 				else
 				{
-					auto memT = structMember->type->type;
-					memV = model.get_default_value_by_type(memT);
+					memV = structMember->type->defval;
 				}
 				
 				if(memV)
 				{
-					llvm::Value* memPtr = llvm_builder.CreateStructGEP(structType, objectValue, index, structMember->name.cstr());
-					llvm_builder.CreateStore(memV, memPtr);
+					llvm::Value* memPtr = builder.CreateStructGEP(structType, objectValue, index, structMember->name.cstr());
+					builder.CreateStore(memV, memPtr);
 				}
 			}
 			
-			return this->new_expr(objectValue);
+			return module->new_expr(objectValue);
 		}
 		
 		llvm_expr_t* encode_expr_object_ref(struct ast_expr_object_ref_t* node)
@@ -1223,34 +1158,36 @@ _BeginNamespace(eokas)
 				return nullptr;
 			
 			auto objectE = this->encode_expr(node->obj);
-			auto key = llvm_builder.CreateGlobalString(node->key.cstr());
+			auto key = builder.CreateGlobalString(node->key.cstr());
 			if(objectE == nullptr || key == nullptr)
 				return nullptr;
 			
-			auto objectV = model.get_value(llvm_builder, objectE->value);
+			auto objectV = module->get_value(builder, objectE->value);
 			auto objectT = objectV->getType();
 			if(!(objectT->isPointerTy() && objectT->getPointerElementType()->isStructTy()))
 			{
 				printf("the value is not a object reference.");
 				return nullptr;
 			}
-			auto structTypeIter = this->typemappings.find(objectT->getPointerElementType());
-			if(structTypeIter == this->typemappings.end())
+
+			auto structTypeDef = module->get_type(objectT->getPointerElementType());
+			if(structTypeDef == nullptr)
 			{
 				printf("can not find the type of this value.");
 				return nullptr;
 			}
-			auto structTypeDef = structTypeIter->second;
-			auto index = structTypeDef->getMemberIndex(node->key);
+			
+			
+			auto index = structTypeDef->get_member_index(node->key);
 			if(index == -1)
 			{
 				printf("can not get the index of object member.");
 				return nullptr;
 			}
 
-			auto structType = structTypeDef->type;
-			llvm::Value* value = llvm_builder.CreateStructGEP(structType, objectV, index);
-			return this->new_expr(value);
+			auto structType = structTypeDef->handle;
+			llvm::Value* value = builder.CreateStructGEP(structType, objectV, index);
+			return module->new_expr(value);
 		}
 		
 		bool encode_stmt(struct ast_stmt_t* node)
@@ -1296,7 +1233,7 @@ _BeginNamespace(eokas)
 			
 			const String& name = node->name;
 
-			auto* structTypeDef = this->new_type(name, nullptr);
+			auto* structTypeDef = module->new_type(name, nullptr, nullptr);
 			
 			if(node->base != nullptr)
 			{
@@ -1306,12 +1243,12 @@ _BeginNamespace(eokas)
 				for(const auto& baseMember: baseType->members)
 				{
 					auto& mem = baseMember;
-					if(structTypeDef->getMember(mem->name) != nullptr)
+					if(structTypeDef->get_member(mem->name) != nullptr)
 					{
 						printf("member named '%s' is already exists", mem->name.cstr());
 						return false;
 					}
-					structTypeDef->addMember(mem->name, mem->type);
+					structTypeDef->add_member(mem->name, mem->type);
 				}
 			}
 			
@@ -1320,7 +1257,7 @@ _BeginNamespace(eokas)
 				auto& mem = thisMember.second;
 				
 				const auto& memName = mem->name;
-				if(structTypeDef->getMember(memName) != nullptr)
+				if(structTypeDef->get_member(memName) != nullptr)
 				{
 					printf("member named '%s' is already exists", memName.cstr());
 					return false;
@@ -1330,26 +1267,17 @@ _BeginNamespace(eokas)
 				if(memType == nullptr)
 					return false;
 				
-				structTypeDef->addMember(memName, memType);
+				structTypeDef->add_member(memName, memType);
 			}
 			
-			std::vector<llvm::Type*> memberTypes;
-			for(auto& mem : structTypeDef->members)
-			{
-				memberTypes.push_back(mem->type->type);
-			}
-			String structName = String::format("Type.%s.Struct", name.cstr());
-			auto* structType = llvm::StructType::create(llvm_context);
-			structType->setName(structName.cstr());
-			structType->setBody(memberTypes);
-			structTypeDef->type = structType;
-			
+			structTypeDef->resolve();
 			if(!this->scope->addType(name, structTypeDef))
             {
                 printf("There is a same type named %s in this scope.", name.cstr());
                 return false;
             }
-			this->typemappings[structTypeDef->type] = structTypeDef;
+			
+			module->map_type(structTypeDef->handle, structTypeDef);
 
 			return true;
 		}
@@ -1370,13 +1298,13 @@ _BeginNamespace(eokas)
 				auto* argType = this->encode_type(arg.second);
 				if(argType == nullptr)
 					return false;
-				argTypes.push_back(argType->type);
+				argTypes.push_back(argType->handle);
 			}
 			
-			llvm::FunctionType* procType = llvm::FunctionType::get(retType->type, argTypes, false);
-			llvm::Type* procPtrType = procType->getPointerTo();
-
-			this->scope->addType(node->name, this->new_type(node->name, procPtrType));
+			llvm::FunctionType* procType = llvm::FunctionType::get(retType->handle, argTypes, false);
+			auto handler = procType->getPointerTo();
+			auto defval = llvm::ConstantPointerNull::get(handler);
+			this->scope->addType(node->name, module->new_type(node->name, handler, defval));
 			
 			return true;
 		}
@@ -1394,13 +1322,13 @@ _BeginNamespace(eokas)
 			if(expr == nullptr)
 				return false;
 			
-			auto value = model.get_value(llvm_builder, expr->value);
+			auto value = module->get_value(builder, expr->value);
 			
 			llvm::Type* stype = nullptr;
 			llvm::Type* vtype = value->getType();
 			if(type != nullptr)
 			{
-				stype = type->type;
+				stype = type->handle;
 				do
 				{
 					if(stype == vtype)
@@ -1409,7 +1337,7 @@ _BeginNamespace(eokas)
 						break;
 					if(vtype->isPointerTy() && stype == vtype->getPointerElementType())
 					{
-						stype = type->type = vtype;
+						stype = type->handle = vtype;
 						break;
 					}
 					
@@ -1430,12 +1358,12 @@ _BeginNamespace(eokas)
 			}
 			// TODO: 校验类型合法性, 值类型是否遵循标记类型
 			
-			llvm::Value* symbol = llvm_builder.CreateAlloca(stype);
-			llvm_builder.CreateStore(value, symbol);
-			symbol = model.ref_value(llvm_builder, symbol);
+			llvm::Value* symbol = builder.CreateAlloca(stype);
+			builder.CreateStore(value, symbol);
+			symbol = module->ref_value(builder, symbol);
 			symbol->setName(node->name.cstr());
 			
-			auto symbolE = this->new_expr(symbol, expr->type);
+			auto symbolE = module->new_expr(symbol, expr->type);
 			if(!scope->addSymbol(node->name, symbolE))
             {
                 printf("There is a symbol named %s in this scope.", node->name.cstr());
@@ -1453,7 +1381,7 @@ _BeginNamespace(eokas)
 			if(this->breakPoint == nullptr)
 				return false;
 			
-			llvm_builder.CreateBr(this->breakPoint);
+			builder.CreateBr(this->breakPoint);
 			
 			return true;
 		}
@@ -1466,7 +1394,7 @@ _BeginNamespace(eokas)
 			if(this->continuePoint == nullptr)
 				return false;
 			
-			llvm_builder.CreateBr(this->continuePoint);
+			builder.CreateBr(this->continuePoint);
 			
 			return true;
 		}
@@ -1486,7 +1414,7 @@ _BeginNamespace(eokas)
 					return false;
 				}
 				
-				llvm_builder.CreateRetVoid();
+				builder.CreateRetVoid();
 				return true;
 			}
 			
@@ -1496,7 +1424,7 @@ _BeginNamespace(eokas)
 				printf("invalid ret value.\n");
 				return false;
 			}
-			auto value = model.get_value(llvm_builder, expr->value);
+			auto value = module->get_value(builder, expr->value);
 			auto actureRetType = value->getType();
 			if(actureRetType != expectedRetType && !actureRetType->canLosslesslyBitCastTo(expectedRetType))
 			{
@@ -1504,7 +1432,7 @@ _BeginNamespace(eokas)
 				return false;
 			}
 			
-			llvm_builder.CreateRet(value);
+			builder.CreateRet(value);
 			
 			return true;
 		}
@@ -1514,26 +1442,26 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			llvm::BasicBlock* if_begin = llvm::BasicBlock::Create(llvm_context, "if.begin", this->scope->func);
-			llvm::BasicBlock* if_true = llvm::BasicBlock::Create(llvm_context, "if.true", this->scope->func);
-			llvm::BasicBlock* if_false = llvm::BasicBlock::Create(llvm_context, "if.false", this->scope->func);
-			llvm::BasicBlock* if_end = llvm::BasicBlock::Create(llvm_context, "if.end", this->scope->func);
+			llvm::BasicBlock* if_begin = llvm::BasicBlock::Create(context, "if.begin", this->scope->func);
+			llvm::BasicBlock* if_true = llvm::BasicBlock::Create(context, "if.true", this->scope->func);
+			llvm::BasicBlock* if_false = llvm::BasicBlock::Create(context, "if.false", this->scope->func);
+			llvm::BasicBlock* if_end = llvm::BasicBlock::Create(context, "if.end", this->scope->func);
 			
-			llvm_builder.CreateBr(if_begin);
-			llvm_builder.SetInsertPoint(if_begin);
+			builder.CreateBr(if_begin);
+			builder.SetInsertPoint(if_begin);
 			auto condE = this->encode_expr(node->cond);
 			if(condE == nullptr)
 				return false;
-			auto condV = model.get_value(llvm_builder, condE->value);
+			auto condV = module->get_value(builder, condE->value);
 			if(!condV->getType()->isIntegerTy(1))
 			{
 				printf("if.cond need a bool value.\n");
 				return false;
 			}
-			llvm_builder.CreateCondBr(condV, if_true, if_false);
+			builder.CreateCondBr(condV, if_true, if_false);
 			
 			// if-true
-			llvm_builder.SetInsertPoint(if_true);
+			builder.SetInsertPoint(if_true);
 			if(node->branch_true != nullptr)
 			{
 				if(!this->encode_stmt(node->branch_true))
@@ -1541,16 +1469,16 @@ _BeginNamespace(eokas)
 				auto& lastOp = if_true->back();
 				if(!lastOp.isTerminator())
 				{
-					llvm_builder.CreateBr(if_end);
+					builder.CreateBr(if_end);
 				}
 			}
 			else
 			{
-				llvm_builder.CreateBr(if_end);
+				builder.CreateBr(if_end);
 			}
 			
 			// if-false
-			llvm_builder.SetInsertPoint(if_false);
+			builder.SetInsertPoint(if_false);
 			if(node->branch_false != nullptr)
 			{
 				if(!this->encode_stmt(node->branch_false))
@@ -1558,15 +1486,15 @@ _BeginNamespace(eokas)
 				auto& lastOp = if_false->back();
 				if(!lastOp.isTerminator())
 				{
-					llvm_builder.CreateBr(if_end);
+					builder.CreateBr(if_end);
 				}
 			}
 			else
 			{
-				llvm_builder.CreateBr(if_end);
+				builder.CreateBr(if_end);
 			}
 			
-			llvm_builder.SetInsertPoint(if_end);
+			builder.SetInsertPoint(if_end);
 			
 			return true;
 		}
@@ -1578,36 +1506,36 @@ _BeginNamespace(eokas)
 			
 			this->pushScope();
 			
-			llvm::BasicBlock* for_init = llvm::BasicBlock::Create(llvm_context, "for.init", this->scope->func);
-			llvm::BasicBlock* for_test = llvm::BasicBlock::Create(llvm_context, "for.test", this->scope->func);
-			llvm::BasicBlock* for_step = llvm::BasicBlock::Create(llvm_context, "for.step", this->scope->func);
-			llvm::BasicBlock* for_body = llvm::BasicBlock::Create(llvm_context, "for.body", this->scope->func);
-			llvm::BasicBlock* for_end = llvm::BasicBlock::Create(llvm_context, "for.end", this->scope->func);
+			llvm::BasicBlock* for_init = llvm::BasicBlock::Create(context, "for.init", this->scope->func);
+			llvm::BasicBlock* for_test = llvm::BasicBlock::Create(context, "for.test", this->scope->func);
+			llvm::BasicBlock* for_step = llvm::BasicBlock::Create(context, "for.step", this->scope->func);
+			llvm::BasicBlock* for_body = llvm::BasicBlock::Create(context, "for.body", this->scope->func);
+			llvm::BasicBlock* for_end = llvm::BasicBlock::Create(context, "for.end", this->scope->func);
 			
 			auto oldContinuePoint = this->continuePoint;
 			auto oldBreakPoint = this->breakPoint;
 			this->continuePoint = for_step;
 			this->breakPoint = for_end;
 			
-			llvm_builder.CreateBr(for_init);
-			llvm_builder.SetInsertPoint(for_init);
+			builder.CreateBr(for_init);
+			builder.SetInsertPoint(for_init);
 			if(!this->encode_stmt(node->init))
 				return false;
-			llvm_builder.CreateBr(for_test);
+			builder.CreateBr(for_test);
 			
-			llvm_builder.SetInsertPoint(for_test);
+			builder.SetInsertPoint(for_test);
 			auto condE = this->encode_expr(node->cond);
 			if(condE == nullptr)
 				return false;
-			auto condV = model.get_value(llvm_builder, condE->value);
+			auto condV = module->get_value(builder, condE->value);
 			if(!condV->getType()->isIntegerTy(1))
 			{
 				printf("for.cond need a bool value.\n");
 				return false;
 			}
-			llvm_builder.CreateCondBr(condV, for_body, for_end);
+			builder.CreateCondBr(condV, for_body, for_end);
 			
-			llvm_builder.SetInsertPoint(for_body);
+			builder.SetInsertPoint(for_body);
 			if(node->body != nullptr)
 			{
 				if(!this->encode_stmt(node->body))
@@ -1615,20 +1543,20 @@ _BeginNamespace(eokas)
 				auto& lastOp = for_body->back();
 				if(!lastOp.isTerminator())
 				{
-					llvm_builder.CreateBr(for_step);
+					builder.CreateBr(for_step);
 				}
 			}
 			else
 			{
-				llvm_builder.CreateBr(for_step);
+				builder.CreateBr(for_step);
 			}
 			
-			llvm_builder.SetInsertPoint(for_step);
+			builder.SetInsertPoint(for_step);
 			if(!this->encode_stmt(node->step))
 				return false;
-			llvm_builder.CreateBr(for_test);
+			builder.CreateBr(for_test);
 			
-			llvm_builder.SetInsertPoint(for_end);
+			builder.SetInsertPoint(for_end);
 			
 			this->continuePoint = oldContinuePoint;
 			this->breakPoint = oldBreakPoint;
@@ -1666,9 +1594,9 @@ _BeginNamespace(eokas)
 			if(leftE == nullptr || rightE == nullptr)
 				return false;
 			
-			auto ptr = model.ref_value(llvm_builder, leftE->value);
-			auto val = model.get_value(llvm_builder, rightE->value);
-			llvm_builder.CreateStore(val, ptr);
+			auto ptr = module->ref_value(builder, leftE->value);
+			auto val = module->get_value(builder, rightE->value);
+			builder.CreateStore(val, ptr);
 			
 			return true;
 		}
@@ -1685,63 +1613,10 @@ _BeginNamespace(eokas)
 		}
 	};
 	
-	llvm::Module* llvm_encode(llvm::LLVMContext& context, ast_module_t* module)
+	llvm_module_t* llvm_encode(llvm::LLVMContext& context, ast_module_t* module)
 	{
 		llvm_coder_t coder(context);
-		llvm::Module* llvm_module = coder.encode(module);
-		return llvm_module;
+		return coder.encode(module);
 	}
 	
-	llvm::Module* llvm_encode_test(llvm::LLVMContext& context, ast_module_t* ast)
-	{
-		llvm_model_t model(context);
-		auto* module = new llvm::Module("test", context);
-		model.declare_cfunc_sprintf(module);
-		model.declare_cfunc_puts(module);
-		model.declare_cfunc_printf(module);
-		model.declare_cfunc_malloc(module);
-		model.declare_cfunc_free(module);
-
-		// test
-		llvm::FunctionType* testT = llvm::FunctionType::get(model.type_i32, {model.type_i32}, false);
-		auto testV = llvm::Function::Create(testT, llvm::Function::ExternalLinkage, "test", module);
-		{
-			llvm::IRBuilder<> builder(context);
-			llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", testV);
-			builder.SetInsertPoint(entry);
-			
-			auto arg0 = testV->getArg(0);
-			
-			llvm::BasicBlock* if_true = llvm::BasicBlock::Create(context, "if.true", testV);
-			llvm::BasicBlock* if_false = llvm::BasicBlock::Create(context, "if.false", testV);
-
-			auto cond = builder.CreateICmpSLE(arg0, builder.getInt32(0));
-			builder.CreateCondBr(cond, if_true, if_false);
-			
-			builder.SetInsertPoint(if_true);
-			builder.CreateRet(builder.getInt32(1));
-			
-			builder.SetInsertPoint(if_false);
-			auto _0 = builder.CreateSub(arg0, builder.getInt32(1));
-			auto _1 = builder.CreateCall(testV, {_0});
-			auto _2 = builder.CreateMul(arg0, _1);
-			builder.CreateRet(_2);
-		}
-		
-		// main
-		llvm::FunctionType* mainT = llvm::FunctionType::get(model.type_i32, false);
-		auto mainV = llvm::Function::Create(mainT, llvm::Function::ExternalLinkage, "main", module);
-		{
-			llvm::IRBuilder<> builder(context);
-			llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", mainV);
-			builder.SetInsertPoint(entry);
-			
-			auto ret = builder.CreateCall(testV, builder.getInt32(10));
-			
-			model.print(module, mainV, builder, {ret});
-			builder.CreateRet(builder.getInt32(0));
-		}
-		
-		return module;
-	}
 _EndNamespace(eokas)

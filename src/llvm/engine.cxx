@@ -30,17 +30,17 @@ _BeginNamespace(eokas)
 		
 		llvm::LLVMContext context;
 		
-		llvm::Module* module = llvm_encode(context, m);
+		llvm_module_t* module = llvm_encode(context, m);
 		if(module == nullptr)
 			return false;
 		
-		module->print(llvm::errs(), nullptr);
+		module->module.print(llvm::errs(), nullptr);
 		
-		auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(module)).setEngineKind(llvm::EngineKind::JIT).create();
+		auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(&module->module)).setEngineKind(llvm::EngineKind::JIT).create();
 		
 		ee->finalizeObject();
 		
-		llvm::Function* func = module->getFunction("main");
+		llvm::Function* func = module->module.getFunction("main");
 		if(func == nullptr)
 			return false;
 		
@@ -49,6 +49,8 @@ _BeginNamespace(eokas)
 		auto retval = ee->runFunction(func, args);
 		printf("\nRET: %s \n", retval.IntVal.toString(10, true).c_str());
 		printf("---------------- JIT END ----------------\n");
+		
+		_DeletePointer(module);
 		
 		return true;
 	}
@@ -63,12 +65,12 @@ _BeginNamespace(eokas)
 		
 		llvm::LLVMContext context;
 		
-		llvm::Module* module = llvm_encode(context, m);
+		llvm_module_t* module = llvm_encode(context, m);
 		if(module == nullptr)
 			return false;
 		
 		// DUMP CODE
-		module->print(llvm::errs(), nullptr);
+		module->module.print(llvm::errs(), nullptr);
 		
 		auto targetTriple = llvm::sys::getDefaultTargetTriple();
 		std::string error;
@@ -80,8 +82,8 @@ _BeginNamespace(eokas)
 		auto RM = llvm::Optional<llvm::Reloc::Model>();
 		auto targetMachine = target->createTargetMachine(targetTriple, CPU, features, opt, RM);
 		
-		module->setDataLayout(targetMachine->createDataLayout());
-		module->setTargetTriple(targetTriple);
+		module->module.setDataLayout(targetMachine->createDataLayout());
+		module->module.setTargetTriple(targetTriple);
 		
 		auto filename = "output.o";
 		std::error_code EC;
@@ -100,8 +102,10 @@ _BeginNamespace(eokas)
 			return false;
 		}
 
-		pass.run(*module);
+		pass.run(module->module);
 		dest.flush();
+		
+		_DeletePointer(module);
 		
 		return true;
 	}

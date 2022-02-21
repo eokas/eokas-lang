@@ -14,6 +14,9 @@ namespace llvm
 }
 
 _BeginNamespace(eokas)
+
+struct llvm_module_t;
+
 _EndNamespace(eokas)
 
 #endif//_EOKAS_LLVM_HEADER_H_

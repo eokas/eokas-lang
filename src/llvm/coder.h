@@ -5,9 +5,7 @@
 
 _BeginNamespace(eokas)
 	
-	llvm::Module* llvm_encode(llvm::LLVMContext& context, ast_module_t* module);
-	
-	llvm::Module* llvm_encode_test(llvm::LLVMContext& context, ast_module_t* module);
+	llvm_module_t* llvm_encode(llvm::LLVMContext& context, ast_module_t* module);
 
 _EndNamespace(eokas)
 
