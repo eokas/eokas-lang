@@ -130,7 +130,7 @@ _BeginNamespace(eokas)
 		{
 			if(node == nullptr)
 			{
-				printf("type node is null. \n");
+				printf("Type node is null. \n");
 				return nullptr;
 			}
 			
@@ -143,7 +143,7 @@ _BeginNamespace(eokas)
 		{
 			if(node == nullptr)
 			{
-				printf("type node is null. \n");
+				printf("Type node is null. \n");
 				return nullptr;
 			}
 			
@@ -218,7 +218,7 @@ _BeginNamespace(eokas)
 				return nullptr;
 			if(!condE->type->isIntegerTy(1))
 			{
-				printf("condition must be a bool value.\n");
+				printf("Condition must be a bool value.\n");
 				return nullptr;
 			}
 			auto condV = module->get_value(builder, condE->value);
@@ -239,7 +239,7 @@ _BeginNamespace(eokas)
 			builder.SetInsertPoint(trinary_end);
 			if(trueE->type != falseE->type)
 			{
-				printf("type of true-branch must be the same as false-branch.\n");
+				printf("Type of true-branch must be the same as false-branch.\n");
 				return nullptr;
 			}
 			
@@ -285,7 +285,7 @@ _BeginNamespace(eokas)
 					}
 					else
 					{
-						printf("complex cast is not supported.\n");
+						printf("Complex cast is not supported.\n");
 						return nullptr;
 					}
 				}
@@ -407,7 +407,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateFCmpOEQ(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -437,7 +437,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateFCmpONE(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -467,7 +467,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateFCmpOLE(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -497,7 +497,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateFCmpOGE(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -527,7 +527,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateFCmpOLT(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -557,7 +557,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateFCmpOGT(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -582,7 +582,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateFAdd(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -607,7 +607,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateFSub(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -632,7 +632,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateFMul(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -657,7 +657,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateFDiv(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -682,7 +682,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateFRem(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -694,7 +694,7 @@ _BeginNamespace(eokas)
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
 				return module->new_expr(builder.CreateAnd(lhs, rhs));
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -706,7 +706,7 @@ _BeginNamespace(eokas)
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
 				return module->new_expr(builder.CreateOr(lhs, rhs));
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -718,7 +718,7 @@ _BeginNamespace(eokas)
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
 				return module->new_expr(builder.CreateXor(lhs, rhs));
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -730,7 +730,7 @@ _BeginNamespace(eokas)
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
 				return module->new_expr(builder.CreateShl(lhs, rhs));
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -747,7 +747,7 @@ _BeginNamespace(eokas)
 				return module->new_expr(builder.CreateLShr(lhs, rhs));
 			}
 			
-			printf("Type of LHS or RHS is invalid.");
+			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -787,7 +787,7 @@ _BeginNamespace(eokas)
 			if(rtype->isFloatingPointTy())
 				return module->new_expr(builder.CreateFNeg(rhs));
 			
-			printf("Type of RHS is invalid.");
+			printf("Type of RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -798,7 +798,7 @@ _BeginNamespace(eokas)
 			if(rtype->isIntegerTy() && rtype->getIntegerBitWidth() == 1)
 				return module->new_expr(builder.CreateNot(rhs));
 			
-			printf("Type of RHS is invalid.");
+			printf("Type of RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -810,7 +810,7 @@ _BeginNamespace(eokas)
 			{
 				return module->new_expr(builder.CreateXor(rhs, llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF))));
 			}
-			printf("Type of RHS is invalid.");
+			printf("Type of RHS is invalid.\n");
 			return nullptr;
 		}
 		
@@ -858,7 +858,7 @@ _BeginNamespace(eokas)
 			auto symbol = this->scope->getSymbol(node->name, true);
 			if(symbol == nullptr)
 			{
-				printf("symbol '%s' is undefined.\n", node->name.cstr());
+				printf("Symbol '%s' is undefined.\n", node->name.cstr());
 				return nullptr;
 			}
 
@@ -923,7 +923,7 @@ _BeginNamespace(eokas)
 					auto expr = module->new_expr(&arg);
                     if(!this->scope->addSymbol(name, expr))
                     {
-                        printf("The symbol name '%s' is already existed.", name);
+                        printf("The symbol name '%s' is already existed.\n", name);
                         return nullptr;
                     }
 				}
@@ -957,7 +957,7 @@ _BeginNamespace(eokas)
                     builder.CreateStore(val, ptr);
                     if(!this->scope->addSymbol(name, module->new_expr(val)))
                     {
-                        printf("The symbol name '%s' is already existed.", name.cstr());
+                        printf("The symbol name '%s' is already existed.\n", name.cstr());
                         return nullptr;
                     }
                 }
@@ -995,7 +995,7 @@ _BeginNamespace(eokas)
 			}
 			else
 			{
-				printf("invalid function type.");
+				printf("Invalid function type.\n");
 				return nullptr;
 			}
 			
@@ -1008,7 +1008,7 @@ _BeginNamespace(eokas)
 					return nullptr;
 				if(paramE->type != paramT && !paramE->type->canLosslesslyBitCastTo(paramT))
 				{
-					printf("the type of param[%d] can't cast to the param type of function.\n", i);
+					printf("The type of param[%d] can't cast to the param type of function.\n", i);
 					return nullptr;
 				}
 				llvm::Value* paramV = paramE->value;
@@ -1051,7 +1051,7 @@ _BeginNamespace(eokas)
 				
 				else if(arrayElementType != elementT)
 				{
-					printf("the type of some elements is not same as others.");
+					printf("The type of some elements is not same as others.\n");
 					return nullptr;
 				}
 				
@@ -1087,12 +1087,12 @@ _BeginNamespace(eokas)
 			auto keyV = module->get_value(builder, keyE->value);
 			if(!objV->getType()->isPointerTy() || !objV->getType()->getPointerElementType()->isArrayTy())
 			{
-				printf("index-access is not defined on the object.");
+				printf("Index-Access is not defined on the object.\n");
 				return nullptr;
 			}
 			if(!keyV->getType()->isIntegerTy())
 			{
-				printf("the type of index is invalid.");
+				printf("The type of index is invalid.\n");
 				return nullptr;
 			}
 			
@@ -1105,29 +1105,27 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			auto* structTypeDef = this->encode_type(node->type);
-			if(structTypeDef == nullptr)
+			auto* structType = this->encode_type(node->type);
+			if(structType == nullptr)
 				return nullptr;
 
 			for (auto& objectMember: node->members)
 			{
-				auto structMember = structTypeDef->get_member(objectMember.first);
+				auto structMember = structType->get_member(objectMember.first);
 				if(structMember == nullptr)
 				{
-					printf("object member '%s' is not defined in struct.", objectMember.first.cstr());
+					printf("Object member '%s' is not defined in struct.\n", objectMember.first.cstr());
 					return nullptr;
 				}
 				// todo: check object-member-type equals to struct-member-type.
 			}
 			
-			// make object
-			auto structType = structTypeDef->handle;
-			llvm::Value* objectValue = module->make(this->scope->func, builder, structType);
+			// make object instance
+			llvm::Value* instance = module->make(this->scope->func, builder, structType->handle);
 			
-			u32_t index = -1;
-			for (auto& structMember: structTypeDef->members)
+			for(u32_t index = 0; index < structType->members.size(); index++)
 			{
-				index += 1;
+				auto& structMember = structType->members.at(index);
 				auto objectMember = node->members.find(structMember->name);
 				llvm::Value* memV = nullptr;
 				if(objectMember != node->members.end())
@@ -1139,17 +1137,18 @@ _BeginNamespace(eokas)
 				}
 				else
 				{
-					memV = structMember->type->defval;
+					memV = structMember->value != nullptr ? structMember->value->value : structMember->type->defval;
 				}
 				
 				if(memV)
 				{
-					llvm::Value* memPtr = builder.CreateStructGEP(structType, objectValue, index, structMember->name.cstr());
-					builder.CreateStore(memV, memPtr);
+					String memN = String::format("this.%s", structMember->name.cstr());
+					llvm::Value* memP = builder.CreateStructGEP(structType->handle, instance, index, memN.cstr());
+					builder.CreateStore(memV, memP);
 				}
 			}
 			
-			return module->new_expr(objectValue);
+			return module->new_expr(instance);
 		}
 		
 		llvm_expr_t* encode_expr_object_ref(struct ast_expr_object_ref_t* node)
@@ -1158,6 +1157,13 @@ _BeginNamespace(eokas)
 				return nullptr;
 			
 			auto objectE = this->encode_expr(node->obj);
+			
+			// Maybe a static-member
+			if(objectE == nullptr && node->obj->category == ast_node_category_t::expr_symbol_ref)
+			{
+				auto typeSymbol = dynamic_cast<ast_expr_symbol_ref_t*>(node->obj)->name;
+			}
+			
 			auto key = builder.CreateGlobalString(node->key.cstr());
 			if(objectE == nullptr || key == nullptr)
 				return nullptr;
@@ -1166,14 +1172,14 @@ _BeginNamespace(eokas)
 			auto objectT = objectV->getType();
 			if(!(objectT->isPointerTy() && objectT->getPointerElementType()->isStructTy()))
 			{
-				printf("the value is not a object reference.");
+				printf("The value is not a object reference.\n");
 				return nullptr;
 			}
 
 			auto structTypeDef = module->get_type(objectT->getPointerElementType());
 			if(structTypeDef == nullptr)
 			{
-				printf("can not find the type of this value.");
+				printf("Can't find the type of this value.\n");
 				return nullptr;
 			}
 			
@@ -1181,7 +1187,7 @@ _BeginNamespace(eokas)
 			auto index = structTypeDef->get_member_index(node->key);
 			if(index == -1)
 			{
-				printf("can not get the index of object member.");
+				printf("The object doesn't have a member named '%s'. \n", node->key.cstr());
 				return nullptr;
 			}
 
@@ -1199,6 +1205,8 @@ _BeginNamespace(eokas)
 			{
 				case ast_node_category_t::stmt_struct_def:
 					return this->encode_stmt_struct_def(dynamic_cast<ast_stmt_struct_def_t*>(node));
+				case ast_node_category_t::stmt_enum_def:
+					return this->encode_stmt_enum_def(dynamic_cast<ast_stmt_enum_def_t*>(node));
 				case ast_node_category_t::stmt_proc_def:
 					return this->encode_stmt_proc_def(dynamic_cast<ast_stmt_proc_def_t*>(node));
 				case ast_node_category_t::stmt_symbol_def:
@@ -1231,54 +1239,150 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			const String& name = node->name;
-
-			auto* structTypeDef = module->new_type(name, nullptr, nullptr);
+			const String staticTypePrefix = "$_Static";
+			const String staticMemberName = "$_static";
+			
+			auto* thisStaticType = module->new_type(staticTypePrefix + node->name, nullptr, nullptr);
+			auto* thisInstanceType = module->new_type(node->name, nullptr, nullptr);
 			
 			if(node->base != nullptr)
 			{
-				auto baseType = this->encode_type(node->base);
-				if(baseType == nullptr)
+				auto baseInstanceType = this->encode_type(node->base);
+				if(baseInstanceType == nullptr)
 					return false;
-				for(const auto& baseMember: baseType->members)
+				auto baseStaticType = this->scope->getType(staticTypePrefix + baseInstanceType->name, true);
+				if(baseStaticType == nullptr)
+					return false;
+				
+				for(const auto& baseStaticMember : baseStaticType->members)
 				{
-					auto& mem = baseMember;
-					if(structTypeDef->get_member(mem->name) != nullptr)
+					if(thisStaticType->get_member(baseStaticMember->name) != nullptr)
 					{
-						printf("member named '%s' is already exists", mem->name.cstr());
+						printf("The member named '%s' is already exists. \n", baseStaticMember->name.cstr());
 						return false;
 					}
-					structTypeDef->add_member(mem->name, mem->type);
+					thisStaticType->add_member(baseStaticMember);
+				}
+				
+				for(const auto& baseInstanceMember: baseInstanceType->members)
+				{
+					if(thisInstanceType->get_member(baseInstanceMember->name) != nullptr)
+					{
+						printf("The member named '%s' is already exists.\n", baseInstanceMember->name.cstr());
+						return false;
+					}
+					
+					thisInstanceType->add_member(baseInstanceMember);
 				}
 			}
 			
 			for (const auto& thisMember: node->members)
 			{
 				auto& mem = thisMember.second;
-				
-				const auto& memName = mem->name;
-				if(structTypeDef->get_member(memName) != nullptr)
+				if(mem->isStatic)
 				{
-					printf("member named '%s' is already exists", memName.cstr());
-					return false;
+					const String& memName = mem->name;
+					if(thisStaticType->get_member(memName) != nullptr)
+					{
+						printf("The member named '%s' is already exists.\n", memName.cstr());
+						return false;
+					}
+					
+					const auto& memType = this->encode_type(mem->type);
+					if(memType == nullptr)
+						return false;
+					
+					const auto& memValue = this->encode_expr(mem->value);
+					if(memValue == nullptr)
+						return false;
+					
+					thisStaticType->add_member(memName, memType, memValue);
 				}
-				
-				const auto& memType = this->encode_type(mem->type);
-				if(memType == nullptr)
-					return false;
-				
-				structTypeDef->add_member(memName, memType);
+				else
+				{
+					const String& memName = mem->name;
+					if(thisInstanceType->get_member(memName) != nullptr)
+					{
+						printf("The member named '%s' is already exists.\n", memName.cstr());
+						return false;
+					}
+					
+					const auto& memType = this->encode_type(mem->type);
+					if(memType == nullptr)
+						return false;
+					
+					const auto& memValue = this->encode_expr(mem->value);
+					if(memValue == nullptr)
+						return false;
+					
+					thisInstanceType->add_member(memName, memType, memValue);
+				}
 			}
 			
-			structTypeDef->resolve();
-			if(!this->scope->addType(name, structTypeDef))
-            {
-                printf("There is a same type named %s in this scope.", name.cstr());
-                return false;
-            }
+			thisStaticType->resolve();
+			thisInstanceType->resolve();
+			if(!this->scope->addType(thisStaticType->name, thisStaticType) ||
+			   !this->scope->addType(thisInstanceType->name, thisInstanceType))
+			{
+				printf("There is a same type named %s in this scope.\n", thisInstanceType->name.cstr());
+				return false;
+			}
 			
-			module->map_type(structTypeDef->handle, structTypeDef);
+			module->map_type(thisStaticType->handle, thisStaticType);
+			module->map_type(thisInstanceType->handle, thisInstanceType);
+			
+			// make static object
+			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticType->handle);
+			llvm_expr_t* staticE = module->new_expr(staticV);
 
+			for(u32_t index = 0; index < thisStaticType->members.size(); index++)
+			{
+				auto& mem = thisStaticType->members.at(index);
+				auto& memV = mem->value != nullptr ? mem->value->value : mem->type->defval;
+				
+				if(memV != nullptr)
+				{
+					String memN = String::format("%s.%s", thisInstanceType->name.cstr(), mem->name.cstr());
+					llvm::Value* memP = builder.CreateStructGEP(thisStaticType->handle, staticV, index, memN.cstr());
+					builder.CreateStore(memV, memP);
+				}
+			}
+			
+			if(!this->scope->addSymbol(thisInstanceType->name, staticE))
+			{
+				printf("There is a same symbol named %s in this scope.\n", thisInstanceType->name.cstr());
+				return false;
+			}
+
+			return true;
+		}
+		
+		bool encode_stmt_enum_def(struct ast_stmt_enum_def_t* node)
+		{
+			if(node == nullptr)
+				return false;
+			
+			const String& name = node->name;
+			
+			auto enumType = module->new_type(name, nullptr, nullptr);
+			enumType->set_layout(llvm_type_t::layout_t::Overlapped);
+			
+			for(const auto& member : node->members)
+			{
+				const String& memName = member.first;
+				auto memValue = module->new_expr(builder.getInt32(member.second));
+				enumType->add_member(memName, module->type_i32, memValue);
+			}
+			
+			enumType->resolve();
+			if(!this->scope->addType(name, enumType))
+			{
+				printf("There is a same type named %s in this scope.\n", name.cstr());
+				return false;
+			}
+			
+			module->map_type(enumType->handle, enumType);
+			
 			return true;
 		}
 		
@@ -1341,7 +1445,7 @@ _BeginNamespace(eokas)
 						break;
 					}
 					
-					printf("type of value can not cast to the type of symbol.\n");
+					printf("Type of value can not cast to the type of symbol.\n");
 					return false;
 				}
 				while(false);
@@ -1353,7 +1457,7 @@ _BeginNamespace(eokas)
 			
 			if(stype->isVoidTy())
 			{
-				printf("void type can't assign to a symbol.");
+				printf("Void-Type can't assign to a symbol.\n");
 				return false;
 			}
 			// TODO: 校验类型合法性, 值类型是否遵循标记类型
@@ -1366,7 +1470,7 @@ _BeginNamespace(eokas)
 			auto symbolE = module->new_expr(symbol, expr->type);
 			if(!scope->addSymbol(node->name, symbolE))
             {
-                printf("There is a symbol named %s in this scope.", node->name.cstr());
+                printf("There is a symbol named %s in this scope.\n", node->name.cstr());
                 return false;
             }
 			
@@ -1410,7 +1514,7 @@ _BeginNamespace(eokas)
 			{
 				if(!expectedRetType->isVoidTy())
 				{
-					printf("the function must return a value.\n");
+					printf("The function must return a value.\n");
 					return false;
 				}
 				
@@ -1421,14 +1525,14 @@ _BeginNamespace(eokas)
 			auto expr = this->encode_expr(node->value);
 			if(expr == nullptr)
 			{
-				printf("invalid ret value.\n");
+				printf("Invalid ret value.\n");
 				return false;
 			}
 			auto value = module->get_value(builder, expr->value);
 			auto actureRetType = value->getType();
 			if(actureRetType != expectedRetType && !actureRetType->canLosslesslyBitCastTo(expectedRetType))
 			{
-				printf("the type of return value can't cast to return type of function.\n");
+				printf("The type of return value can't cast to return type of function.\n");
 				return false;
 			}
 			
@@ -1455,7 +1559,7 @@ _BeginNamespace(eokas)
 			auto condV = module->get_value(builder, condE->value);
 			if(!condV->getType()->isIntegerTy(1))
 			{
-				printf("if.cond need a bool value.\n");
+				printf("The label 'if.cond' need a bool value.\n");
 				return false;
 			}
 			builder.CreateCondBr(condV, if_true, if_false);
@@ -1530,7 +1634,7 @@ _BeginNamespace(eokas)
 			auto condV = module->get_value(builder, condE->value);
 			if(!condV->getType()->isIntegerTy(1))
 			{
-				printf("for.cond need a bool value.\n");
+				printf("The label 'for.cond' need a bool value.\n");
 				return false;
 			}
 			builder.CreateCondBr(condV, for_body, for_end);

@@ -103,6 +103,7 @@ _BeginNamespace(eokas)
 	llvm_type_t::llvm_type_t(llvm::LLVMContext& context, const String& name, llvm::Type* handle, llvm::Value* defval)
 		:context(context)
 		,name(name)
+		,layout(layout_t::Sequential)
 		,members()
 		,handle(handle)
 		,defval(defval)
@@ -114,14 +115,25 @@ _BeginNamespace(eokas)
 		_DeleteList(this->members);
 	}
 	
-	llvm_type_t::member_t* llvm_type_t::add_member(const String& name, llvm_type_t* type)
+	void llvm_type_t::set_layout(layout_t layout)
+	{
+		this->layout = layout;
+	}
+	
+	llvm_type_t::member_t* llvm_type_t::add_member(const String& name, llvm_type_t* type, llvm_expr_t* value)
 	{
 		auto* m = new member_t();
 		m->name = name;
 		m->type = type;
+		m->value = value;
 		this->members.push_back(m);
 		
 		return m;
+	}
+	
+	llvm_type_t::member_t* llvm_type_t::add_member(const member_t* other)
+	{
+		return this->add_member(other->name, other->type, other->value);
 	}
 	
 	llvm_type_t::member_t* llvm_type_t::get_member(const String& name) const
@@ -157,10 +169,31 @@ _BeginNamespace(eokas)
 		{
 			llvm::StructType* type = llvm::StructType::create(context, this->name.cstr());
 			std::vector<llvm::Type*> body;
-			for (auto& member: this->members)
+			if(this->layout == layout_t::Sequential)
 			{
-				member->type->resolve();
-				body.push_back(member->type->handle);
+				for (auto& member: this->members)
+				{
+					member->type->resolve();
+					body.push_back(member->type->handle);
+				}
+			}
+			else if(this->layout == layout_t::Overlapped)
+			{
+				llvm::Type* biggestType = nullptr;
+				for (auto& member: this->members)
+				{
+					member->type->resolve();
+					auto memT = member->type->handle;
+					if(biggestType == nullptr ||
+						llvm::ConstantExpr::getSizeOf(biggestType) < llvm::ConstantExpr::getSizeOf(memT))
+					{
+						biggestType = memT;
+					}
+				}
+				if(biggestType != nullptr)
+				{
+					body.push_back(biggestType);
+				}
 			}
 			type->setBody(body);
 			
@@ -234,7 +267,7 @@ _BeginNamespace(eokas)
 		type_i8_ref->ref(type_i8);
 		
 		type_string = this->new_type("string", nullptr, nullptr);
-		type_string->add_member("data", type_i8_ref);
+		type_string->add_member("data", type_i8_ref, this->new_expr(type_i8_ref->defval));
 		type_string->resolve();
 		
 		type_string_ref = this->new_type("ref<string>", nullptr, nullptr);

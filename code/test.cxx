@@ -1,5 +1,12 @@
 
-int recursive(int n) {
-	if(n <= 0) return 1;
-	else return n * recursive(n - 1);
+enum class AXX {
+	One,
+	Two,
+	Three
+};
+
+void foo()
+{
+	AXX a = AXX::Three;
+	AXX b = AXX::Three;
 }

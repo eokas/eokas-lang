@@ -881,7 +881,7 @@ _BeginNamespace(eokas)
 		node->name = this->token().value;
 		this->next_token();
 		
-		// : schema_ref
+		// : base
 		if(this->check_token(token_t::Colon, false))
 		{
 			node->base = this->parse_type_ref(node);
@@ -920,14 +920,29 @@ _BeginNamespace(eokas)
 	}
 	
 	/**
-	 * struct_member := ID : type;
+	 * struct_member := ['static'] ('var' | 'val') ID : type [ '=' expr ] ;
 	*/
 	ast_stmt_struct_member_t* parser_impl_t::parse_stmt_struct_member(ast_node_t* p)
 	{
 		auto* node = factory->create_stmt_struct_member(p);
 		
-		this->next_token(); // ignore 'var' | 'val'
+		// [static]
+		node->isStatic = this->check_token(token_t::Static, false);
 		
+		// (val | var)
+		switch(this->token().type)
+		{
+			case token_t::Var:
+				node->isConst = false; break;
+			case token_t::Val:
+				node->isConst = true; break;
+			default:
+				this->error_token_unexpected();
+				return nullptr;
+		}
+		this->next_token();
+		
+		// ID
 		if(!this->check_token(token_t::ID, true, false))
 			return nullptr;
 		
@@ -938,9 +953,17 @@ _BeginNamespace(eokas)
 		// : type
 		if(!this->check_token(token_t::Colon))
 			return nullptr;
-		node->type = this->parse_type(p);
+		node->type = this->parse_type(node);
 		if(node->type == nullptr)
 			return nullptr;
+		
+		// [= expr]
+		if(this->check_token(token_t::Assign, false))
+		{
+			node->value = this->parse_expr(node);
+			if(node->value == nullptr)
+				return nullptr;
+		}
 		
 		return node;
 	}
@@ -985,9 +1008,9 @@ _BeginNamespace(eokas)
 			}
 			this->next_token();
 			
-			// = int
+			// [= int]
 			i32_t memValue = index;
-			if(this->check_token(token_t::Equal, false))
+			if(this->check_token(token_t::Assign, false))
 			{
 				auto memExpr = this->parse_literal_int(node);
 				if(memExpr == nullptr)

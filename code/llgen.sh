@@ -1,1 +1,1 @@
-clang++ -emit-llvm test.cxx -c -o test.bc
+clang++ -S -std=c++17 -emit-llvm test.cxx

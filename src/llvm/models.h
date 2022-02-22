@@ -65,15 +65,23 @@ _BeginNamespace(eokas)
 	
 	struct llvm_type_t
 	{
+		enum class layout_t
+		{
+			Sequential,
+			Overlapped,
+		};
+		
 		struct member_t
 		{
 			String name = "";
 			llvm_type_t* type = nullptr;
+			llvm_expr_t* value = nullptr;
 		};
 		
 		llvm::LLVMContext& context;
 
 		String name;
+		layout_t layout;
 		std::vector<member_t*> members;
 		
 		llvm::Type* handle;
@@ -83,7 +91,9 @@ _BeginNamespace(eokas)
 		explicit llvm_type_t(llvm::LLVMContext& context, const String& name, llvm::Type* handle, llvm::Value* defval);
 		virtual ~llvm_type_t() noexcept;
 		
-		member_t* add_member(const String& name, llvm_type_t* type);
+		void set_layout(layout_t layout);
+		member_t* add_member(const String& name, llvm_type_t* type, llvm_expr_t* value);
+		member_t* add_member(const member_t* other);
 		member_t* get_member(const String& name) const;
 		member_t* get_member(size_t index) const;
 		size_t get_member_index(const String& name) const;
