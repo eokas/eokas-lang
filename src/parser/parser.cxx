@@ -25,6 +25,10 @@ _BeginNamespace(eokas)
 		ast_expr_t* parse_expr_unary(ast_node_t* p);
 		ast_expr_t* parse_expr_suffixed(ast_node_t* p);
 		ast_expr_t* parse_expr_primary(ast_node_t* p);
+		ast_expr_t* parse_literal_int(ast_node_t* p);
+		ast_expr_t* parse_literal_float(ast_node_t* p);
+		ast_expr_t* parse_literal_bool(ast_node_t* p);
+		ast_expr_t* parse_literal_string(ast_node_t* p);
 		ast_expr_t* parse_func_def(ast_node_t* p);
 		bool parse_func_params(ast_expr_func_def_t* node);
 		bool parse_func_body(ast_expr_func_def_t* node);
@@ -38,6 +42,7 @@ _BeginNamespace(eokas)
 		ast_stmt_t* parse_stmt(ast_node_t* p);
 		ast_stmt_struct_def_t* parse_stmt_struct_def(ast_node_t* p);
 		ast_stmt_struct_member_t* parse_stmt_struct_member(ast_node_t* p);
+		ast_stmt_enum_def_t* parse_stmt_enum_def(ast_node_t* p);
 		ast_stmt_proc_def_t* parse_stmt_proc_def(ast_node_t* p);
 		ast_stmt_symbol_def_t* parse_stmt_symbol_def(ast_node_t* p);
 		ast_stmt_continue_t* parse_stmt_continue(ast_node_t* p);
@@ -335,53 +340,19 @@ _BeginNamespace(eokas)
 		switch (token.type)
 		{
 			case token_t::BInt:
-			{
-				auto* node = factory->create_expr_int(p);
-				node->value = String::binstrToValue<i32_t>(token.value);
-				right = node;
-				this->next_token();
-			}
-				break;
 			case token_t::XInt:
-			{
-				auto* node = factory->create_expr_int(p);
-				node->value = String::hexstrToValue<i32_t>(token.value);
-				right = node;
-				this->next_token();
-			}
-				break;
 			case token_t::DInt:
-			{
-				auto* node = factory->create_expr_int(p);
-				node->value = String::stringToValue<i32_t>(token.value);
-				right = node;
-				this->next_token();
-			}
+				right = this->parse_literal_int(p);
 				break;
 			case token_t::Float:
-			{
-				auto* node = factory->create_expr_float(p);
-				node->value = String::stringToValue<f32_t>(token.value);
-				right = node;
-				this->next_token();
-			}
+				right = this->parse_literal_float(p);
 				break;
 			case token_t::Str:
-			{
-				auto* node = factory->create_expr_string(p);
-				node->value = token.value;
-				right = node;
-				this->next_token();
-			}
+				right = this->parse_literal_string(p);
 				break;
 			case token_t::True:
 			case token_t::False:
-			{
-				auto* node = factory->create_expr_bool(p);
-				node->value = String::stringToValue<bool>(token.value);
-				right = node;
-				this->next_token();
-			}
+				right = this->parse_literal_bool(p);
 				break;
 			case token_t::Func:
 				right = this->parse_func_def(p);
@@ -481,6 +452,93 @@ _BeginNamespace(eokas)
 		this->next_token();
 		
 		return node;
+	}
+	
+	ast_expr_t* parser_impl_t::parse_literal_int(ast_node_t* p)
+	{
+		token_t& token = this->token();
+		switch (token.type)
+		{
+			case token_t::BInt:
+			{
+				auto* node = factory->create_expr_int(p);
+				node->value = String::binstrToValue<i32_t>(token.value);
+				this->next_token();
+				return node;
+			}
+			case token_t::XInt:
+			{
+				auto* node = factory->create_expr_int(p);
+				node->value = String::hexstrToValue<i32_t>(token.value);
+				this->next_token();
+				return node;
+			}
+			case token_t::DInt:
+			{
+				auto* node = factory->create_expr_int(p);
+				node->value = String::stringToValue<i32_t>(token.value);
+				this->next_token();
+				return node;
+			}
+			default:
+				this->error_token_unexpected();
+				return nullptr;
+		}
+	}
+	
+	ast_expr_t* parser_impl_t::parse_literal_float(ast_node_t* p)
+	{
+		token_t& token = this->token();
+		switch (token.type)
+		{
+			case token_t::Float:
+			{
+				auto* node = factory->create_expr_float(p);
+				node->value = String::stringToValue<f32_t>(token.value);
+				this->next_token();
+				return node;
+			}
+			default:
+				this->error_token_unexpected();
+				return nullptr;
+		}
+	}
+	
+	ast_expr_t* parser_impl_t::parse_literal_bool(ast_node_t* p)
+	{
+		token_t& token = this->token();
+		switch (token.type)
+		{
+			case token_t::True:
+			case token_t::False:
+			{
+				auto* node = factory->create_expr_bool(p);
+				node->value = String::stringToValue<bool>(token.value);
+				this->next_token();
+				return node;
+			}
+			default:
+				this->error_token_unexpected();
+				return nullptr;
+		}
+	}
+	
+	ast_expr_t* parser_impl_t::parse_literal_string(ast_node_t* p)
+	{
+		token_t& token = this->token();
+		switch (token.type)
+		{
+			case token_t::Str:
+			{
+				auto* node = factory->create_expr_string(p);
+				node->value = token.value;
+				this->next_token();
+				return node;
+			}
+			default:
+				this->error_token_unexpected();
+				return nullptr;
+		}
 	}
 	
 	/*
@@ -762,6 +820,9 @@ _BeginNamespace(eokas)
 			case token_t::Struct:
 				stmt = this->parse_stmt_struct_def(p);
 				break;
+			case token_t::Enum:
+				stmt = this->parse_stmt_enum_def(p);
+				break;
 			case token_t::Proc:
 				stmt = this->parse_stmt_proc_def(p);
 				semicolon = true;
@@ -879,6 +940,70 @@ _BeginNamespace(eokas)
 			return nullptr;
 		node->type = this->parse_type(p);
 		if(node->type == nullptr)
+			return nullptr;
+		
+		return node;
+	}
+	
+	/**
+	 * enum_def := 'enum' ID '{' [enum_member] '}' ';';
+	 * enum_member := ID ['=' expr_int] ',';
+	 * */
+	ast_stmt_enum_def_t* parser_impl_t::parse_stmt_enum_def(ast_node_t* p)
+	{
+		if(!this->check_token(token_t::Enum))
+			return nullptr;
+		
+		auto* node = factory->create_stmt_enum_def(p);
+		
+		// ID
+		if(!this->check_token(token_t::ID, true, false))
+			return nullptr;
+		
+		node->name = this->token().value;
+		this->next_token();
+		
+		// {
+		if(!this->check_token(token_t::LCB))
+			return nullptr;
+		
+		int index = 0;
+		do
+		{
+			if(this->token().type == token_t::RCB)
+				break;
+			
+			// ID
+			if(!this->check_token(token_t::ID, true, false))
+				return nullptr;
+			
+			const String memName = this->token().value;
+			if(node->members.find(memName) != node->members.end())
+			{
+				this->error_token_unexpected();
+				return nullptr;
+			}
+			this->next_token();
+			
+			// = int
+			i32_t memValue = index;
+			if(this->check_token(token_t::Equal, false))
+			{
+				auto memExpr = this->parse_literal_int(node);
+				if(memExpr == nullptr)
+					return nullptr;
+				auto memIntExpr = dynamic_cast<ast_expr_int_t*>(memExpr);
+				memValue = static_cast<i32_t>(memIntExpr->value);
+				index = memValue;
+			}
+			
+			node->members[memName] = memValue;
+			index += 1;
+			
+		} while (this->check_token(token_t::Comma, false));
+		
+		// }
+		if(!this->check_token(token_t::RCB))
 			return nullptr;
 		
 		return node;

@@ -162,6 +162,13 @@ namespace eokas
 		return node;
 	}
 	
+	ast_stmt_enum_def_t* ast_factory_t::create_stmt_enum_def(ast_node_t* parent)
+	{
+		auto* node = new ast_stmt_enum_def_t(parent);
+		this->nodes.push_back(node);
+		return node;
+	}
+	
 	ast_stmt_proc_def_t* ast_factory_t::create_stmt_proc_def(ast_node_t* parent)
 	{
 		auto* node = new ast_stmt_proc_def_t(parent);

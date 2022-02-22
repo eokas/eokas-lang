@@ -39,6 +39,7 @@ namespace eokas
 		
 		stmt_struct_def,
 		stmt_struct_member,
+		stmt_enum_def,
 		stmt_proc_def,
 		stmt_symbol_def,
 		stmt_break,
@@ -133,6 +134,7 @@ namespace eokas
 	struct ast_stmt_t;
 	struct ast_stmt_struct_member_t;
 	struct ast_stmt_struct_def_t;
+	struct ast_stmt_enum_def_t;
 	struct ast_stmt_proc_def_t;
 	struct ast_stmt_symbol_def_t;
 	struct ast_stmt_break_t;

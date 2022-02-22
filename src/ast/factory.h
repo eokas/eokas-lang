@@ -36,6 +36,7 @@ namespace eokas
 		
 		ast_stmt_struct_member_t* create_stmt_struct_member(ast_node_t* parent);
 		ast_stmt_struct_def_t* create_stmt_struct_def(ast_node_t* parent);
+		ast_stmt_enum_def_t* create_stmt_enum_def(ast_node_t* parent);
 		ast_stmt_proc_def_t* create_stmt_proc_def(ast_node_t* parent);
 		ast_stmt_symbol_def_t* create_stmt_symbol_def(ast_node_t* parent);
 		ast_stmt_break_t* create_stmt_break(ast_node_t* parent);

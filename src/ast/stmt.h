@@ -17,11 +17,13 @@ namespace eokas
 	{
 		String name;
 		ast_type_t* type;
+		ast_expr_t* value;
 		
 		explicit ast_stmt_struct_member_t(ast_node_t* parent)
 			: ast_stmt_t(ast_node_category_t::stmt_struct_member, parent)
 			, name("")
 			, type(nullptr)
+			, value(nullptr)
 		{ }
 	};
 	
@@ -36,6 +38,18 @@ namespace eokas
 			, name("")
 			, base(nullptr)
 			, members()
+		{ }
+	};
+	
+	struct ast_stmt_enum_def_t :public ast_stmt_t
+	{
+		String name;
+		std::map<String, i32_t> members;
+		
+		explicit ast_stmt_enum_def_t(ast_node_t* parent)
+		: ast_stmt_t(ast_node_category_t::stmt_enum_def, parent)
+		, name("")
+		, members()
 		{ }
 	};
 	
