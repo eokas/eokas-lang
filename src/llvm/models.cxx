@@ -98,7 +98,7 @@ _BeginNamespace(eokas)
 	}
 	
 	llvm_type_t::llvm_type_t(llvm::LLVMContext& context, const String& name, llvm::Type* handle, llvm::Value* defval)
-		: context(context), name(name), layout(layout_t::Sequential), members(), handle(handle), defval(defval), scope(nullptr)
+		: context(context), name(name), members(), handle(handle), defval(defval), scope(nullptr)
 	{
 	}
 	
@@ -107,9 +107,18 @@ _BeginNamespace(eokas)
 		_DeleteList(this->members);
 	}
 	
-	void llvm_type_t::set_layout(layout_t layout)
+	bool llvm_type_t::extends(llvm_type_t* base, String& err)
 	{
-		this->layout = layout;
+		for (const auto& baseMember: base->members)
+		{
+			if(this->get_member(baseMember->name) != nullptr)
+			{
+				err = String::format("The member named '%s' is already exists. \n", baseMember->name.cstr());
+				return false;
+			}
+			this->add_member(baseMember);
+		}
+		return true;
 	}
 	
 	llvm_type_t::member_t* llvm_type_t::add_member(const String& name, llvm_type_t* type, llvm_expr_t* value)
@@ -161,33 +170,12 @@ _BeginNamespace(eokas)
 		{
 			llvm::StructType* type = llvm::StructType::create(context, this->name.cstr());
 			std::vector<llvm::Type*> body;
-			if(this->layout == layout_t::Sequential)
+			for (auto& member: this->members)
 			{
-				for (auto& member: this->members)
-				{
-					member->type->resolve();
-					body.push_back(member->type->handle);
-				}
-			}
-			else if(this->layout == layout_t::Overlapped)
-			{
-				llvm::Type* biggestType = nullptr;
-				for (auto& member: this->members)
-				{
-					member->type->resolve();
-					auto memT = member->type->handle;
-					if(biggestType == nullptr || llvm::ConstantExpr::getSizeOf(biggestType)<llvm::ConstantExpr::getSizeOf(memT))
-					{
-						biggestType = memT;
-					}
-				}
-				if(biggestType != nullptr)
-				{
-					body.push_back(biggestType);
-				}
+				member->type->resolve();
+				body.push_back(member->type->handle);
 			}
 			type->setBody(body);
-			
 			this->handle = type;
 		}
 		

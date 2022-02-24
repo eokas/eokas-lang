@@ -1254,25 +1254,16 @@ _BeginNamespace(eokas)
 				if(baseStaticType == nullptr)
 					return false;
 				
-				for (const auto& baseStaticMember: baseStaticType->members)
+				String err;
+				if(!thisStaticType->extends(baseStaticType, err))
 				{
-					if(thisStaticType->get_member(baseStaticMember->name) != nullptr)
-					{
-						printf("The member named '%s' is already exists. \n", baseStaticMember->name.cstr());
-						return false;
-					}
-					thisStaticType->add_member(baseStaticMember);
+					printf(err.cstr());
+					return false;
 				}
-				
-				for (const auto& baseInstanceMember: baseInstanceType->members)
+				if(!thisInstanceType->extends(baseInstanceType, err))
 				{
-					if(thisInstanceType->get_member(baseInstanceMember->name) != nullptr)
-					{
-						printf("The member named '%s' is already exists.\n", baseInstanceMember->name.cstr());
-						return false;
-					}
-					
-					thisInstanceType->add_member(baseInstanceMember);
+					printf(err.cstr());
+					return false;
 				}
 			}
 			
