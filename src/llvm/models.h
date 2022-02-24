@@ -154,9 +154,9 @@ _BeginNamespace(eokas)
 		llvm_module_t(const String& name, llvm::LLVMContext& context);
 		~llvm_module_t() noexcept;
 		
+		llvm_expr_t* new_expr(llvm::Value* value, llvm::Type* type = nullptr);
 		llvm_type_t* new_type(const String& name, llvm::Type* handle, llvm::Value* defval);
 		llvm_type_t* new_type(const String& name, llvm_type_t* base);
-		llvm_expr_t* new_expr(llvm::Value* value, llvm::Type* type = nullptr);
 		void map_type(llvm::Type* handle, llvm_type_t* type);
 		llvm_type_t* get_type(llvm::Type* handle);
 		
@@ -172,7 +172,6 @@ _BeginNamespace(eokas)
 		llvm::Value* ref_value(llvm::IRBuilder<>& builder, llvm::Value* value);
 		
 		llvm::Function* declare_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg);
-		llvm::Function* declare_func_puts();
 		llvm::Function* declare_func_printf();
 		llvm::Function* declare_func_sprintf();
 		llvm::Function* declare_func_malloc();

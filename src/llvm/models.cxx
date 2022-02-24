@@ -280,6 +280,23 @@ _BeginNamespace(eokas)
 		_DeletePointer(root);
 	}
 	
+	llvm_expr_t* llvm_module_t::new_expr(llvm::Value* value, llvm::Type* type)
+	{
+		llvm_expr_t* expr = nullptr;
+		if(value->getType()->isPointerTy() && value->getType()->getPointerElementType()->isFunctionTy())
+		{
+			expr = new llvm_func_t(value, type);
+		}
+		else
+		{
+			expr = new llvm_expr_t(value, type);
+		}
+		
+		this->exprs.push_back(expr);
+		
+		return expr;
+	}
+	
 	llvm_type_t* llvm_module_t::new_type(const String& name, llvm::Type* handle, llvm::Value* defval)
 	{
 		auto* t = new llvm_type_t(context, name, handle, defval);
@@ -296,23 +313,6 @@ _BeginNamespace(eokas)
 		}
 		type->resolve();
 		return type;
-	}
-	
-	llvm_expr_t* llvm_module_t::new_expr(llvm::Value* value, llvm::Type* type)
-	{
-		llvm_expr_t* expr = nullptr;
-		if(value->getType()->isPointerTy() && value->getType()->getPointerElementType()->isFunctionTy())
-		{
-			expr = new llvm_func_t(value, type);
-		}
-		else
-		{
-			expr = new llvm_expr_t(value, type);
-		}
-		
-		this->exprs.push_back(expr);
-		
-		return expr;
 	}
 	
 	void llvm_module_t::map_type(llvm::Type* handle, llvm_type_t* type)
@@ -378,16 +378,6 @@ _BeginNamespace(eokas)
 		funcValue->setAttributes(attrs);
 		
 		return funcValue;
-	}
-	
-	llvm::Function* llvm_module_t::declare_func_puts()
-	{
-		String name = "puts";
-		llvm::Type* ret = type_i32->handle;
-		std::vector<llvm::Type*> args = {type_i8_ref->handle};
-		bool varg = false;
-		
-		return this->declare_func(name, ret, args, varg);
 	}
 	
 	llvm::Function* llvm_module_t::declare_func_printf()
@@ -615,9 +605,10 @@ _BeginNamespace(eokas)
 	llvm::Value* llvm_module_t::print(llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args)
 	{
 		llvm::Value* val = args[0];
+		llvm::Value* fmt = builder.CreateGlobalString("%s");
 		llvm::Value* cstr = this->value_to_cstr(func, builder, val);
-		auto puts = module.getFunction("puts");
-		llvm::Value* ret = builder.CreateCall(puts, {cstr});
+		auto pfn = module.getFunction("printf");
+		llvm::Value* ret = builder.CreateCall(pfn, {fmt, cstr});
 		
 		return ret;
 	}
