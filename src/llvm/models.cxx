@@ -23,12 +23,9 @@
 _BeginNamespace(eokas)
 	
 	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent, llvm::Function* func)
-		: parent(parent)
-		, func(func)
-		, children()
-		, symbols()
-		, types()
-	{ }
+		: parent(parent), func(func), children(), symbols(), types()
+	{
+	}
 	
 	llvm_scope_t::~llvm_scope_t()
 	{
@@ -101,14 +98,9 @@ _BeginNamespace(eokas)
 	}
 	
 	llvm_type_t::llvm_type_t(llvm::LLVMContext& context, const String& name, llvm::Type* handle, llvm::Value* defval)
-		:context(context)
-		,name(name)
-		,layout(layout_t::Sequential)
-		,members()
-		,handle(handle)
-		,defval(defval)
-		,scope(nullptr)
-	{ }
+		: context(context), name(name), layout(layout_t::Sequential), members(), handle(handle), defval(defval), scope(nullptr)
+	{
+	}
 	
 	llvm_type_t::~llvm_type_t() noexcept
 	{
@@ -138,7 +130,7 @@ _BeginNamespace(eokas)
 	
 	llvm_type_t::member_t* llvm_type_t::get_member(const String& name) const
 	{
-		for(auto& m : this->members)
+		for (auto& m: this->members)
 		{
 			if(m->name == name)
 				return m;
@@ -148,14 +140,14 @@ _BeginNamespace(eokas)
 	
 	llvm_type_t::member_t* llvm_type_t::get_member(size_t index) const
 	{
-		if(index >= this->members.size())
+		if(index>=this->members.size())
 			return nullptr;
 		return this->members.at(index);
 	}
 	
 	size_t llvm_type_t::get_member_index(const String& name) const
 	{
-		for(size_t index = 0; index < this->members.size(); index++)
+		for (size_t index = 0; index<this->members.size(); index++)
 		{
 			if(this->members.at(index)->name == name)
 				return index;
@@ -184,8 +176,7 @@ _BeginNamespace(eokas)
 				{
 					member->type->resolve();
 					auto memT = member->type->handle;
-					if(biggestType == nullptr ||
-						llvm::ConstantExpr::getSizeOf(biggestType) < llvm::ConstantExpr::getSizeOf(memT))
+					if(biggestType == nullptr || llvm::ConstantExpr::getSizeOf(biggestType)<llvm::ConstantExpr::getSizeOf(memT))
 					{
 						biggestType = memT;
 					}
@@ -240,14 +231,11 @@ _BeginNamespace(eokas)
 		if(this->type == nullptr || this->value == nullptr)
 			return false;
 		auto vt = this->value->getType();
-		return vt->isPointerTy()
-			   && vt->getPointerElementType() == this->type;
+		return vt->isPointerTy() && vt->getPointerElementType() == this->type;
 	}
 	
 	llvm_module_t::llvm_module_t(const String& name, llvm::LLVMContext& context)
-		:context(context)
-		,module(name.cstr(), context)
-		,root(new llvm_scope_t(nullptr, nullptr))
+		: context(context), module(name.cstr(), context), root(new llvm_scope_t(nullptr, nullptr))
 	{
 		type_void = this->new_type("void", llvm::Type::getVoidTy(context), llvm::ConstantInt::get(context, llvm::APInt(8, 0)));
 		type_i8 = this->new_type("i8", llvm::Type::getInt8Ty(context), llvm::ConstantInt::get(context, llvm::APInt(8, 0)));
@@ -260,8 +248,7 @@ _BeginNamespace(eokas)
 		type_u64 = this->new_type("u64", llvm::Type::getInt64Ty(context), llvm::ConstantInt::get(context, llvm::APInt(64, 0)));
 		type_f32 = this->new_type("f32", llvm::Type::getFloatTy(context), llvm::ConstantFP::get(context, llvm::APFloat(0.0f)));
 		type_f64 = this->new_type("f64", llvm::Type::getDoubleTy(context), llvm::ConstantFP::get(context, llvm::APFloat(0.0)));
-		type_bool = this->new_type("bool", llvm::Type::getInt1Ty(context),
-		llvm::ConstantInt::get(context, llvm::APInt(1, 0)));
+		type_bool = this->new_type("bool", llvm::Type::getInt1Ty(context), llvm::ConstantInt::get(context, llvm::APInt(1, 0)));
 		
 		type_i8_ref = this->new_type("ref<i8>", nullptr, nullptr);
 		type_i8_ref->ref(type_i8);

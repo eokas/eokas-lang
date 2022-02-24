@@ -30,7 +30,7 @@ _BeginNamespace(eokas)
 		llvm::IRBuilder<> builder;
 		
 		llvm_module_t* module;
-
+		
 		llvm_scope_t* scope;
 		llvm_func_t* func;
 		
@@ -38,9 +38,7 @@ _BeginNamespace(eokas)
 		llvm::BasicBlock* breakPoint;
 		
 		explicit llvm_coder_t(llvm::LLVMContext& context)
-			: context(context)
-			, builder(context)
-			, module(nullptr)
+			: context(context), builder(context), module(nullptr)
 		{
 			this->scope = nullptr;
 			this->func = nullptr;
@@ -49,7 +47,8 @@ _BeginNamespace(eokas)
 		}
 		
 		virtual ~llvm_coder_t()
-		{ }
+		{
+		}
 		
 		void pushScope(llvm::Function* f = nullptr)
 		{
@@ -85,24 +84,25 @@ _BeginNamespace(eokas)
 			this->func = dynamic_cast<llvm_func_t*>(module->new_expr(mainPtr));
 			
 			this->pushScope(mainPtr);
-            {
-                llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", mainPtr);
-                builder.SetInsertPoint(entry);
-
-                for (auto &stmt: node->get_func()->body) {
-                    if (!this->encode_stmt(stmt))
-                        return false;
-                }
-
-                auto& lastOp = builder.GetInsertBlock()->back();
-                if(!lastOp.isTerminator())
-                {
-                    if(mainPtr->getReturnType()->isVoidTy())
-                        builder.CreateRetVoid();
-                    else
-                        builder.CreateRet(mainRet->defval);
-                }
-            }
+			{
+				llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", mainPtr);
+				builder.SetInsertPoint(entry);
+				
+				for (auto& stmt: node->get_func()->body)
+				{
+					if(!this->encode_stmt(stmt))
+						return false;
+				}
+				
+				auto& lastOp = builder.GetInsertBlock()->back();
+				if(!lastOp.isTerminator())
+				{
+					if(mainPtr->getReturnType()->isVoidTy())
+						builder.CreateRetVoid();
+					else
+						builder.CreateRet(mainRet->defval);
+				}
+			}
 			this->popScope();
 			
 			return true;
@@ -204,8 +204,8 @@ _BeginNamespace(eokas)
 		{
 			if(node == nullptr)
 				return nullptr;
-
-
+			
+			
 			llvm::BasicBlock* trinary_begin = llvm::BasicBlock::Create(context, "trinary.begin", this->scope->func);
 			llvm::BasicBlock* trinary_true = llvm::BasicBlock::Create(context, "trinary.true", this->scope->func);
 			llvm::BasicBlock* trinary_false = llvm::BasicBlock::Create(context, "trinary.false", this->scope->func);
@@ -861,12 +861,12 @@ _BeginNamespace(eokas)
 				printf("Symbol '%s' is undefined.\n", node->name.cstr());
 				return nullptr;
 			}
-
-            // up-value
-            if(symbol->scope->func != this->func->value)
-            {
-                this->func->upvals.add(node->name, symbol);
-            }
+			
+			// up-value
+			if(symbol->scope->func != this->func->value)
+			{
+				this->func->upvals.add(node->name, symbol);
+			}
 			
 			return symbol;
 		}
@@ -894,8 +894,8 @@ _BeginNamespace(eokas)
 			
 			llvm::FunctionType* funcType = llvm::FunctionType::get(retType->handle, argTypes, false);
 			llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "", module->module);
-
-            u32_t index = 0;
+			
+			u32_t index = 0;
 			for (auto& arg: funcPtr->args())
 			{
 				const char* name = node->args[index++]->name.cstr();
@@ -904,33 +904,33 @@ _BeginNamespace(eokas)
 			
 			auto oldFunc = this->func;
 			auto oldIB = builder.GetInsertBlock();
-
-            this->func = dynamic_cast<llvm_func_t*>(module->new_expr(funcPtr));
-
-            this->pushScope(funcPtr);
+			
+			this->func = dynamic_cast<llvm_func_t*>(module->new_expr(funcPtr));
+			
+			this->pushScope(funcPtr);
 			{
 				llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", funcPtr);
 				builder.SetInsertPoint(entry);
 				
 				// self
 				auto self = module->new_expr(funcPtr, funcType->getPointerTo());
-                this->scope->addSymbol("self", self);
+				this->scope->addSymbol("self", self);
 				
 				// args
 				for (auto& arg: funcPtr->args())
 				{
 					const char* name = arg.getName().data();
 					auto expr = module->new_expr(&arg);
-                    if(!this->scope->addSymbol(name, expr))
-                    {
-                        printf("The symbol name '%s' is already existed.\n", name);
-                        return nullptr;
-                    }
+					if(!this->scope->addSymbol(name, expr))
+					{
+						printf("The symbol name '%s' is already existed.\n", name);
+						return nullptr;
+					}
 				}
 				
 				// body
-                llvm::BasicBlock* body = llvm::BasicBlock::Create(context, "body", funcPtr);
-                builder.SetInsertPoint(body);
+				llvm::BasicBlock* body = llvm::BasicBlock::Create(context, "body", funcPtr);
+				builder.SetInsertPoint(body);
 				for (auto& stmt: node->body)
 				{
 					if(!this->encode_stmt(stmt))
@@ -944,27 +944,27 @@ _BeginNamespace(eokas)
 					else
 						builder.CreateRet(retType->defval);
 				}
-
-                // up-value
-                builder.SetInsertPoint(entry);
-                for (auto& upval : this->func->upvals.table)
-                {
-                    const String& name = upval.first;
-                    llvm_expr_t* expr = upval.second;
-
-                    llvm::Value* val = module->get_value(builder, expr->value);
-                    llvm::Value* ptr = builder.CreateAlloca(val->getType());
-                    builder.CreateStore(val, ptr);
-                    if(!this->scope->addSymbol(name, module->new_expr(val)))
-                    {
-                        printf("The symbol name '%s' is already existed.\n", name.cstr());
-                        return nullptr;
-                    }
-                }
-                builder.CreateBr(body);
+				
+				// up-value
+				builder.SetInsertPoint(entry);
+				for (auto& upval: this->func->upvals.table)
+				{
+					const String& name = upval.first;
+					llvm_expr_t* expr = upval.second;
+					
+					llvm::Value* val = module->get_value(builder, expr->value);
+					llvm::Value* ptr = builder.CreateAlloca(val->getType());
+					builder.CreateStore(val, ptr);
+					if(!this->scope->addSymbol(name, module->new_expr(val)))
+					{
+						printf("The symbol name '%s' is already existed.\n", name.cstr());
+						return nullptr;
+					}
+				}
+				builder.CreateBr(body);
 			}
 			this->popScope();
-
+			
 			this->func = oldFunc;
 			builder.SetInsertPoint(oldIB);
 			
@@ -1063,7 +1063,7 @@ _BeginNamespace(eokas)
 			
 			auto arrayType = llvm::ArrayType::get(arrayElementType, node->elements.size());
 			auto arrayPtr = module->make(this->scope->func, builder, arrayType);
-			for(u32_t i = 0; i < arrayElements.size(); i++)
+			for (u32_t i = 0; i<arrayElements.size(); i++)
 			{
 				auto elementV = arrayElements.at(i);
 				auto elementP = builder.CreateConstGEP2_32(arrayType, arrayPtr, 0, i);
@@ -1108,7 +1108,7 @@ _BeginNamespace(eokas)
 			auto* structType = this->encode_type(node->type);
 			if(structType == nullptr)
 				return nullptr;
-
+			
 			for (auto& objectMember: node->members)
 			{
 				auto structMember = structType->get_member(objectMember.first);
@@ -1123,7 +1123,7 @@ _BeginNamespace(eokas)
 			// make object instance
 			llvm::Value* instance = module->make(this->scope->func, builder, structType->handle);
 			
-			for(u32_t index = 0; index < structType->members.size(); index++)
+			for (u32_t index = 0; index<structType->members.size(); index++)
 			{
 				auto& structMember = structType->members.at(index);
 				auto objectMember = node->members.find(structMember->name);
@@ -1175,7 +1175,7 @@ _BeginNamespace(eokas)
 				printf("The value is not a object reference.\n");
 				return nullptr;
 			}
-
+			
 			auto structTypeDef = module->get_type(objectT->getPointerElementType());
 			if(structTypeDef == nullptr)
 			{
@@ -1190,7 +1190,7 @@ _BeginNamespace(eokas)
 				printf("The object doesn't have a member named '%s'. \n", node->key.cstr());
 				return nullptr;
 			}
-
+			
 			auto structType = structTypeDef->handle;
 			llvm::Value* value = builder.CreateStructGEP(structType, objectV, index);
 			return module->new_expr(value);
@@ -1254,7 +1254,7 @@ _BeginNamespace(eokas)
 				if(baseStaticType == nullptr)
 					return false;
 				
-				for(const auto& baseStaticMember : baseStaticType->members)
+				for (const auto& baseStaticMember: baseStaticType->members)
 				{
 					if(thisStaticType->get_member(baseStaticMember->name) != nullptr)
 					{
@@ -1264,7 +1264,7 @@ _BeginNamespace(eokas)
 					thisStaticType->add_member(baseStaticMember);
 				}
 				
-				for(const auto& baseInstanceMember: baseInstanceType->members)
+				for (const auto& baseInstanceMember: baseInstanceType->members)
 				{
 					if(thisInstanceType->get_member(baseInstanceMember->name) != nullptr)
 					{
@@ -1321,8 +1321,7 @@ _BeginNamespace(eokas)
 			
 			thisStaticType->resolve();
 			thisInstanceType->resolve();
-			if(!this->scope->addType(thisStaticType->name, thisStaticType) ||
-			   !this->scope->addType(thisInstanceType->name, thisInstanceType))
+			if(!this->scope->addType(thisStaticType->name, thisStaticType) || !this->scope->addType(thisInstanceType->name, thisInstanceType))
 			{
 				printf("There is a same type named %s in this scope.\n", thisInstanceType->name.cstr());
 				return false;
@@ -1334,8 +1333,8 @@ _BeginNamespace(eokas)
 			// make static object
 			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticType->handle);
 			llvm_expr_t* staticE = module->new_expr(staticV);
-
-			for(u32_t index = 0; index < thisStaticType->members.size(); index++)
+			
+			for (u32_t index = 0; index<thisStaticType->members.size(); index++)
 			{
 				auto& mem = thisStaticType->members.at(index);
 				auto& memV = mem->value != nullptr ? mem->value->value : mem->type->defval;
@@ -1353,7 +1352,7 @@ _BeginNamespace(eokas)
 				printf("There is a same symbol named %s in this scope.\n", thisInstanceType->name.cstr());
 				return false;
 			}
-
+			
 			return true;
 		}
 		
@@ -1363,7 +1362,7 @@ _BeginNamespace(eokas)
 				return false;
 			
 			const String staticTypePrefix = "$_Static";
-
+			
 			auto* thisInstanceType = module->new_type(node->name, nullptr, nullptr);
 			thisInstanceType->add_member("value", module->type_i32, nullptr);
 			thisInstanceType->resolve();
@@ -1390,8 +1389,7 @@ _BeginNamespace(eokas)
 			
 			thisStaticType->resolve();
 			
-			if(!this->scope->addType(thisStaticType->name, thisStaticType) ||
-			   !this->scope->addType(thisInstanceType->name, thisInstanceType))
+			if(!this->scope->addType(thisStaticType->name, thisStaticType) || !this->scope->addType(thisInstanceType->name, thisInstanceType))
 			{
 				printf("There is a same type named %s in this scope.\n", thisInstanceType->name.cstr());
 				return false;
@@ -1404,7 +1402,7 @@ _BeginNamespace(eokas)
 			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticType->handle);
 			llvm_expr_t* staticE = module->new_expr(staticV);
 			
-			for(u32_t index = 0; index < thisStaticType->members.size(); index++)
+			for (u32_t index = 0; index<thisStaticType->members.size(); index++)
 			{
 				auto& mem = thisStaticType->members.at(index);
 				auto memV = builder.CreateLoad(mem->value->value);
@@ -1484,12 +1482,11 @@ _BeginNamespace(eokas)
 					
 					printf("Type of value can not cast to the type of symbol.\n");
 					return false;
-				}
-				while(false);
+				} while (false);
 			}
 			else
 			{
-				stype =  vtype;
+				stype = vtype;
 			}
 			
 			if(stype->isVoidTy())
@@ -1506,10 +1503,10 @@ _BeginNamespace(eokas)
 			
 			auto symbolE = module->new_expr(symbol, expr->type);
 			if(!scope->addSymbol(node->name, symbolE))
-            {
-                printf("There is a symbol named %s in this scope.\n", node->name.cstr());
-                return false;
-            }
+			{
+				printf("There is a symbol named %s in this scope.\n", node->name.cstr());
+				return false;
+			}
 			
 			return true;
 		}
@@ -1631,7 +1628,7 @@ _BeginNamespace(eokas)
 			{
 				builder.CreateBr(if_end);
 			}
-
+			
 			builder.SetInsertPoint(if_end);
 			
 			return true;
@@ -1753,5 +1750,4 @@ _BeginNamespace(eokas)
 		llvm_coder_t coder(context);
 		return coder.encode(module);
 	}
-	
 _EndNamespace(eokas)

@@ -101,7 +101,7 @@ _BeginNamespace(eokas)
 			llvm::errs() << "TargetMachine can't emit a file of this type";
 			return false;
 		}
-
+		
 		pass.run(module->module);
 		dest.flush();
 		

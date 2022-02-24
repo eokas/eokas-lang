@@ -6,7 +6,6 @@
 _BeginNamespace(eokas)
 	
 	llvm_module_t* llvm_encode(llvm::LLVMContext& context, ast_module_t* module);
-
 _EndNamespace(eokas)
 
 #endif//_EOKAS_LLVM_CODER_H_

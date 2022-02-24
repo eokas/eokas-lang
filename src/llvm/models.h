@@ -17,8 +17,9 @@ _BeginNamespace(eokas)
 		std::map<String, T*> table;
 		
 		explicit table_t()
-			:table()
-		{}
+			: table()
+		{
+		}
 		
 		~table_t()
 		{
@@ -67,8 +68,7 @@ _BeginNamespace(eokas)
 	{
 		enum class layout_t
 		{
-			Sequential,
-			Overlapped,
+			Sequential, Overlapped,
 		};
 		
 		struct member_t
@@ -79,7 +79,7 @@ _BeginNamespace(eokas)
 		};
 		
 		llvm::LLVMContext& context;
-
+		
 		String name;
 		layout_t layout;
 		std::vector<member_t*> members;
@@ -120,16 +120,12 @@ _BeginNamespace(eokas)
 		table_t<llvm_expr_t> upvals;
 		
 		explicit llvm_func_t(llvm::Value* value, llvm::Type* type = nullptr)
-			: llvm_expr_t(value, type)
-			, upvals()
-		{}
+			: llvm_expr_t(value, type), upvals()
+		{
+		}
 	};
 	
-	using llvm_code_delegate_t = std::function<void(
-		llvm::LLVMContext&,
-		llvm::Module& module,
-		llvm::Function* func,
-		llvm::IRBuilder<>& builder)>;
+	using llvm_code_delegate_t = std::function<void(llvm::LLVMContext&, llvm::Module& module, llvm::Function* func, llvm::IRBuilder<>& builder)>;
 	
 	struct llvm_module_t
 	{
@@ -197,7 +193,6 @@ _BeginNamespace(eokas)
 		
 		llvm::Value* print(llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args);
 	};
-
 _EndNamespace(eokas)
 
 #endif//_EOKAS_LLVM_MODELS_H_
