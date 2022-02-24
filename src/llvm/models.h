@@ -149,16 +149,26 @@ _BeginNamespace(eokas)
 		llvm_type_t* type_i8_ref;
 		llvm_type_t* type_string;
 		llvm_type_t* type_string_ref;
+		llvm_type_t* type_enum;
 		
 		llvm_module_t(const String& name, llvm::LLVMContext& context);
 		~llvm_module_t() noexcept;
 		
 		llvm_type_t* new_type(const String& name, llvm::Type* handle, llvm::Value* defval);
+		llvm_type_t* new_type(const String& name, llvm_type_t* base);
 		llvm_expr_t* new_expr(llvm::Value* value, llvm::Type* type = nullptr);
 		void map_type(llvm::Type* handle, llvm_type_t* type);
 		llvm_type_t* get_type(llvm::Type* handle);
 		
+		/**
+		 * For ref-types: transform multi-level pointer to one-level pointer.
+		 * For val-types: transform multi-level pointer to real value.
+		 * */
 		llvm::Value* get_value(llvm::IRBuilder<>& builder, llvm::Value* value);
+		/**
+		 * Transform the multi-level pointer value to one-level pointer type value.
+		 * Ignores literal value.
+		 * */
 		llvm::Value* ref_value(llvm::IRBuilder<>& builder, llvm::Value* value);
 		
 		llvm::Function* declare_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg);
@@ -178,11 +188,10 @@ _BeginNamespace(eokas)
 		llvm::Value* string_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		llvm::Value* bool_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		llvm::Value* number_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* enum_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		llvm::Value* value_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		
 		llvm::Value* cstr_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
-		llvm::Value* bool_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
-		llvm::Value* number_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		llvm::Value* value_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		
 		llvm::Value* print(llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args);

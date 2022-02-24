@@ -242,11 +242,15 @@ _BeginNamespace(eokas)
 		type_i8_ref->ref(type_i8);
 		
 		type_string = this->new_type("string", nullptr, nullptr);
-		type_string->add_member("data", type_i8_ref, this->new_expr(type_i8_ref->defval));
+		type_string->add_member("value", type_i8_ref, this->new_expr(type_i8_ref->defval));
 		type_string->resolve();
 		
 		type_string_ref = this->new_type("ref<string>", nullptr, nullptr);
 		type_string_ref->ref(type_string);
+		
+		type_enum = this->new_type("enum", nullptr, nullptr);
+		type_enum->add_member("value", type_i32, this->new_expr(type_i32->defval));
+		type_enum->resolve();
 		
 		this->declare_func_puts();
 		this->declare_func_printf();
@@ -283,6 +287,17 @@ _BeginNamespace(eokas)
 		return t;
 	}
 	
+	llvm_type_t* llvm_module_t::new_type(const String& name, llvm_type_t* base)
+	{
+		auto type = this->new_type(name, nullptr, nullptr);
+		for (const auto& baseMember: base->members)
+		{
+			type->add_member(baseMember);
+		}
+		type->resolve();
+		return type;
+	}
+	
 	llvm_expr_t* llvm_module_t::new_expr(llvm::Value* value, llvm::Type* type)
 	{
 		llvm_expr_t* expr = nullptr;
@@ -313,6 +328,10 @@ _BeginNamespace(eokas)
 		return iter->second;
 	}
 	
+	/**
+	 * For ref-types, transform multi-level pointer to one-level pointer.
+	 * For val-types, transform multi-level pointer to real value.
+	 * */
 	llvm::Value* llvm_module_t::get_value(llvm::IRBuilder<>& builder, llvm::Value* value)
 	{
 		llvm::Type* type = value->getType();
@@ -332,23 +351,20 @@ _BeginNamespace(eokas)
 		return value;
 	}
 	
+	/**
+	 * Transform the multi-level pointer value to one-level pointer type value.
+	 * Ignores literal values.
+	 * */
 	llvm::Value* llvm_module_t::ref_value(llvm::IRBuilder<>& builder, llvm::Value* value)
 	{
 		llvm::Type* type = value->getType();
+		
 		while (type->isPointerTy() && type->getPointerElementType()->isPointerTy())
 		{
-			/*
-			auto rtype = type->getPointerElementType()->getPointerElementType();
-			if(rtype->isFunctionTy())
-				break;
-			if(rtype->isStructTy())
-				break;
-			if(rtype->isArrayTy())
-				break;
-			 */
 			value = builder.CreateLoad(value);
 			type = value->getType();
 		}
+		
 		return value;
 	}
 	
@@ -530,12 +546,28 @@ _BeginNamespace(eokas)
 		return buf;
 	}
 	
+	llvm::Value* llvm_module_t::enum_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	{
+		llvm::Value* ptr = builder.CreateStructGEP(type_string->handle, val, 0);
+		llvm::Value* code = builder.CreateLoad(ptr);
+		
+		llvm::Value* buf = builder.CreateAlloca(llvm::ArrayType::get(type_i8->handle, 64));
+		llvm::Value* fmt = builder.CreateGlobalString("%d");
+		
+		auto sprintf = module.getFunction("sprintf");
+		builder.CreateCall(sprintf, {buf, fmt, val});
+		
+		return buf;
+	}
+	
 	llvm::Value* llvm_module_t::value_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
 		llvm::Type* vt = val->getType();
 		
 		if(vt == type_string->handle)
 			return this->string_to_cstr(func, builder, val);
+		if(vt == type_enum->handle)
+			return this->enum_to_cstr(func, builder, val);
 		
 		if(vt == type_i8_ref->handle)
 			return val;
@@ -553,19 +585,7 @@ _BeginNamespace(eokas)
 		builder.CreateStore(val, ptr);
 		return str;
 	}
-	
-	llvm::Value* llvm_module_t::bool_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
-	{
-		llvm::Value* cstr = this->bool_to_cstr(func, builder, val);
-		return this->cstr_to_string(func, builder, cstr);
-	}
-	
-	llvm::Value* llvm_module_t::number_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
-	{
-		llvm::Value* cstr = this->number_to_cstr(func, builder, val);
-		return this->cstr_to_string(func, builder, cstr);
-	}
-	
+
 	llvm::Value* llvm_module_t::value_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
 		llvm::Type* vt = val->getType();
@@ -577,9 +597,19 @@ _BeginNamespace(eokas)
 			return this->cstr_to_string(func, builder, val);
 		
 		if(vt->isIntegerTy(1))
-			return this->bool_to_string(func, builder, val);
+		{
+			llvm::Value* cstr = this->bool_to_cstr(func, builder, val);
+			return this->cstr_to_string(func, builder, cstr);
+		}
 		
-		return this->number_to_string(func, builder, val);
+		if(vt == type_enum->handle)
+		{
+			llvm::Value* cstr = this->enum_to_cstr(func, builder, val);
+			return this->cstr_to_string(func, builder, cstr);
+		}
+		
+		llvm::Value* cstr = this->number_to_cstr(func, builder, val);
+		return this->cstr_to_string(func, builder, cstr);
 	}
 	
 	llvm::Value* llvm_module_t::print(llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args)

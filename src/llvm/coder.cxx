@@ -913,7 +913,7 @@ _BeginNamespace(eokas)
 				builder.SetInsertPoint(entry);
 				
 				// self
-				auto self = module->new_expr(funcPtr, funcType->getPointerTo());
+				auto self = module->new_expr(funcPtr);
 				this->scope->addSymbol("self", self);
 				
 				// args
@@ -1016,7 +1016,7 @@ _BeginNamespace(eokas)
 				{
 					paramV = builder.CreateLoad(paramE->value);
 				}
-				paramV = module->ref_value(builder, paramV);
+				paramV = module->get_value(builder, paramV);
 				params.push_back(paramV);
 			}
 			
@@ -1354,9 +1354,7 @@ _BeginNamespace(eokas)
 			
 			const String staticTypePrefix = "$_Static";
 			
-			auto* thisInstanceType = module->new_type(node->name, nullptr, nullptr);
-			thisInstanceType->add_member("value", module->type_i32, nullptr);
-			thisInstanceType->resolve();
+			auto* thisInstanceType = module->new_type(node->name, module->type_enum);
 			
 			auto* thisStaticType = module->new_type(staticTypePrefix + node->name, nullptr, nullptr);
 			for (const auto& thisMember: node->members)
@@ -1445,7 +1443,10 @@ _BeginNamespace(eokas)
 				return false;
 			
 			if(this->scope->getSymbol(node->name, false) != nullptr)
+			{
+				printf("The symbol '%s' is undefined.", node->name.cstr());
 				return false;
+			}
 			
 			auto type = this->encode_type(node->type);
 			auto expr = this->encode_expr(node->value);
@@ -1465,11 +1466,13 @@ _BeginNamespace(eokas)
 						break;
 					if(vtype->canLosslesslyBitCastTo(stype))
 						break;
-					if(vtype->isPointerTy() && stype == vtype->getPointerElementType())
+					if(vtype->isPointerTy() && vtype->getPointerElementType() == stype)
 					{
 						stype = type->handle = vtype;
 						break;
 					}
+					
+					// TODO: 校验类型合法性, 值类型是否遵循标记类型
 					
 					printf("Type of value can not cast to the type of symbol.\n");
 					return false;
@@ -1485,7 +1488,6 @@ _BeginNamespace(eokas)
 				printf("Void-Type can't assign to a symbol.\n");
 				return false;
 			}
-			// TODO: 校验类型合法性, 值类型是否遵循标记类型
 			
 			llvm::Value* symbol = builder.CreateAlloca(stype);
 			builder.CreateStore(value, symbol);
