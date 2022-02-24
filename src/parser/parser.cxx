@@ -76,7 +76,8 @@ _BeginNamespace(eokas)
 	};
 	
 	
-	parser_impl_t::parser_impl_t() : scanner(new scanner_t()), factory(nullptr), errormsg()
+	parser_impl_t::parser_impl_t()
+		: scanner(new scanner_t()), factory(nullptr), errormsg()
 	{
 	}
 	
@@ -930,12 +931,14 @@ _BeginNamespace(eokas)
 		node->isStatic = this->check_token(token_t::Static, false);
 		
 		// (val | var)
-		switch(this->token().type)
+		switch (this->token().type)
 		{
 			case token_t::Var:
-				node->isConst = false; break;
+				node->isConst = false;
+				break;
 			case token_t::Val:
-				node->isConst = true; break;
+				node->isConst = true;
+				break;
 			default:
 				this->error_token_unexpected();
 				return nullptr;
@@ -1022,7 +1025,6 @@ _BeginNamespace(eokas)
 			
 			node->members[memName] = memValue;
 			index += 1;
-			
 		} while (this->check_token(token_t::Comma, false));
 		
 		// }
@@ -1517,7 +1519,8 @@ _BeginNamespace(eokas)
 		}
 	}
 	
-	parser_t::parser_t() : impl(new parser_impl_t())
+	parser_t::parser_t()
+		: impl(new parser_impl_t())
 	{
 	}
 	

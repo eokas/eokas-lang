@@ -1,4 +1,3 @@
-
 #include "app.h"
 #include "parser/parser.h"
 #include "llvm/engine.h"
@@ -37,8 +36,7 @@ int main(int argc, char** argv)
 		try
 		{
 			eokas_main(file);
-		}
-		catch (std::exception& e)
+		} catch (std::exception& e)
 		{
 			printf("ERROR: %s \n", e.what());
 		}
@@ -93,29 +91,20 @@ static void eokas_main(const String& fileName)
 
 static void about(void)
 {
-	printf(
-		"eokas %s\n",
-		_EOKAS_VERSION
-	);
+	printf("eokas %s\n", _EOKAS_VERSION);
 }
 
 static void help(void)
 {
-	printf(
-		"\n-?, -help\n"
-		"\tPrint command line help message.\n"
-		
-		"\nfileName [-c] [-e] [-t]\n"
-		"\tComple or Execute a file, show exec-time.\n"
-	);
+	printf("\n-?, -help\n"
+		   "\tPrint command line help message.\n"
+	
+		   "\nfileName [-c] [-e] [-t]\n"
+		   "\tComple or Execute a file, show exec-time.\n");
 }
 
 static void bad_command(const char* command)
 {
-	printf(
-		"The command '%s' is undefined in eokas. "
-		"You can use the command %s to get the help infomation.\n",
-		command,
-		"'eokas -?' or 'eokas -help'"
-	);
+	printf("The command '%s' is undefined in eokas. "
+		   "You can use the command %s to get the help infomation.\n", command, "'eokas -?' or 'eokas -help'");
 }

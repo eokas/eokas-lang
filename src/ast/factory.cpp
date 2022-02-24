@@ -1,4 +1,3 @@
-
 #include "factory.h"
 #include "type.h"
 #include "expr.h"
@@ -8,7 +7,8 @@ namespace eokas
 {
 	ast_factory_t::ast_factory_t()
 		: nodes()
-	{}
+	{
+	}
 	
 	ast_factory_t::~ast_factory_t()
 	{

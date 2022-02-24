@@ -1,4 +1,3 @@
-
 #include "module.h"
 #include "factory.h"
 #include "object.h"
@@ -9,10 +8,7 @@
 namespace eokas
 {
 	ast_module_t::ast_module_t()
-		: factory(new ast_factory_t())
-		, entry(nullptr)
-		, func(nullptr)
-		, scope(nullptr)
+		: factory(new ast_factory_t()), entry(nullptr), func(nullptr), scope(nullptr)
 	{
 		this->entry = factory->create_expr_func_def(nullptr);
 		this->func = this->entry;

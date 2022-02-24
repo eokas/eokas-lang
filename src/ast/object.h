@@ -1,4 +1,3 @@
-
 #ifndef _EOKAS_AST_OBJECT_H_
 #define _EOKAS_AST_OBJECT_H_
 
@@ -19,7 +18,7 @@ namespace eokas
 		
 		ast_stmt_symbol_def_t* get_symbol(const String& name, bool lookup = true);
 		void set_symbol(const String& name, ast_stmt_symbol_def_t* symbol);
-		
+	
 	private:
 		ast_scope_t* parent;
 		std::list<ast_scope_t*> children;

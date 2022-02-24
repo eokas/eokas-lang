@@ -1,4 +1,3 @@
-
 #ifndef _EOKAS_APP_HPP_
 #define _EOKAS_APP_HPP_
 

@@ -1,4 +1,3 @@
-
 #ifndef _EOKAS_AST_FACTORY_H_
 #define _EOKAS_AST_FACTORY_H_
 
@@ -11,7 +10,7 @@ namespace eokas
 	public:
 		ast_factory_t();
 		virtual ~ast_factory_t();
-		
+	
 	public:
 		ast_type_ref_t* create_type_ref(ast_node_t* parent);
 		ast_type_array_t* create_type_array(ast_node_t* parent);
@@ -47,7 +46,7 @@ namespace eokas
 		ast_stmt_block_t* create_stmt_block(ast_node_t* parent);
 		ast_stmt_call_t* create_stmt_call(ast_node_t* parent);
 		ast_stmt_assign_t* create_stmt_assign(ast_node_t* parent);
-		
+	
 	private:
 		std::vector<ast_node_t*> nodes;
 	};

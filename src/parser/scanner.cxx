@@ -1,26 +1,15 @@
-
 #include "scanner.h"
 
 _BeginNamespace(eokas)
 	
 	
-	const char* const token_t::names[] = {
-		"var", "val", "static", "make", "struct", "enum", "proc", "func", "array",
-		"if", "else", "loop", "continue", "break", "return",
-		"is", "as", "true", "false",
-		",", ";", ":", "?", "@", "#", "$",
-		"+", "-", "*", "/", "%", "^", "~",
-		"(", ")", "[", "]", "{", "}",
-		"&", "&&", "|", "||",
-		"=", "==", "!", "!=", ">", ">=", "<", "<=",
-		">|", "|<",
-		".", "..", "...",
-		"<b-int>", "<x-int>", "<d-int>", "<float>", "<string>", "<identifier>", "<eos>"
-	};
+	const char* const token_t::names[] = {"var", "val", "static", "make", "struct", "enum", "proc", "func", "array", "if", "else", "loop", "continue", "break", "return", "is", "as", "true", "false", ",", ";", ":", "?", "@", "#", "$", "+", "-", "*", "/", "%", "^", "~", "(", ")", "[", "]", "{", "}", "&", "&&", "|", "||", "=", "==", "!", "!=", ">", ">=", "<", "<=", ">|", "|<", ".", "..", "...",
+										  "<b-int>", "<x-int>", "<d-int>", "<float>", "<string>", "<identifier>", "<eos>"};
 	
 	token_t::token_t()
 		: type(Unknown), value()
-	{ }
+	{
+	}
 	
 	const char* const token_t::name() const
 	{
@@ -57,7 +46,8 @@ _BeginNamespace(eokas)
 	
 	scanner_t::scanner_t()
 		: m_source(nullptr), m_position(nullptr), m_current(0), m_token(), m_look_ahead_token(), m_line(0), m_column(0)
-	{ }
+	{
+	}
 	
 	scanner_t::~scanner_t()
 	{

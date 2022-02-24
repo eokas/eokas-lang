@@ -11,7 +11,6 @@
 
 namespace eokas
 {
-
 }
 
 #endif//_EOKAS_AST_H_

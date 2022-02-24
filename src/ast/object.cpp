@@ -1,11 +1,11 @@
-
 #include "object.h"
 
 namespace eokas
 {
 	ast_scope_t::ast_scope_t(ast_scope_t* parent)
 		: parent(parent), children(), types(), symbols()
-	{ }
+	{
+	}
 	
 	ast_scope_t::~ast_scope_t()
 	{
