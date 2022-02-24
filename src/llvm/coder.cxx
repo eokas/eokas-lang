@@ -1362,26 +1362,63 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			const String& name = node->name;
+			const String staticTypePrefix = "$_Static";
+
+			auto* thisInstanceType = module->new_type(node->name, nullptr, nullptr);
+			thisInstanceType->add_member("value", module->type_i32, nullptr);
+			thisInstanceType->resolve();
 			
-			auto enumType = module->new_type(name, nullptr, nullptr);
-			enumType->set_layout(llvm_type_t::layout_t::Overlapped);
-			
-			for(const auto& member : node->members)
+			auto* thisStaticType = module->new_type(staticTypePrefix + node->name, nullptr, nullptr);
+			for (const auto& thisMember: node->members)
 			{
-				const String& memName = member.first;
-				auto memValue = module->new_expr(builder.getInt32(member.second));
-				enumType->add_member(memName, module->type_i32, memValue);
+				auto memName = thisMember.first;
+				if(thisStaticType->get_member(memName) != nullptr)
+				{
+					printf("The member named '%s' is already exists.\n", memName.cstr());
+					return false;
+				}
+				
+				auto v = builder.getInt32(thisMember.second);
+				auto o = builder.CreateAlloca(thisInstanceType->handle);
+				auto n = String::format("%s.%s", node->name.cstr(), memName.cstr());
+				auto p = builder.CreateStructGEP(thisInstanceType->handle, o, 0, n.cstr());
+				builder.CreateStore(v, p);
+				auto memValue = module->new_expr(o);
+				
+				thisStaticType->add_member(memName, thisInstanceType, memValue);
 			}
 			
-			enumType->resolve();
-			if(!this->scope->addType(name, enumType))
+			thisStaticType->resolve();
+			
+			if(!this->scope->addType(thisStaticType->name, thisStaticType) ||
+			   !this->scope->addType(thisInstanceType->name, thisInstanceType))
 			{
-				printf("There is a same type named %s in this scope.\n", name.cstr());
+				printf("There is a same type named %s in this scope.\n", thisInstanceType->name.cstr());
 				return false;
 			}
 			
-			module->map_type(enumType->handle, enumType);
+			module->map_type(thisStaticType->handle, thisStaticType);
+			module->map_type(thisInstanceType->handle, thisInstanceType);
+			
+			// make static object
+			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticType->handle);
+			llvm_expr_t* staticE = module->new_expr(staticV);
+			
+			for(u32_t index = 0; index < thisStaticType->members.size(); index++)
+			{
+				auto& mem = thisStaticType->members.at(index);
+				auto memV = builder.CreateLoad(mem->value->value);
+				
+				String memN = String::format("%s.%s", thisInstanceType->name.cstr(), mem->name.cstr());
+				llvm::Value* memP = builder.CreateStructGEP(thisStaticType->handle, staticV, index, memN.cstr());
+				builder.CreateStore(memV, memP);
+			}
+			
+			if(!this->scope->addSymbol(thisInstanceType->name, staticE))
+			{
+				printf("There is a same symbol named %s in this scope.\n", thisInstanceType->name.cstr());
+				return false;
+			}
 			
 			return true;
 		}
@@ -1546,13 +1583,10 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			llvm::BasicBlock* if_begin = llvm::BasicBlock::Create(context, "if.begin", this->scope->func);
 			llvm::BasicBlock* if_true = llvm::BasicBlock::Create(context, "if.true", this->scope->func);
 			llvm::BasicBlock* if_false = llvm::BasicBlock::Create(context, "if.false", this->scope->func);
 			llvm::BasicBlock* if_end = llvm::BasicBlock::Create(context, "if.end", this->scope->func);
 			
-			builder.CreateBr(if_begin);
-			builder.SetInsertPoint(if_begin);
 			auto condE = this->encode_expr(node->cond);
 			if(condE == nullptr)
 				return false;
@@ -1570,13 +1604,13 @@ _BeginNamespace(eokas)
 			{
 				if(!this->encode_stmt(node->branch_true))
 					return false;
-				auto& lastOp = if_true->back();
-				if(!lastOp.isTerminator())
+				auto lastBlock = builder.GetInsertBlock();
+				if(lastBlock != if_true && !lastBlock->back().isTerminator())
 				{
 					builder.CreateBr(if_end);
 				}
 			}
-			else
+			if(!if_true->back().isTerminator())
 			{
 				builder.CreateBr(if_end);
 			}
@@ -1587,17 +1621,17 @@ _BeginNamespace(eokas)
 			{
 				if(!this->encode_stmt(node->branch_false))
 					return false;
-				auto& lastOp = if_false->back();
-				if(!lastOp.isTerminator())
+				auto lastBlock = builder.GetInsertBlock();
+				if(lastBlock != if_false && !lastBlock->back().isTerminator())
 				{
 					builder.CreateBr(if_end);
 				}
 			}
-			else
+			if(!if_false->back().isTerminator())
 			{
 				builder.CreateBr(if_end);
 			}
-			
+
 			builder.SetInsertPoint(if_end);
 			
 			return true;
@@ -1610,24 +1644,21 @@ _BeginNamespace(eokas)
 			
 			this->pushScope();
 			
-			llvm::BasicBlock* for_init = llvm::BasicBlock::Create(context, "for.init", this->scope->func);
-			llvm::BasicBlock* for_test = llvm::BasicBlock::Create(context, "for.test", this->scope->func);
-			llvm::BasicBlock* for_step = llvm::BasicBlock::Create(context, "for.step", this->scope->func);
-			llvm::BasicBlock* for_body = llvm::BasicBlock::Create(context, "for.body", this->scope->func);
-			llvm::BasicBlock* for_end = llvm::BasicBlock::Create(context, "for.end", this->scope->func);
+			llvm::BasicBlock* loop_cond = llvm::BasicBlock::Create(context, "loop.cond", this->scope->func);
+			llvm::BasicBlock* loop_step = llvm::BasicBlock::Create(context, "loop.step", this->scope->func);
+			llvm::BasicBlock* loop_body = llvm::BasicBlock::Create(context, "loop.body", this->scope->func);
+			llvm::BasicBlock* loop_end = llvm::BasicBlock::Create(context, "loop.end", this->scope->func);
 			
 			auto oldContinuePoint = this->continuePoint;
 			auto oldBreakPoint = this->breakPoint;
-			this->continuePoint = for_step;
-			this->breakPoint = for_end;
+			this->continuePoint = loop_step;
+			this->breakPoint = loop_end;
 			
-			builder.CreateBr(for_init);
-			builder.SetInsertPoint(for_init);
 			if(!this->encode_stmt(node->init))
 				return false;
-			builder.CreateBr(for_test);
+			builder.CreateBr(loop_cond);
 			
-			builder.SetInsertPoint(for_test);
+			builder.SetInsertPoint(loop_cond);
 			auto condE = this->encode_expr(node->cond);
 			if(condE == nullptr)
 				return false;
@@ -1637,30 +1668,30 @@ _BeginNamespace(eokas)
 				printf("The label 'for.cond' need a bool value.\n");
 				return false;
 			}
-			builder.CreateCondBr(condV, for_body, for_end);
+			builder.CreateCondBr(condV, loop_body, loop_end);
 			
-			builder.SetInsertPoint(for_body);
+			builder.SetInsertPoint(loop_body);
 			if(node->body != nullptr)
 			{
 				if(!this->encode_stmt(node->body))
 					return false;
-				auto& lastOp = for_body->back();
+				auto& lastOp = loop_body->back();
 				if(!lastOp.isTerminator())
 				{
-					builder.CreateBr(for_step);
+					builder.CreateBr(loop_step);
 				}
 			}
-			else
+			if(!loop_body->back().isTerminator())
 			{
-				builder.CreateBr(for_step);
+				builder.CreateBr(loop_step);
 			}
 			
-			builder.SetInsertPoint(for_step);
+			builder.SetInsertPoint(loop_step);
 			if(!this->encode_stmt(node->step))
 				return false;
-			builder.CreateBr(for_test);
+			builder.CreateBr(loop_cond);
 			
-			builder.SetInsertPoint(for_end);
+			builder.SetInsertPoint(loop_end);
 			
 			this->continuePoint = oldContinuePoint;
 			this->breakPoint = oldBreakPoint;
