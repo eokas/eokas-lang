@@ -1352,11 +1352,9 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			const String staticTypePrefix = "$_Static";
+			const String name = node->name;
 			
-			auto* thisInstanceType = module->new_type(node->name, module->type_enum);
-			
-			auto* thisStaticType = module->new_type(staticTypePrefix + node->name, nullptr, nullptr);
+			auto* thisStaticType = module->new_type(node->name, nullptr, nullptr);
 			for (const auto& thisMember: node->members)
 			{
 				auto memName = thisMember.first;
@@ -1367,26 +1365,19 @@ _BeginNamespace(eokas)
 				}
 				
 				auto v = builder.getInt32(thisMember.second);
-				auto o = builder.CreateAlloca(thisInstanceType->handle);
+				auto o = builder.CreateAlloca(module->type_enum->handle);
 				auto n = String::format("%s.%s", node->name.cstr(), memName.cstr());
-				auto p = builder.CreateStructGEP(thisInstanceType->handle, o, 0, n.cstr());
+				auto p = builder.CreateStructGEP(module->type_enum->handle, o, 0, n.cstr());
 				builder.CreateStore(v, p);
 				auto memValue = module->new_expr(o);
 				
-				thisStaticType->add_member(memName, thisInstanceType, memValue);
+				thisStaticType->add_member(memName, module->type_enum, memValue);
 			}
 			
 			thisStaticType->resolve();
 			
-			if(!this->scope->addType(thisStaticType->name, thisStaticType) || !this->scope->addType(thisInstanceType->name, thisInstanceType))
-			{
-				printf("There is a same type named %s in this scope.\n", thisInstanceType->name.cstr());
-				return false;
-			}
-			
 			module->map_type(thisStaticType->handle, thisStaticType);
-			module->map_type(thisInstanceType->handle, thisInstanceType);
-			
+
 			// make static object
 			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticType->handle);
 			llvm_expr_t* staticE = module->new_expr(staticV);
@@ -1396,14 +1387,14 @@ _BeginNamespace(eokas)
 				auto& mem = thisStaticType->members.at(index);
 				auto memV = builder.CreateLoad(mem->value->value);
 				
-				String memN = String::format("%s.%s", thisInstanceType->name.cstr(), mem->name.cstr());
+				String memN = String::format("%s.%s", name.cstr(), mem->name.cstr());
 				llvm::Value* memP = builder.CreateStructGEP(thisStaticType->handle, staticV, index, memN.cstr());
 				builder.CreateStore(memV, memP);
 			}
 			
-			if(!this->scope->addSymbol(thisInstanceType->name, staticE))
+			if(!this->scope->addSymbol(name, staticE))
 			{
-				printf("There is a same symbol named %s in this scope.\n", thisInstanceType->name.cstr());
+				printf("There is a same symbol named %s in this scope.\n", name.cstr());
 				return false;
 			}
 			

@@ -252,7 +252,9 @@ _BeginNamespace(eokas)
 		type_enum->add_member("value", type_i32, this->new_expr(type_i32->defval));
 		type_enum->resolve();
 		
-		this->declare_func_puts();
+		type_enum_ref = this->new_type("ref<enum>", nullptr, nullptr);
+		type_enum_ref->ref(type_enum);
+		
 		this->declare_func_printf();
 		this->declare_func_sprintf();
 		this->declare_func_malloc();
@@ -326,46 +328,6 @@ _BeginNamespace(eokas)
 		if(iter == this->typemappings.end())
 			return nullptr;
 		return iter->second;
-	}
-	
-	/**
-	 * For ref-types, transform multi-level pointer to one-level pointer.
-	 * For val-types, transform multi-level pointer to real value.
-	 * */
-	llvm::Value* llvm_module_t::get_value(llvm::IRBuilder<>& builder, llvm::Value* value)
-	{
-		llvm::Type* type = value->getType();
-		while (type->isPointerTy())
-		{
-			if(llvm::isa<llvm::Function>(value))
-				break;
-			if(type->getPointerElementType()->isFunctionTy())
-				break;
-			if(type->getPointerElementType()->isStructTy())
-				break;
-			if(type->getPointerElementType()->isArrayTy())
-				break;
-			value = builder.CreateLoad(value);
-			type = value->getType();
-		}
-		return value;
-	}
-	
-	/**
-	 * Transform the multi-level pointer value to one-level pointer type value.
-	 * Ignores literal values.
-	 * */
-	llvm::Value* llvm_module_t::ref_value(llvm::IRBuilder<>& builder, llvm::Value* value)
-	{
-		llvm::Type* type = value->getType();
-		
-		while (type->isPointerTy() && type->getPointerElementType()->isPointerTy())
-		{
-			value = builder.CreateLoad(value);
-			type = value->getType();
-		}
-		
-		return value;
 	}
 	
 	llvm::Function* llvm_module_t::declare_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg)
@@ -456,6 +418,73 @@ _BeginNamespace(eokas)
 		});
 	}
 	
+	/**
+	 * For ref-types, transform multi-level pointer to one-level pointer.
+	 * For val-types, transform multi-level pointer to real value.
+	 * */
+	llvm::Value* llvm_module_t::get_value(llvm::IRBuilder<>& builder, llvm::Value* value)
+	{
+		llvm::Type* type = value->getType();
+		while (type->isPointerTy())
+		{
+			if(llvm::isa<llvm::Function>(value))
+				break;
+			if(type->getPointerElementType()->isFunctionTy())
+				break;
+			if(type->getPointerElementType()->isStructTy())
+				break;
+			if(type->getPointerElementType()->isArrayTy())
+				break;
+			value = builder.CreateLoad(value);
+			type = value->getType();
+		}
+		return value;
+	}
+	
+	/**
+	 * Transform the multi-level pointer value to one-level pointer type value.
+	 * Ignores literal values.
+	 * */
+	llvm::Value* llvm_module_t::ref_value(llvm::IRBuilder<>& builder, llvm::Value* value)
+	{
+		llvm::Type* type = value->getType();
+		
+		while (type->isPointerTy() && type->getPointerElementType()->isPointerTy())
+		{
+			value = builder.CreateLoad(value);
+			type = value->getType();
+		}
+		
+		return value;
+	}
+	
+	llvm::Value* llvm_module_t::is_type(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* value, llvm::Type* type)
+	{
+	
+	}
+	
+	llvm::Value* llvm_module_t::as_type(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* value, llvm::Type* type)
+	{
+		auto valueType = value->getType();
+		
+		if (valueType->isIntegerTy() ||
+			valueType->isFloatingPointTy() ||
+			valueType == this->type_string_ref->handle ||
+			valueType == this->type_enum_ref->handle)
+		{
+			if(type == this->type_string_ref->handle)
+			{
+				return this->value_to_string(func, builder, value);
+			}
+			return nullptr;
+		}
+		else
+		{
+			printf("Complex cast is not supported.\n");
+			return nullptr;
+		}
+	}
+	
 	llvm::Value* llvm_module_t::make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type)
 	{
 		auto mallocF = module.getFunction("malloc");
@@ -538,14 +567,14 @@ _BeginNamespace(eokas)
 	
 	llvm::Value* llvm_module_t::enum_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		llvm::Value* ptr = builder.CreateStructGEP(type_string->handle, val, 0);
+		llvm::Value* ptr = builder.CreateStructGEP(type_enum->handle, val, 0);
 		llvm::Value* code = builder.CreateLoad(ptr);
 		
 		llvm::Value* buf = builder.CreateAlloca(llvm::ArrayType::get(type_i8->handle, 64));
 		llvm::Value* fmt = builder.CreateGlobalString("%d");
 		
 		auto sprintf = module.getFunction("sprintf");
-		builder.CreateCall(sprintf, {buf, fmt, val});
+		builder.CreateCall(sprintf, {buf, fmt, code});
 		
 		return buf;
 	}
@@ -554,9 +583,9 @@ _BeginNamespace(eokas)
 	{
 		llvm::Type* vt = val->getType();
 		
-		if(vt == type_string->handle)
+		if(vt == type_string_ref->handle)
 			return this->string_to_cstr(func, builder, val);
-		if(vt == type_enum->handle)
+		if(vt == type_enum_ref->handle)
 			return this->enum_to_cstr(func, builder, val);
 		
 		if(vt == type_i8_ref->handle)
@@ -580,7 +609,7 @@ _BeginNamespace(eokas)
 	{
 		llvm::Type* vt = val->getType();
 		
-		if(vt == type_string->handle)
+		if(vt == type_string_ref->handle)
 			return val;
 		
 		if(vt == type_i8_ref->handle)
@@ -592,7 +621,7 @@ _BeginNamespace(eokas)
 			return this->cstr_to_string(func, builder, cstr);
 		}
 		
-		if(vt == type_enum->handle)
+		if(vt == type_enum_ref->handle)
 		{
 			llvm::Value* cstr = this->enum_to_cstr(func, builder, val);
 			return this->cstr_to_string(func, builder, cstr);

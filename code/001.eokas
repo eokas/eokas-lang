@@ -1,13 +1,6 @@
 
-struct A {
-    static var a: i32 = 6;
+enum AAA {
+    One = 1
 }
 
-struct B : A {
-
-}
-
-B.a = 12;
-
-print(A.a as string);
-print(B.a as string);
+print(AAA.One as string);

@@ -150,6 +150,7 @@ _BeginNamespace(eokas)
 		llvm_type_t* type_string;
 		llvm_type_t* type_string_ref;
 		llvm_type_t* type_enum;
+		llvm_type_t* type_enum_ref;
 		
 		llvm_module_t(const String& name, llvm::LLVMContext& context);
 		~llvm_module_t() noexcept;
@@ -159,6 +160,15 @@ _BeginNamespace(eokas)
 		llvm_type_t* new_type(const String& name, llvm_type_t* base);
 		void map_type(llvm::Type* handle, llvm_type_t* type);
 		llvm_type_t* get_type(llvm::Type* handle);
+		
+		llvm::Function* declare_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg);
+		llvm::Function* declare_func_printf();
+		llvm::Function* declare_func_sprintf();
+		llvm::Function* declare_func_malloc();
+		llvm::Function* declare_func_free();
+		
+		llvm::Function* define_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg, const llvm_code_delegate_t& body);
+		llvm::Function* define_func_print();
 		
 		/**
 		 * For ref-types: transform multi-level pointer to one-level pointer.
@@ -171,14 +181,8 @@ _BeginNamespace(eokas)
 		 * */
 		llvm::Value* ref_value(llvm::IRBuilder<>& builder, llvm::Value* value);
 		
-		llvm::Function* declare_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg);
-		llvm::Function* declare_func_printf();
-		llvm::Function* declare_func_sprintf();
-		llvm::Function* declare_func_malloc();
-		llvm::Function* declare_func_free();
-		
-		llvm::Function* define_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg, const llvm_code_delegate_t& body);
-		llvm::Function* define_func_print();
+		llvm::Value* is_type(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* value, llvm::Type* type);
+		llvm::Value* as_type(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* value, llvm::Type* type);
 		
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type);
 		void free(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr);

@@ -1,12 +1,12 @@
-
-enum class AXX {
-	One,
-	Two,
-	Three
-};
+#include <stdio.h>
 
 void foo()
 {
-	AXX a = AXX::Three;
-	AXX b = AXX::Three;
+	int a = 1;
+	if(a == 1) {
+		printf("a == 1");
+	}
+	else if(a == 2) {
+		printf("a == 2");
+	}
 }
