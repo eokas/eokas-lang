@@ -1318,9 +1318,6 @@ _BeginNamespace(eokas)
 				return false;
 			}
 			
-			module->map_type(thisStaticType->handle, thisStaticType);
-			module->map_type(thisInstanceType->handle, thisInstanceType);
-			
 			// make static object
 			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticType->handle);
 			llvm_expr_t* staticE = module->new_expr(staticV);
@@ -1376,8 +1373,6 @@ _BeginNamespace(eokas)
 			
 			thisStaticType->resolve();
 			
-			module->map_type(thisStaticType->handle, thisStaticType);
-
 			// make static object
 			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticType->handle);
 			llvm_expr_t* staticE = module->new_expr(staticV);

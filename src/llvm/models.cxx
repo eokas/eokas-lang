@@ -238,22 +238,16 @@ _BeginNamespace(eokas)
 		type_f64 = this->new_type("f64", llvm::Type::getDoubleTy(context), llvm::ConstantFP::get(context, llvm::APFloat(0.0)));
 		type_bool = this->new_type("bool", llvm::Type::getInt1Ty(context), llvm::ConstantInt::get(context, llvm::APInt(1, 0)));
 		
-		type_i8_ref = this->new_type("ref<i8>", nullptr, nullptr);
-		type_i8_ref->ref(type_i8);
+		type_i8_ref = llvm_typedef_ref_t::define_type(this, type_i8);
 		
-		type_string = this->new_type("string", nullptr, nullptr);
-		type_string->add_member("value", type_i8_ref, this->new_expr(type_i8_ref->defval));
-		type_string->resolve();
-		
-		type_string_ref = this->new_type("ref<string>", nullptr, nullptr);
-		type_string_ref->ref(type_string);
+		type_string = llvm_typedef_string_t::define_type(this);
+		type_string_ref = llvm_typedef_ref_t::define_type(this, type_string);
 		
 		type_enum = this->new_type("enum", nullptr, nullptr);
 		type_enum->add_member("value", type_i32, this->new_expr(type_i32->defval));
 		type_enum->resolve();
 		
-		type_enum_ref = this->new_type("ref<enum>", nullptr, nullptr);
-		type_enum_ref->ref(type_enum);
+		type_enum_ref = llvm_typedef_ref_t::define_type(this, type_enum);
 		
 		this->declare_func_printf();
 		this->declare_func_sprintf();
@@ -301,9 +295,13 @@ _BeginNamespace(eokas)
 	
 	llvm_type_t* llvm_module_t::new_type(const String& name, llvm::Type* handle, llvm::Value* defval)
 	{
-		auto* t = new llvm_type_t(context, name, handle, defval);
-		this->types.push_back(t);
-		return t;
+		auto type = this->get_type(name);
+		if(type == nullptr)
+		{
+			type = new llvm_type_t(context, name, handle, defval);
+			this->types.push_back(type);
+		}
+		return type;
 	}
 	
 	llvm_type_t* llvm_module_t::new_type(const String& name, llvm_type_t* base)
@@ -317,17 +315,30 @@ _BeginNamespace(eokas)
 		return type;
 	}
 	
-	void llvm_module_t::map_type(llvm::Type* handle, llvm_type_t* type)
+	llvm_type_t* llvm_module_t::get_type(const String& name)
 	{
-		this->typemappings[handle] = type;
+		auto iter = this->types.begin();
+		while(iter != this->types.end())
+		{
+			auto type = *iter;
+			if(type->name == name)
+				return type;
+			++ iter;
+		}
+		return nullptr;
 	}
 	
 	llvm_type_t* llvm_module_t::get_type(llvm::Type* handle)
 	{
-		auto iter = this->typemappings.find(handle);
-		if(iter == this->typemappings.end())
-			return nullptr;
-		return iter->second;
+		auto iter = this->types.begin();
+		while(iter != this->types.end())
+		{
+			auto type = *iter;
+			if(type->handle == handle)
+				return type;
+			++iter;
+		}
+		return nullptr;
 	}
 	
 	llvm::Function* llvm_module_t::declare_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg)

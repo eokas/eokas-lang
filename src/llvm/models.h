@@ -2,6 +2,7 @@
 #define _EOKAS_LLVM_MODELS_H_
 
 #include "./header.h"
+#include "./types.h"
 
 #include <llvm/IR/IRBuilder.h>
 
@@ -132,8 +133,6 @@ _BeginNamespace(eokas)
 		std::vector<llvm_type_t*> types;
 		std::vector<llvm_expr_t*> exprs;
 		
-		std::map<llvm::Type*, llvm_type_t*> typemappings;
-		
 		llvm_type_t* type_void;
 		llvm_type_t* type_i8;
 		llvm_type_t* type_i16;
@@ -158,7 +157,7 @@ _BeginNamespace(eokas)
 		llvm_expr_t* new_expr(llvm::Value* value, llvm::Type* type = nullptr);
 		llvm_type_t* new_type(const String& name, llvm::Type* handle, llvm::Value* defval);
 		llvm_type_t* new_type(const String& name, llvm_type_t* base);
-		void map_type(llvm::Type* handle, llvm_type_t* type);
+		llvm_type_t* get_type(const String& name);
 		llvm_type_t* get_type(llvm::Type* handle);
 		
 		llvm::Function* declare_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg);
