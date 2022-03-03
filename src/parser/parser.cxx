@@ -282,46 +282,28 @@ _BeginNamespace(eokas)
 			if(oper == ast_binary_oper_t::Unknown)
 				break;
 			
-			if(oper == ast_binary_oper_t::Is || oper == ast_binary_oper_t::As)
+			
+			ast_expr_t* right = nullptr;
+			if(priority<(int) ast_binary_oper_t::MaxPriority / 100)
 			{
-				ast_type_t* right = right = this->parse_type(p);
-				if(right == nullptr)
-				{
-					_DeletePointer(left);
-					return nullptr;
-				}
-				
-				auto* binary = factory->create_expr_binary_type(p);
-				binary->op = oper;
-				binary->left = left;
-				binary->right = right;
-				
-				left = binary;
+				right = this->parse_expr_binary(p, priority + 1);
 			}
 			else
 			{
-				ast_expr_t* right = nullptr;
-				if(priority<(int) ast_binary_oper_t::MaxPriority / 100)
-				{
-					right = this->parse_expr_binary(p, priority + 1);
-				}
-				else
-				{
-					right = this->parse_expr_unary(p);
-				}
-				if(right == nullptr)
-				{
-					_DeletePointer(left);
-					return nullptr;
-				}
-				
-				auto* binary = factory->create_expr_binary_value(p);
-				binary->op = oper;
-				binary->left = left;
-				binary->right = right;
-				
-				left = binary;
+				right = this->parse_expr_unary(p);
 			}
+			if(right == nullptr)
+			{
+				_DeletePointer(left);
+				return nullptr;
+			}
+			
+			auto* binary = factory->create_expr_binary(p);
+			binary->op = oper;
+			binary->left = left;
+			binary->right = right;
+			
+			left = binary;
 		}
 		
 		return left;
@@ -1417,9 +1399,6 @@ _BeginNamespace(eokas)
 			case token_t::And2:
 				oper = ast_binary_oper_t::And;
 				break;
-			case token_t::Is:
-				oper = ast_binary_oper_t::Is;
-				break;
 			case token_t::Equal:
 				oper = ast_binary_oper_t::Equal;
 				break;
@@ -1467,9 +1446,6 @@ _BeginNamespace(eokas)
 				break;
 			case token_t::ShiftR:
 				oper = ast_binary_oper_t::ShiftR;
-				break;
-			case token_t::As:
-				oper = ast_binary_oper_t::As;
 				break;
 			default:
 				break;

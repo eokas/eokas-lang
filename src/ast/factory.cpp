@@ -43,16 +43,9 @@ namespace eokas
 		return node;
 	}
 	
-	ast_expr_binary_type_t* ast_factory_t::create_expr_binary_type(ast_node_t* parent)
+	ast_expr_binary_t* ast_factory_t::create_expr_binary(ast_node_t* parent)
 	{
-		auto* node = new ast_expr_binary_type_t(parent);
-		this->nodes.push_back(node);
-		return node;
-	}
-	
-	ast_expr_binary_value_t* ast_factory_t::create_expr_binary_value(ast_node_t* parent)
-	{
-		auto* node = new ast_expr_binary_value_t(parent);
+		auto* node = new ast_expr_binary_t(parent);
 		this->nodes.push_back(node);
 		return node;
 	}

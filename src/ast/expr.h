@@ -30,31 +30,11 @@ namespace eokas
 	struct ast_expr_binary_t : public ast_expr_t
 	{
 		ast_binary_oper_t op;
-		
-		explicit ast_expr_binary_t(ast_node_category_t category, ast_node_t* parent)
-			: ast_expr_t(category, parent), op(ast_binary_oper_t::Unknown)
-		{
-		}
-	};
-	
-	struct ast_expr_binary_value_t : public ast_expr_binary_t
-	{
 		ast_expr_t* left;
 		ast_expr_t* right;
 		
-		explicit ast_expr_binary_value_t(ast_node_t* parent)
-			: ast_expr_binary_t(ast_node_category_t::expr_binary_value, parent), left(nullptr), right(nullptr)
-		{
-		}
-	};
-	
-	struct ast_expr_binary_type_t : public ast_expr_binary_t
-	{
-		ast_expr_t* left;
-		ast_type_t* right;
-		
-		explicit ast_expr_binary_type_t(ast_node_t* parent)
-			: ast_expr_binary_t(ast_node_category_t::expr_binary_type, parent), left(nullptr), right(nullptr)
+		explicit ast_expr_binary_t(ast_node_t* parent)
+			: ast_expr_t(ast_node_category_t::expr_binary, parent), op(ast_binary_oper_t::Unknown), left(nullptr), right(nullptr)
 		{
 		}
 	};

@@ -13,7 +13,7 @@ namespace eokas
 		
 		type_ref, type_array, type_generic,
 		
-		expr_trinary, expr_binary_value, expr_binary_type, expr_unary, expr_int, expr_float, expr_bool, expr_string, expr_symbol_ref,
+		expr_trinary, expr_binary, expr_unary, expr_int, expr_float, expr_bool, expr_string, expr_symbol_ref,
 		
 		expr_func_def, expr_func_ref,
 		
@@ -28,7 +28,7 @@ namespace eokas
 	
 	enum class ast_binary_oper_t
 	{
-		Or = 100, And = 200, Equal = 300, NEqual, LEqual, GEqual, Less, Greater, Add = 400, Sub, Mul = 500, Div, Mod, BitAnd = 600, BitOr, BitXor, ShiftL, ShiftR, Is = 700, As, MaxPriority = 800, Unknown = 0x7FFFFFFF
+		Or = 100, And = 200, Equal = 300, NEqual, LEqual, GEqual, Less, Greater, Add = 400, Sub, Mul = 500, Div, Mod, BitAnd = 600, BitOr, BitXor, ShiftL, ShiftR, MaxPriority = 800, Unknown = 0x7FFFFFFF
 	};
 	
 	enum class ast_unary_oper_t
@@ -81,8 +81,6 @@ namespace eokas
 	struct ast_expr_t;
 	struct ast_expr_trinary_t;
 	struct ast_expr_binary_t;
-	struct ast_expr_binary_type_t;
-	struct ast_expr_binary_value_t;
 	struct ast_expr_unary_t;
 	struct ast_expr_int_t;
 	struct ast_expr_float_t;

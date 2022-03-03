@@ -24,8 +24,6 @@ _BeginNamespace(eokas)
 			Continue,
 			Break,
 			Return,
-			Is,
-			As,
 			True,
 			False,
 			Comma,

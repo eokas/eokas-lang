@@ -17,8 +17,7 @@ namespace eokas
 		ast_type_generic_t* create_type_generic(ast_node_t* parent);
 		
 		ast_expr_trinary_t* create_expr_trinary(ast_node_t* parent);
-		ast_expr_binary_type_t* create_expr_binary_type(ast_node_t* parent);
-		ast_expr_binary_value_t* create_expr_binary_value(ast_node_t* parent);
+		ast_expr_binary_t* create_expr_binary(ast_node_t* parent);
 		ast_expr_unary_t* create_expr_unary(ast_node_t* parent);
 		ast_expr_int_t* create_expr_int(ast_node_t* parent);
 		ast_expr_float_t* create_expr_float(ast_node_t* parent);
