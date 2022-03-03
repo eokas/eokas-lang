@@ -1,6 +1,4 @@
 
-enum AAA {
-    One = 1
-}
+var a = 45;
 
-print(AAA.One as string);
+print(a);

@@ -367,12 +367,8 @@ _BeginNamespace(eokas)
 	
 	llvm_type_t* llvm_module_t::new_type(const String& name, llvm::Type* handle, llvm::Value* defval)
 	{
-		auto type = this->get_type(name);
-		if(type == nullptr)
-		{
-			type = new llvm_type_t(context, name, handle, defval);
-			this->types.push_back(type);
-		}
+		auto type = new llvm_type_t(context, name, handle, defval);
+		this->types.push_back(type);
 		return type;
 	}
 	

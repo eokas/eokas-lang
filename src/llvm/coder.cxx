@@ -999,28 +999,42 @@ _BeginNamespace(eokas)
 				return nullptr;
 			}
 			
-			std::vector<llvm::Value*> params;
+			std::vector<llvm::Value*> args;
 			for (auto i = 0; i<node->args.size(); i++)
 			{
 				auto* paramT = funcType->getParamType(i);
-				auto* paramE = this->encode_expr(node->args.at(i));
-				if(paramE == nullptr)
+				auto* argE = this->encode_expr(node->args.at(i));
+				if(argE == nullptr)
 					return nullptr;
-				if(paramE->type != paramT && !paramE->type->canLosslesslyBitCastTo(paramT))
+				
+				llvm::Value* argV = argE->value;
+				if(argE->is_symbol())
 				{
-					printf("The type of param[%d] can't cast to the param type of function.\n", i);
-					return nullptr;
+					argV = builder.CreateLoad(argE->value);
 				}
-				llvm::Value* paramV = paramE->value;
-				if(paramE->is_symbol())
+				argV = llvm_model_t::get_value(builder, argV);
+				
+				if(paramT != argV->getType())
 				{
-					paramV = builder.CreateLoad(paramE->value);
+					if(paramT == module->type_i8_ref->handle)
+					{
+						argV = module->value_to_cstr(scope->func, builder, argV);
+					}
+					if(paramT == module->type_string_ref->handle)
+					{
+						argV = module->value_to_string(scope->func, builder, argV);
+					}
+					else if(!argV->getType()->canLosslesslyBitCastTo(paramT))
+					{
+						printf("The type of param[%d] can't cast to the param type of function.\n", i);
+						return nullptr;
+					}
 				}
-				paramV = llvm_model_t::get_value(builder, paramV);
-				params.push_back(paramV);
+				
+				args.push_back(argV);
 			}
 			
-			llvm::Value* retval = builder.CreateCall(funcType, funcPtr, params);
+			llvm::Value* retval = builder.CreateCall(funcType, funcPtr, args);
 			return module->new_expr(retval);
 		}
 		
