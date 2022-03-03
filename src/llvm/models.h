@@ -10,7 +10,6 @@ _BeginNamespace(eokas)
 	
 	struct llvm_scope_t;
 	struct llvm_type_t;
-	struct llvm_expr_t;
 	
 	template<typename T>
 	struct table_t
@@ -50,7 +49,7 @@ _BeginNamespace(eokas)
 		llvm::Function* func;
 		std::vector<llvm_scope_t*> children;
 		
-		table_t<llvm_expr_t> symbols;
+		table_t<llvm::Value> symbols;
 		table_t<llvm_type_t> types;
 		
 		explicit llvm_scope_t(llvm_scope_t* parent, llvm::Function* func);
@@ -58,8 +57,8 @@ _BeginNamespace(eokas)
 		
 		llvm_scope_t* addChild(llvm::Function* f = nullptr);
 		
-		bool addSymbol(const String& name, llvm_expr_t* expr);
-		llvm_expr_t* getSymbol(const String& name, bool lookup);
+		bool addSymbol(const String& name, llvm::Value* expr);
+		llvm::Value* getSymbol(const String& name, bool lookup);
 		
 		bool addType(const String& name, llvm_type_t* type);
 		llvm_type_t* getType(const String& name, bool lookup);
@@ -71,7 +70,7 @@ _BeginNamespace(eokas)
 		{
 			String name = "";
 			llvm_type_t* type = nullptr;
-			llvm_expr_t* value = nullptr;
+			llvm::Value* value = nullptr;
 		};
 		
 		llvm::LLVMContext& context;
@@ -87,7 +86,7 @@ _BeginNamespace(eokas)
 		virtual ~llvm_type_t() noexcept;
 		
 		bool extends(llvm_type_t* base, String& err);
-		member_t* add_member(const String& name, llvm_type_t* type, llvm_expr_t* value);
+		member_t* add_member(const String& name, llvm_type_t* type, llvm::Value* value);
 		member_t* add_member(const member_t* other);
 		member_t* get_member(const String& name) const;
 		member_t* get_member(size_t index) const;
@@ -97,29 +96,7 @@ _BeginNamespace(eokas)
 		
 		void ref(llvm_type_t* element_type);
 	};
-	
-	struct llvm_expr_t
-	{
-		llvm::Value* value = nullptr;
-		llvm::Type* type = nullptr;
-		struct llvm_scope_t* scope = nullptr;
-		
-		explicit llvm_expr_t(llvm::Value* value, llvm::Type* type = nullptr);
-		virtual ~llvm_expr_t();
-		
-		bool is_symbol() const;
-	};
-	
-	struct llvm_func_t : llvm_expr_t
-	{
-		table_t<llvm_expr_t> upvals;
-		
-		explicit llvm_func_t(llvm::Value* value, llvm::Type* type = nullptr)
-			: llvm_expr_t(value, type), upvals()
-		{
-		}
-	};
-	
+
 	using llvm_code_delegate_t = std::function<void(llvm::LLVMContext&, llvm::Module& module, llvm::Function* func, llvm::IRBuilder<>& builder)>;
 	
 	struct llvm_model_t
@@ -145,11 +122,10 @@ _BeginNamespace(eokas)
 		llvm::Module module;
 		
 		llvm_scope_t* root;
-		llvm_func_t* entry;
+		llvm::Function* entry;
 		
 		std::vector<llvm_type_t*> types;
-		std::vector<llvm_expr_t*> exprs;
-		
+
 		llvm_type_t* type_void;
 		llvm_type_t* type_i8;
 		llvm_type_t* type_i16;
@@ -171,7 +147,6 @@ _BeginNamespace(eokas)
 		llvm_module_t(const String& name, llvm::LLVMContext& context);
 		~llvm_module_t() noexcept;
 		
-		llvm_expr_t* new_expr(llvm::Value* value, llvm::Type* type = nullptr);
 		llvm_type_t* new_type(const String& name, llvm::Type* handle, llvm::Value* defval);
 		llvm_type_t* new_type(const String& name, llvm_type_t* base);
 		llvm_type_t* get_type(const String& name);

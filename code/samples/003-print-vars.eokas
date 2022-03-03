@@ -1,15 +1,15 @@
 
 var x = 12;
-print(x as string);
+print(x);
 
 var y = 12.99;
-print(y as string);
+print(y);
 
 var t = true;
-print(t as string);
+print(t);
 
 var f = false;
-print(f as string);
+print(f);
 
 var s = "hello eokas.";
 print(s);

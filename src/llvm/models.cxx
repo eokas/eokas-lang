@@ -41,17 +41,13 @@ _BeginNamespace(eokas)
 		return child;
 	}
 	
-	bool llvm_scope_t::addSymbol(const String& name, llvm_expr_t* expr)
+	bool llvm_scope_t::addSymbol(const String& name, llvm::Value* expr)
 	{
 		bool ret = this->symbols.add(name, expr);
-		if(ret)
-		{
-			expr->scope = this;
-		}
 		return ret;
 	}
 	
-	llvm_expr_t* llvm_scope_t::getSymbol(const String& name, bool lookup)
+	llvm::Value* llvm_scope_t::getSymbol(const String& name, bool lookup)
 	{
 		if(lookup)
 		{
@@ -121,7 +117,7 @@ _BeginNamespace(eokas)
 		return true;
 	}
 	
-	llvm_type_t::member_t* llvm_type_t::add_member(const String& name, llvm_type_t* type, llvm_expr_t* value)
+	llvm_type_t::member_t* llvm_type_t::add_member(const String& name, llvm_type_t* type, llvm::Value* value)
 	{
 		auto* m = new member_t();
 		m->name = name;
@@ -193,33 +189,6 @@ _BeginNamespace(eokas)
 		auto defval = llvm::ConstantPointerNull::get(handle);
 		this->handle = handle;
 		this->defval = defval;
-	}
-	
-	llvm_expr_t::llvm_expr_t(llvm::Value* value, llvm::Type* type)
-	{
-		this->value = value;
-		if(type != nullptr)
-		{
-			this->type = type;
-		}
-		else
-		{
-			this->type = value->getType();
-		}
-	}
-	
-	llvm_expr_t::~llvm_expr_t()
-	{
-		this->value = nullptr;
-		this->type = nullptr;
-	}
-	
-	bool llvm_expr_t::is_symbol() const
-	{
-		if(this->type == nullptr || this->value == nullptr)
-			return false;
-		auto vt = this->value->getType();
-		return vt->isPointerTy() && vt->getPointerElementType() == this->type;
 	}
 	
 	llvm::Function* llvm_model_t::declare_func(llvm::Module& module, const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg)
@@ -316,7 +285,7 @@ _BeginNamespace(eokas)
 		type_string_ref = llvm_typedef_ref_t::define_type(this, type_string);
 		
 		type_enum = this->new_type("enum", nullptr, nullptr);
-		type_enum->add_member("value", type_i32, this->new_expr(type_i32->defval));
+		type_enum->add_member("value", type_i32, type_i32->defval);
 		type_enum->resolve();
 		
 		type_enum_ref = llvm_typedef_ref_t::define_type(this, type_enum);
@@ -338,31 +307,13 @@ _BeginNamespace(eokas)
 		this->root->addType("bool", type_bool);;
 		this->root->addType("string", type_string_ref);
 		
-		this->root->addSymbol("print", this->new_expr(this->define_func_print()));
+		this->root->addSymbol("print", this->define_func_print());
 	}
 	
 	llvm_module_t::~llvm_module_t() noexcept
 	{
-		_DeleteList(this->exprs);
 		_DeleteList(this->types);
 		_DeletePointer(root);
-	}
-	
-	llvm_expr_t* llvm_module_t::new_expr(llvm::Value* value, llvm::Type* type)
-	{
-		llvm_expr_t* expr = nullptr;
-		if(value->getType()->isPointerTy() && value->getType()->getPointerElementType()->isFunctionTy())
-		{
-			expr = new llvm_func_t(value, type);
-		}
-		else
-		{
-			expr = new llvm_expr_t(value, type);
-		}
-		
-		this->exprs.push_back(expr);
-		
-		return expr;
 	}
 	
 	llvm_type_t* llvm_module_t::new_type(const String& name, llvm::Type* handle, llvm::Value* defval)
@@ -618,7 +569,7 @@ _BeginNamespace(eokas)
 	llvm::Value* llvm_module_t::print(llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args)
 	{
 		llvm::Value* val = args[0];
-		llvm::Value* fmt = builder.CreateGlobalString("%s");
+		llvm::Value* fmt = builder.CreateGlobalString("%s ");
 		llvm::Value* cstr = this->value_to_cstr(func, builder, val);
 		auto pfn = module.getFunction("printf");
 		llvm::Value* ret = builder.CreateCall(pfn, {fmt, cstr});

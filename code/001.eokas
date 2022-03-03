@@ -1,4 +1,13 @@
 
-var a = 45;
+struct A {
+    static var a: i32 = 6;
+}
 
-print(a);
+struct B : A {
+
+}
+
+B.a = 12;
+
+print(A.a);
+print(B.a);

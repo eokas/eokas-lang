@@ -4,5 +4,5 @@ var f = func(a:i32):i32 {
 };
 
 var i = 4;
-print(f(i) as string);
+print(f(i));
 

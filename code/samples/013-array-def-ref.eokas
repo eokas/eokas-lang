@@ -3,5 +3,5 @@ var x = 4;
 var a : array<int, 4> = [x, x*x, x*x*x, 1];
 
 loop(var i = 0; i < 4; i=i+1) {
-    print(a[i] as string);
+    print(a[i]);
 }

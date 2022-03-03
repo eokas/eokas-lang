@@ -15,12 +15,12 @@ llvm_type_t* llvm_typedef_string_t::define_type(llvm_module_t* module)
 {
 	String name = "String";
 	llvm_type_t* type = module->new_type(name, nullptr, nullptr);
-	type->add_member("value", module->type_i8_ref, module->new_expr(module->type_i8->defval));
+	type->add_member("value", module->type_i8_ref, module->type_i8->defval);
 	type->resolve();
 	return type;
 }
 
-llvm_expr_t* llvm_typedef_string_t::define_func_intToString(llvm_module_t* module)
+llvm::Value* llvm_typedef_string_t::define_func_intToString(llvm_module_t* module)
 {
 	String name = "intToString";
 	llvm::Type* ret = module->type_string_ref->handle;
@@ -38,10 +38,10 @@ llvm_expr_t* llvm_typedef_string_t::define_func_intToString(llvm_module_t* modul
 		builder.CreateRet(str);
 	});
 	
-	return module->new_expr(func);
+	return func;
 }
 
-llvm_expr_t* llvm_typedef_string_t::define_func_floatToString(llvm_module_t* module)
+llvm::Value* llvm_typedef_string_t::define_func_floatToString(llvm_module_t* module)
 {
 	String name = "floatToString";
 	llvm::Type* ret = module->type_string_ref->handle;
@@ -58,8 +58,8 @@ llvm_expr_t* llvm_typedef_string_t::define_func_floatToString(llvm_module_t* mod
 		
 		builder.CreateRet(str);
 	});
-		
-		return module->new_expr(func);
-	}
+	
+	return func;
+}
 
 _EndNamespace(eokas)

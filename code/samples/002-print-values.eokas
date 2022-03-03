@@ -1,5 +1,5 @@
-print(12 as string);
-print(12.99 as string);
-print(true as string);
-print(false as string);
+print(12);
+print(12.99);
+print(true);
+print(false);
 print("hello eokas.");
