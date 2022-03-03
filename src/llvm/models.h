@@ -122,6 +122,23 @@ _BeginNamespace(eokas)
 	
 	using llvm_code_delegate_t = std::function<void(llvm::LLVMContext&, llvm::Module& module, llvm::Function* func, llvm::IRBuilder<>& builder)>;
 	
+	struct llvm_model_t
+	{
+		static llvm::Function* declare_func(llvm::Module& module, const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg);
+		static llvm::Function* define_func(llvm::Module& module, const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg, const llvm_code_delegate_t& body);
+		
+		/**
+		 * For ref-types: transform multi-level pointer to one-level pointer.
+		 * For val-types: transform multi-level pointer to real value.
+		 * */
+		static llvm::Value* get_value(llvm::IRBuilder<>& builder, llvm::Value* value);
+		/**
+		 * Transform the multi-level pointer value to one-level pointer type value.
+		 * Ignores literal value.
+		 * */
+		static llvm::Value* ref_value(llvm::IRBuilder<>& builder, llvm::Value* value);
+	};
+	
 	struct llvm_module_t
 	{
 		llvm::LLVMContext& context;
@@ -160,28 +177,12 @@ _BeginNamespace(eokas)
 		llvm_type_t* get_type(const String& name);
 		llvm_type_t* get_type(llvm::Type* handle);
 		
-		llvm::Function* declare_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg);
 		llvm::Function* declare_func_printf();
 		llvm::Function* declare_func_sprintf();
 		llvm::Function* declare_func_malloc();
 		llvm::Function* declare_func_free();
 		
-		llvm::Function* define_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg, const llvm_code_delegate_t& body);
 		llvm::Function* define_func_print();
-		
-		/**
-		 * For ref-types: transform multi-level pointer to one-level pointer.
-		 * For val-types: transform multi-level pointer to real value.
-		 * */
-		llvm::Value* get_value(llvm::IRBuilder<>& builder, llvm::Value* value);
-		/**
-		 * Transform the multi-level pointer value to one-level pointer type value.
-		 * Ignores literal value.
-		 * */
-		llvm::Value* ref_value(llvm::IRBuilder<>& builder, llvm::Value* value);
-		
-		llvm::Value* is_type(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* value, llvm::Type* type);
-		llvm::Value* as_type(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* value, llvm::Type* type);
 		
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type);
 		void free(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr);

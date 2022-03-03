@@ -7,7 +7,7 @@ using namespace eokas;
 #include <stdio.h>
 #include <iostream>
 
-static void eokas_main(const String& file);
+static void eokas_main(const String& fileName, bool(*)(ast_module_t*));
 
 static void about(void);
 
@@ -35,7 +35,19 @@ int main(int argc, char** argv)
 		printf("=> Source file: %s\n", file.cstr());
 		try
 		{
-			eokas_main(file);
+			eokas_main(file, llvm_aot);
+		} catch (std::exception& e)
+		{
+			printf("ERROR: %s \n", e.what());
+		}
+	}
+	else if(command.startsWith("-r"))
+	{
+		String file = args.get(2);
+		printf("=> Source file: %s\n", file.cstr());
+		try
+		{
+			eokas_main(file, llvm_jit);
 		} catch (std::exception& e)
 		{
 			printf("ERROR: %s \n", e.what());
@@ -49,7 +61,7 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-static void eokas_main(const String& fileName)
+static void eokas_main(const String& fileName, bool(*proc)(ast_module_t* m))
 {
 	FileStream in(fileName, "rb");
 	if(!in.open())
@@ -82,11 +94,9 @@ static void eokas_main(const String& fileName)
 	
 	printf("=> Encode to IR:\n");
 	printf("------------------------------------------\n");
-	llvm_jit(m);
+	proc(m);
 	printf("------------------------------------------\n");
 	out.close();
-	
-	// todo:
 }
 
 static void about(void)

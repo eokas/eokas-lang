@@ -6,6 +6,7 @@
 
 _BeginNamespace(eokas)
 
+struct llvm_expr_t;
 struct llvm_type_t;
 struct llvm_module_t;
 
@@ -17,6 +18,8 @@ struct llvm_typedef_ref_t
 struct llvm_typedef_string_t
 {
 	static llvm_type_t* define_type(llvm_module_t* module);
+	static llvm_expr_t* define_func_intToString(llvm_module_t* module);
+	static llvm_expr_t* define_func_floatToString(llvm_module_t* module);
 };
 
 _EndNamespace(eokas)

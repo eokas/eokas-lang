@@ -80,7 +80,7 @@ _BeginNamespace(eokas)
 			
 			llvm_type_t* mainRet = module->type_i32;
 			std::vector<llvm::Type*> mainArgs;
-			llvm::Function* mainPtr = module->declare_func("main", mainRet->handle, mainArgs, false);
+			llvm::Function* mainPtr = llvm_model_t::declare_func(module->module, "main", mainRet->handle, mainArgs, false);
 			this->func = dynamic_cast<llvm_func_t*>(module->new_expr(mainPtr));
 			
 			this->pushScope(mainPtr);
@@ -221,7 +221,7 @@ _BeginNamespace(eokas)
 				printf("Condition must be a bool value.\n");
 				return nullptr;
 			}
-			auto condV = module->get_value(builder, condE->value);
+			auto condV = llvm_model_t::get_value(builder, condE->value);
 			builder.CreateCondBr(condV, trinary_true, trinary_false);
 			
 			builder.SetInsertPoint(trinary_true);
@@ -260,7 +260,7 @@ _BeginNamespace(eokas)
 			if(left == nullptr || right == nullptr)
 				return nullptr;
 			
-			auto lhs = module->get_value(builder, left->value);
+			auto lhs = llvm_model_t::get_value(builder, left->value);
 			
 			switch (node->op)
 			{
@@ -307,8 +307,8 @@ _BeginNamespace(eokas)
 			if(left == nullptr || right == nullptr)
 				return nullptr;
 			
-			auto lhs = module->get_value(builder, left->value);
-			auto rhs = module->get_value(builder, right->value);
+			auto lhs = llvm_model_t::get_value(builder, left->value);
+			auto rhs = llvm_model_t::get_value(builder, right->value);
 			
 			switch (node->op)
 			{
@@ -760,7 +760,7 @@ _BeginNamespace(eokas)
 			if(right == nullptr)
 				return nullptr;
 			
-			auto rhs = module->get_value(builder, right->value);
+			auto rhs = llvm_model_t::get_value(builder, right->value);
 			
 			switch (node->op)
 			{
@@ -952,7 +952,7 @@ _BeginNamespace(eokas)
 					const String& name = upval.first;
 					llvm_expr_t* expr = upval.second;
 					
-					llvm::Value* val = module->get_value(builder, expr->value);
+					llvm::Value* val = llvm_model_t::get_value(builder, expr->value);
 					llvm::Value* ptr = builder.CreateAlloca(val->getType());
 					builder.CreateStore(val, ptr);
 					if(!this->scope->addSymbol(name, module->new_expr(val)))
@@ -983,7 +983,7 @@ _BeginNamespace(eokas)
 				return nullptr;
 			}
 			
-			auto funcPtr = module->get_value(builder, funcExpr->value);
+			auto funcPtr = llvm_model_t::get_value(builder, funcExpr->value);
 			llvm::FunctionType* funcType = nullptr;
 			if(funcExpr->type->isFunctionTy())
 			{
@@ -1016,7 +1016,7 @@ _BeginNamespace(eokas)
 				{
 					paramV = builder.CreateLoad(paramE->value);
 				}
-				paramV = module->get_value(builder, paramV);
+				paramV = llvm_model_t::get_value(builder, paramV);
 				params.push_back(paramV);
 			}
 			
@@ -1083,8 +1083,8 @@ _BeginNamespace(eokas)
 			if(objE == nullptr || keyE == nullptr)
 				return nullptr;
 			
-			auto objV = module->get_value(builder, objE->value);
-			auto keyV = module->get_value(builder, keyE->value);
+			auto objV = llvm_model_t::get_value(builder, objE->value);
+			auto keyV = llvm_model_t::get_value(builder, keyE->value);
 			if(!objV->getType()->isPointerTy() || !objV->getType()->getPointerElementType()->isArrayTy())
 			{
 				printf("Index-Access is not defined on the object.\n");
@@ -1133,7 +1133,7 @@ _BeginNamespace(eokas)
 					auto memE = this->encode_expr(objectMember->second);
 					if(memE == nullptr)
 						return nullptr;
-					memV = module->get_value(builder, memE->value);
+					memV = llvm_model_t::get_value(builder, memE->value);
 				}
 				else
 				{
@@ -1168,7 +1168,7 @@ _BeginNamespace(eokas)
 			if(objectE == nullptr || key == nullptr)
 				return nullptr;
 			
-			auto objectV = module->get_value(builder, objectE->value);
+			auto objectV = llvm_model_t::get_value(builder, objectE->value);
 			auto objectT = objectV->getType();
 			if(!(objectT->isPointerTy() && objectT->getPointerElementType()->isStructTy()))
 			{
@@ -1439,7 +1439,7 @@ _BeginNamespace(eokas)
 			if(expr == nullptr)
 				return false;
 			
-			auto value = module->get_value(builder, expr->value);
+			auto value = llvm_model_t::get_value(builder, expr->value);
 			
 			llvm::Type* stype = nullptr;
 			llvm::Type* vtype = value->getType();
@@ -1477,7 +1477,7 @@ _BeginNamespace(eokas)
 			
 			llvm::Value* symbol = builder.CreateAlloca(stype);
 			builder.CreateStore(value, symbol);
-			symbol = module->ref_value(builder, symbol);
+			symbol = llvm_model_t::ref_value(builder, symbol);
 			symbol->setName(node->name.cstr());
 			
 			auto symbolE = module->new_expr(symbol, expr->type);
@@ -1541,7 +1541,7 @@ _BeginNamespace(eokas)
 				printf("Invalid ret value.\n");
 				return false;
 			}
-			auto value = module->get_value(builder, expr->value);
+			auto value = llvm_model_t::get_value(builder, expr->value);
 			auto actureRetType = value->getType();
 			if(actureRetType != expectedRetType && !actureRetType->canLosslesslyBitCastTo(expectedRetType))
 			{
@@ -1566,7 +1566,7 @@ _BeginNamespace(eokas)
 			auto condE = this->encode_expr(node->cond);
 			if(condE == nullptr)
 				return false;
-			auto condV = module->get_value(builder, condE->value);
+			auto condV = llvm_model_t::get_value(builder, condE->value);
 			if(!condV->getType()->isIntegerTy(1))
 			{
 				printf("The label 'if.cond' need a bool value.\n");
@@ -1638,7 +1638,7 @@ _BeginNamespace(eokas)
 			auto condE = this->encode_expr(node->cond);
 			if(condE == nullptr)
 				return false;
-			auto condV = module->get_value(builder, condE->value);
+			auto condV = llvm_model_t::get_value(builder, condE->value);
 			if(!condV->getType()->isIntegerTy(1))
 			{
 				printf("The label 'for.cond' need a bool value.\n");
@@ -1705,8 +1705,8 @@ _BeginNamespace(eokas)
 			if(leftE == nullptr || rightE == nullptr)
 				return false;
 			
-			auto ptr = module->ref_value(builder, leftE->value);
-			auto val = module->get_value(builder, rightE->value);
+			auto ptr = llvm_model_t::ref_value(builder, leftE->value);
+			auto val = llvm_model_t::get_value(builder, rightE->value);
 			builder.CreateStore(val, ptr);
 			
 			return true;

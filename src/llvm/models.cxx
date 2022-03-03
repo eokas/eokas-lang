@@ -222,6 +222,78 @@ _BeginNamespace(eokas)
 		return vt->isPointerTy() && vt->getPointerElementType() == this->type;
 	}
 	
+	llvm::Function* llvm_model_t::declare_func(llvm::Module& module, const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg)
+	{
+		auto& context = module.getContext();
+		
+		llvm::AttributeList attrs;
+		
+		auto funcType = llvm::FunctionType::get(ret, args, varg);
+		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name.cstr(), module);
+		funcValue->setCallingConv(llvm::CallingConv::C);
+		funcValue->setAttributes(attrs);
+		
+		return funcValue;
+	}
+	
+	llvm::Function* llvm_model_t::define_func(llvm::Module& module, const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg, const llvm_code_delegate_t& body)
+	{
+		auto& context = module.getContext();
+		
+		llvm::AttributeList attrs;
+		
+		auto funcType = llvm::FunctionType::get(ret, args, varg);
+		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name.cstr(), module);
+		funcValue->setCallingConv(llvm::CallingConv::C);
+		funcValue->setAttributes(attrs);
+		
+		llvm::IRBuilder<> builder(context);
+		
+		body(context, module, funcValue, builder);
+		
+		return funcValue;
+	}
+	
+	/**
+ * For ref-types, transform multi-level pointer to one-level pointer.
+ * For val-types, transform multi-level pointer to real value.
+ * */
+	llvm::Value* llvm_model_t::get_value(llvm::IRBuilder<>& builder, llvm::Value* value)
+	{
+		llvm::Type* type = value->getType();
+		while (type->isPointerTy())
+		{
+			if(llvm::isa<llvm::Function>(value))
+				break;
+			if(type->getPointerElementType()->isFunctionTy())
+				break;
+			if(type->getPointerElementType()->isStructTy())
+				break;
+			if(type->getPointerElementType()->isArrayTy())
+				break;
+			value = builder.CreateLoad(value);
+			type = value->getType();
+		}
+		return value;
+	}
+	
+	/**
+	 * Transform the multi-level pointer value to one-level pointer type value.
+	 * Ignores literal values.
+	 * */
+	llvm::Value* llvm_model_t::ref_value(llvm::IRBuilder<>& builder, llvm::Value* value)
+	{
+		llvm::Type* type = value->getType();
+		
+		while (type->isPointerTy() && type->getPointerElementType()->isPointerTy())
+		{
+			value = builder.CreateLoad(value);
+			type = value->getType();
+		}
+		
+		return value;
+	}
+	
 	llvm_module_t::llvm_module_t(const String& name, llvm::LLVMContext& context)
 		: context(context), module(name.cstr(), context), root(new llvm_scope_t(nullptr, nullptr))
 	{
@@ -341,18 +413,6 @@ _BeginNamespace(eokas)
 		return nullptr;
 	}
 	
-	llvm::Function* llvm_module_t::declare_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg)
-	{
-		llvm::AttributeList attrs;
-		
-		auto funcType = llvm::FunctionType::get(ret, args, varg);
-		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name.cstr(), module);
-		funcValue->setCallingConv(llvm::CallingConv::C);
-		funcValue->setAttributes(attrs);
-		
-		return funcValue;
-	}
-	
 	llvm::Function* llvm_module_t::declare_func_printf()
 	{
 		String name = "printf";
@@ -360,7 +420,7 @@ _BeginNamespace(eokas)
 		std::vector<llvm::Type*> args = {type_i8_ref->handle};
 		bool varg = true;
 		
-		return this->declare_func(name, ret, args, varg);
+		return llvm_model_t::declare_func(module, name, ret, args, varg);
 	}
 	
 	llvm::Function* llvm_module_t::declare_func_sprintf()
@@ -370,7 +430,7 @@ _BeginNamespace(eokas)
 		std::vector<llvm::Type*> args = {type_i8_ref->handle, type_i8_ref->handle};
 		bool varg = true;
 		
-		return this->declare_func(name, ret, args, varg);
+		return llvm_model_t::declare_func(module, name, ret, args, varg);
 	}
 	
 	llvm::Function* llvm_module_t::declare_func_malloc()
@@ -380,7 +440,7 @@ _BeginNamespace(eokas)
 		std::vector<llvm::Type*> args = {type_i64->handle};
 		bool varg = false;
 		
-		return this->declare_func(name, ret, args, varg);
+		return llvm_model_t::declare_func(module, name, ret, args, varg);
 	}
 	
 	llvm::Function* llvm_module_t::declare_func_free()
@@ -390,23 +450,7 @@ _BeginNamespace(eokas)
 		std::vector<llvm::Type*> args = {type_i8_ref->handle};
 		bool varg = false;
 		
-		return this->declare_func(name, ret, args, varg);
-	}
-	
-	llvm::Function* llvm_module_t::define_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg, const llvm_code_delegate_t& body)
-	{
-		llvm::AttributeList attrs;
-		
-		auto funcType = llvm::FunctionType::get(ret, args, varg);
-		auto funcValue = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name.cstr(), module);
-		funcValue->setCallingConv(llvm::CallingConv::C);
-		funcValue->setAttributes(attrs);
-		
-		llvm::IRBuilder<> builder(context);
-		
-		body(context, module, funcValue, builder);
-		
-		return funcValue;
+		return llvm_model_t::declare_func(module, name, ret, args, varg);
 	}
 	
 	llvm::Function* llvm_module_t::define_func_print()
@@ -416,7 +460,7 @@ _BeginNamespace(eokas)
 		std::vector<llvm::Type*> args = {type_string_ref->handle};
 		bool varg = false;
 		
-		return this->define_func(name, ret, args, varg, [&](llvm::LLVMContext& context, llvm::Module& module, llvm::Function* func, llvm::IRBuilder<>& builder)->void
+		return llvm_model_t::define_func(module, name, ret, args, varg, [&](llvm::LLVMContext& context, llvm::Module& module, llvm::Function* func, llvm::IRBuilder<>& builder)->void
 		{
 			llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", func);
 			builder.SetInsertPoint(entry);
@@ -427,73 +471,6 @@ _BeginNamespace(eokas)
 			
 			builder.CreateRet(retval);
 		});
-	}
-	
-	/**
-	 * For ref-types, transform multi-level pointer to one-level pointer.
-	 * For val-types, transform multi-level pointer to real value.
-	 * */
-	llvm::Value* llvm_module_t::get_value(llvm::IRBuilder<>& builder, llvm::Value* value)
-	{
-		llvm::Type* type = value->getType();
-		while (type->isPointerTy())
-		{
-			if(llvm::isa<llvm::Function>(value))
-				break;
-			if(type->getPointerElementType()->isFunctionTy())
-				break;
-			if(type->getPointerElementType()->isStructTy())
-				break;
-			if(type->getPointerElementType()->isArrayTy())
-				break;
-			value = builder.CreateLoad(value);
-			type = value->getType();
-		}
-		return value;
-	}
-	
-	/**
-	 * Transform the multi-level pointer value to one-level pointer type value.
-	 * Ignores literal values.
-	 * */
-	llvm::Value* llvm_module_t::ref_value(llvm::IRBuilder<>& builder, llvm::Value* value)
-	{
-		llvm::Type* type = value->getType();
-		
-		while (type->isPointerTy() && type->getPointerElementType()->isPointerTy())
-		{
-			value = builder.CreateLoad(value);
-			type = value->getType();
-		}
-		
-		return value;
-	}
-	
-	llvm::Value* llvm_module_t::is_type(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* value, llvm::Type* type)
-	{
-	
-	}
-	
-	llvm::Value* llvm_module_t::as_type(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* value, llvm::Type* type)
-	{
-		auto valueType = value->getType();
-		
-		if (valueType->isIntegerTy() ||
-			valueType->isFloatingPointTy() ||
-			valueType == this->type_string_ref->handle ||
-			valueType == this->type_enum_ref->handle)
-		{
-			if(type == this->type_string_ref->handle)
-			{
-				return this->value_to_string(func, builder, value);
-			}
-			return nullptr;
-		}
-		else
-		{
-			printf("Complex cast is not supported.\n");
-			return nullptr;
-		}
 	}
 	
 	llvm::Value* llvm_module_t::make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type)
