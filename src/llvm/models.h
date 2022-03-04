@@ -161,16 +161,17 @@ _BeginNamespace(eokas)
 		
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type);
 		void free(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr);
-		llvm::Value* make_string(llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr);
 		
-		llvm::Value* string_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
-		llvm::Value* bool_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
-		llvm::Value* number_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
-		llvm::Value* enum_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
-		llvm::Value* value_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* cstr_from_value(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* cstr_from_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* str);
+		llvm::Value* cstr_from_number(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* cstr_from_bool(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* cstr_from_enum(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		
-		llvm::Value* cstr_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
-		llvm::Value* value_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* string_make(llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr);
+		llvm::Value* string_from_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* cstr);
+		llvm::Value* string_from_value(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
+		llvm::Value* string_get_char(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* str, llvm::Value* index);
 		
 		llvm::Value* print(llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args);
 	};

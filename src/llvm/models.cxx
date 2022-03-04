@@ -413,7 +413,7 @@ _BeginNamespace(eokas)
 			builder.SetInsertPoint(entry);
 			
 			llvm::Value* arg0 = func->getArg(0);
-			llvm::Value* cstr = this->string_to_cstr(func, builder, arg0);
+			llvm::Value* cstr = this->cstr_from_string(func, builder, arg0);
 			llvm::Value* retval = this->print(func, builder, {cstr});
 			
 			builder.CreateRet(retval);
@@ -435,52 +435,33 @@ _BeginNamespace(eokas)
 		builder.CreateCall(freeF, {ptr});
 	}
 	
-	llvm::Value* llvm_module_t::make_string(llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr)
+	llvm::Value* llvm_module_t::cstr_from_value(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		auto str = this->make(func, builder, this->type_string->handle);
-		auto memberPtr = builder.CreateStructGEP(str, 0);
-		auto memberVal = builder.CreateGlobalString(cstr);
-		builder.CreateStore(memberVal, memberPtr);
-		return str;
+		llvm::Type* vt = val->getType();
+		
+		if(vt == type_i8_ref->handle)
+			return val;
+		
+		if(vt == type_string_ref->handle)
+			return this->cstr_from_string(func, builder, val);
+		
+		if(vt == type_bool->handle)
+			return this->cstr_from_bool(func, builder, val);
+		
+		if(vt == type_enum_ref->handle)
+			return this->cstr_from_enum(func, builder, val);
+		
+		return this->cstr_from_number(func, builder, val);
 	}
 	
-	llvm::Value* llvm_module_t::string_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::cstr_from_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* str)
 	{
-		llvm::Value* ptr = builder.CreateStructGEP(type_string->handle, val, 0);
+		llvm::Value* ptr = builder.CreateStructGEP(type_string->handle, str, 0);
 		llvm::Value* cstr = builder.CreateLoad(ptr);
 		return cstr;
 	}
 	
-	llvm::Value* llvm_module_t::bool_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
-	{
-		llvm::BasicBlock* branch_begin = llvm::BasicBlock::Create(context, "branch.begin", func);
-		llvm::BasicBlock* branch_true = llvm::BasicBlock::Create(context, "branch.true", func);
-		llvm::BasicBlock* branch_false = llvm::BasicBlock::Create(context, "branch.false", func);
-		llvm::BasicBlock* branch_end = llvm::BasicBlock::Create(context, "branch.end", func);
-		
-		builder.CreateBr(branch_begin);
-		
-		builder.SetInsertPoint(branch_begin);
-		builder.CreateCondBr(val, branch_true, branch_false);
-		
-		builder.SetInsertPoint(branch_true);
-		auto val_true = builder.CreateGlobalStringPtr("true");
-		builder.CreateBr(branch_end);
-		
-		builder.SetInsertPoint(branch_false);
-		auto val_false = builder.CreateGlobalStringPtr("false");
-		builder.CreateBr(branch_end);
-		
-		builder.SetInsertPoint(branch_end);
-		
-		llvm::PHINode* phi = builder.CreatePHI(type_i8_ref->handle, 2);
-		phi->addIncoming(val_true, branch_true);
-		phi->addIncoming(val_false, branch_false);
-		
-		return phi;
-	}
-	
-	llvm::Value* llvm_module_t::number_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::cstr_from_number(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
 		llvm::Type* vt = val->getType();
 		
@@ -500,7 +481,31 @@ _BeginNamespace(eokas)
 		return buf;
 	}
 	
-	llvm::Value* llvm_module_t::enum_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::cstr_from_bool(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	{
+		llvm::BasicBlock* branch_true = llvm::BasicBlock::Create(context, "branch.true", func);
+		llvm::BasicBlock* branch_false = llvm::BasicBlock::Create(context, "branch.false", func);
+		llvm::BasicBlock* branch_end = llvm::BasicBlock::Create(context, "branch.end", func);
+		
+		builder.CreateCondBr(val, branch_true, branch_false);
+		
+		builder.SetInsertPoint(branch_true);
+		auto val_true = builder.CreateGlobalStringPtr("true");
+		builder.CreateBr(branch_end);
+		
+		builder.SetInsertPoint(branch_false);
+		auto val_false = builder.CreateGlobalStringPtr("false");
+		builder.CreateBr(branch_end);
+		
+		builder.SetInsertPoint(branch_end);
+		llvm::PHINode* phi = builder.CreatePHI(type_i8_ref->handle, 2);
+		phi->addIncoming(val_true, branch_true);
+		phi->addIncoming(val_false, branch_false);
+		
+		return phi;
+	}
+	
+	llvm::Value* llvm_module_t::cstr_from_enum(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
 		llvm::Value* ptr = builder.CreateStructGEP(type_enum->handle, val, 0);
 		llvm::Value* code = builder.CreateLoad(ptr);
@@ -514,63 +519,54 @@ _BeginNamespace(eokas)
 		return buf;
 	}
 	
-	llvm::Value* llvm_module_t::value_to_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	llvm::Value* llvm_module_t::string_make(llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr)
 	{
-		llvm::Type* vt = val->getType();
-		
-		if(vt == type_string_ref->handle)
-			return this->string_to_cstr(func, builder, val);
-		if(vt == type_enum_ref->handle)
-			return this->enum_to_cstr(func, builder, val);
-		
-		if(vt == type_i8_ref->handle)
-			return val;
-		
-		if(vt->isIntegerTy(1))
-			return this->bool_to_cstr(func, builder, val);
-		
-		return this->number_to_cstr(func, builder, val);
-	}
-	
-	llvm::Value* llvm_module_t::cstr_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
-	{
-		llvm::Value* str = this->make(func, builder, type_string->handle);
-		llvm::Value* ptr = builder.CreateStructGEP(type_string->handle, str, 0);
-		builder.CreateStore(val, ptr);
+		auto str = this->make(func, builder, this->type_string->handle);
+		auto dataPtr = builder.CreateStructGEP(str, 0);
+		auto dataVal = builder.CreateGlobalString(cstr);
+		builder.CreateStore(dataVal, dataPtr);
 		return str;
 	}
-
-	llvm::Value* llvm_module_t::value_to_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	
+	llvm::Value* llvm_module_t::string_from_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* cstr)
+	{
+		llvm::Value* str = this->make(func, builder, type_string->handle);
+		llvm::Value* ptr = builder.CreateStructGEP(str, 0);
+		builder.CreateStore(cstr, ptr);
+		return str;
+	}
+	
+	llvm::Value* llvm_module_t::string_from_value(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
 		llvm::Type* vt = val->getType();
 		
 		if(vt == type_string_ref->handle)
 			return val;
 		
+		llvm::Value* cstr = nullptr;
 		if(vt == type_i8_ref->handle)
-			return this->cstr_to_string(func, builder, val);
+			cstr = val;
+		else if(vt == type_bool->handle)
+			cstr = this->cstr_from_bool(func, builder, val);
+		else if(vt == type_enum_ref->handle)
+			cstr = this->cstr_from_enum(func, builder, val);
+		else
+			cstr = this->cstr_from_number(func, builder, val);
 		
-		if(vt->isIntegerTy(1))
-		{
-			llvm::Value* cstr = this->bool_to_cstr(func, builder, val);
-			return this->cstr_to_string(func, builder, cstr);
-		}
-		
-		if(vt == type_enum_ref->handle)
-		{
-			llvm::Value* cstr = this->enum_to_cstr(func, builder, val);
-			return this->cstr_to_string(func, builder, cstr);
-		}
-		
-		llvm::Value* cstr = this->number_to_cstr(func, builder, val);
-		return this->cstr_to_string(func, builder, cstr);
+		return this->string_from_cstr(func, builder, cstr);
+	}
+	
+	llvm::Value* llvm_module_t::string_get_char(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* str, llvm::Value* index)
+	{
+		auto dataPtr = builder.CreateStructGEP(str, 0);
+		return builder.CreateGEP(dataPtr, index);
 	}
 	
 	llvm::Value* llvm_module_t::print(llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args)
 	{
 		llvm::Value* val = args[0];
 		llvm::Value* fmt = builder.CreateGlobalString("%s ");
-		llvm::Value* cstr = this->value_to_cstr(func, builder, val);
+		llvm::Value* cstr = this->cstr_from_value(func, builder, val);
 		auto pfn = module.getFunction("printf");
 		llvm::Value* ret = builder.CreateCall(pfn, {fmt, cstr});
 		

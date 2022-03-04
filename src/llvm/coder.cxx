@@ -817,8 +817,7 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			auto str = module->make_string(this->scope->func, builder, node->value.cstr());
-			
+			auto str = module->string_make(this->scope->func, builder, node->value.cstr());
 			return str;
 		}
 		
@@ -962,11 +961,11 @@ _BeginNamespace(eokas)
 				{
 					if(paramT == module->type_i8_ref->handle)
 					{
-						argV = module->value_to_cstr(scope->func, builder, argV);
+						argV = module->cstr_from_value(scope->func, builder, argV);
 					}
 					if(paramT == module->type_string_ref->handle)
 					{
-						argV = module->value_to_string(scope->func, builder, argV);
+						argV = module->string_from_value(scope->func, builder, argV);
 					}
 					else if(!argV->getType()->canLosslesslyBitCastTo(paramT))
 					{
@@ -1038,19 +1037,39 @@ _BeginNamespace(eokas)
 			
 			objV = llvm_model_t::get_value(builder, objV);
 			keyV = llvm_model_t::get_value(builder, keyV);
-			if(!objV->getType()->isPointerTy() || !objV->getType()->getPointerElementType()->isArrayTy())
+			auto objT = objV->getType();
+			auto keyT = keyV->getType();
+			
+			if(objT->isPointerTy() && objT->getPointerElementType()->isArrayTy())
+			{
+				if(keyT->isIntegerTy())
+				{
+					llvm::Value* ptr = builder.CreateGEP(objV, {builder.getInt32(0), keyV});
+					return ptr;
+				}
+				else
+				{
+					printf("The type of index is invalid.\n");
+					return nullptr;
+				}
+			}
+			else if(objT == module->type_string_ref->handle)
+			{
+				if(keyT->isIntegerTy())
+				{
+					return module->string_get_char(scope->func, builder, objV, keyV);
+				}
+				else
+				{
+					printf("The type of index is invalid.\n");
+					return nullptr;
+				}
+			}
+			else
 			{
 				printf("Index-Access is not defined on the object.\n");
 				return nullptr;
 			}
-			if(!keyV->getType()->isIntegerTy())
-			{
-				printf("The type of index is invalid.\n");
-				return nullptr;
-			}
-			
-			llvm::Value* ptr = builder.CreateGEP(objV, {builder.getInt32(0), keyV});
-			return ptr;
 		}
 		
 		llvm::Value* encode_expr_object_def(struct ast_expr_object_def_t* node)

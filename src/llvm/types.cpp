@@ -33,7 +33,7 @@ llvm::Value* llvm_typedef_string_t::define_func_intToString(llvm_module_t* modul
 		builder.SetInsertPoint(entry);
 		
 		llvm::Value* arg0 = func->getArg(0);
-		llvm::Value* str = module->value_to_string(func, builder, arg0);
+		llvm::Value* str = module->string_from_value(func, builder, arg0);
 		
 		builder.CreateRet(str);
 	});
@@ -54,7 +54,7 @@ llvm::Value* llvm_typedef_string_t::define_func_floatToString(llvm_module_t* mod
 		builder.SetInsertPoint(entry);
 		
 		llvm::Value* arg0 = func->getArg(0);
-		llvm::Value* str = module->value_to_string(func, builder, arg0);
+		llvm::Value* str = module->string_from_value(func, builder, arg0);
 		
 		builder.CreateRet(str);
 	});
