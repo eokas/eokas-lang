@@ -15,7 +15,8 @@ llvm_type_t* llvm_typedef_string_t::define_type(llvm_module_t* module)
 {
 	String name = "String";
 	llvm_type_t* type = module->new_type(name, nullptr, nullptr);
-	type->add_member("value", module->type_i8_ref, module->type_i8->defval);
+	type->add_member("data", module->type_i8_ref);
+	type->add_member("length", module->type_u32);
 	type->resolve();
 	return type;
 }

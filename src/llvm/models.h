@@ -86,7 +86,7 @@ _BeginNamespace(eokas)
 		virtual ~llvm_type_t() noexcept;
 		
 		bool extends(llvm_type_t* base, String& err);
-		member_t* add_member(const String& name, llvm_type_t* type, llvm::Value* value);
+		member_t* add_member(const String& name, llvm_type_t* type, llvm::Value* value = nullptr);
 		member_t* add_member(const member_t* other);
 		member_t* get_member(const String& name) const;
 		member_t* get_member(size_t index) const;
@@ -152,16 +152,18 @@ _BeginNamespace(eokas)
 		llvm_type_t* get_type(const String& name);
 		llvm_type_t* get_type(llvm::Type* handle);
 		
-		llvm::Function* declare_func_printf();
-		llvm::Function* declare_func_sprintf();
 		llvm::Function* declare_func_malloc();
 		llvm::Function* declare_func_free();
+		llvm::Function* declare_func_printf();
+		llvm::Function* declare_func_sprintf();
+		llvm::Function* declare_func_strlen();
 		
 		llvm::Function* define_func_print();
 		
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type);
 		void free(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr);
 		
+		llvm::Value* cstr_len(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		llvm::Value* cstr_from_value(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		llvm::Value* cstr_from_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* str);
 		llvm::Value* cstr_from_number(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
@@ -174,6 +176,7 @@ _BeginNamespace(eokas)
 		llvm::Value* string_get_char(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* str, llvm::Value* index);
 		
 		llvm::Value* print(llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args);
+		
 	};
 _EndNamespace(eokas)
 

@@ -290,10 +290,11 @@ _BeginNamespace(eokas)
 		
 		type_enum_ref = llvm_typedef_ref_t::define_type(this, type_enum);
 		
-		this->declare_func_printf();
-		this->declare_func_sprintf();
 		this->declare_func_malloc();
 		this->declare_func_free();
+		this->declare_func_printf();
+		this->declare_func_sprintf();
+		this->declare_func_strlen();
 		
 		this->root->addType("void", type_void);
 		this->root->addType("i8", type_i8);
@@ -360,6 +361,26 @@ _BeginNamespace(eokas)
 		return nullptr;
 	}
 	
+	llvm::Function* llvm_module_t::declare_func_malloc()
+	{
+		String name = "malloc";
+		llvm::Type* ret = type_i8_ref->handle;
+		std::vector<llvm::Type*> args = {type_i64->handle};
+		bool varg = false;
+		
+		return llvm_model_t::declare_func(module, name, ret, args, varg);
+	}
+	
+	llvm::Function* llvm_module_t::declare_func_free()
+	{
+		String name = "free";
+		llvm::Type* ret = type_void->handle;
+		std::vector<llvm::Type*> args = {type_i8_ref->handle};
+		bool varg = false;
+		
+		return llvm_model_t::declare_func(module, name, ret, args, varg);
+	}
+	
 	llvm::Function* llvm_module_t::declare_func_printf()
 	{
 		String name = "printf";
@@ -380,22 +401,12 @@ _BeginNamespace(eokas)
 		return llvm_model_t::declare_func(module, name, ret, args, varg);
 	}
 	
-	llvm::Function* llvm_module_t::declare_func_malloc()
+	llvm::Function* llvm_module_t::declare_func_strlen()
 	{
-		String name = "malloc";
-		llvm::Type* ret = type_i8_ref->handle;
-		std::vector<llvm::Type*> args = {type_i64->handle};
-		bool varg = false;
-		
-		return llvm_model_t::declare_func(module, name, ret, args, varg);
-	}
-	
-	llvm::Function* llvm_module_t::declare_func_free()
-	{
-		String name = "free";
-		llvm::Type* ret = type_void->handle;
+		String name = "strlen";
+		llvm::Type* ret = type_i32->handle;
 		std::vector<llvm::Type*> args = {type_i8_ref->handle};
-		bool varg = false;
+		bool varg = true;
 		
 		return llvm_model_t::declare_func(module, name, ret, args, varg);
 	}
@@ -435,6 +446,15 @@ _BeginNamespace(eokas)
 		builder.CreateCall(freeF, {ptr});
 	}
 	
+	llvm::Value* llvm_module_t::cstr_len(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
+	{
+		llvm::Value* cstr = this->cstr_from_value(func, builder, val);
+		auto pfn = module.getFunction("strlen");
+		llvm::Value* ret = builder.CreateCall(pfn, {cstr});
+		
+		return ret;
+	}
+	
 	llvm::Value* llvm_module_t::cstr_from_value(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
 		llvm::Type* vt = val->getType();
@@ -469,7 +489,7 @@ _BeginNamespace(eokas)
 		
 		llvm::StringRef vf = "%x";
 		if(vt->isIntegerTy())
-			vf = "%d";
+			vf = vt->getIntegerBitWidth() == 8 ? "%c" : "%d";
 		else if(vt->isFloatingPointTy())
 			vf = "%f";
 		
@@ -522,17 +542,28 @@ _BeginNamespace(eokas)
 	llvm::Value* llvm_module_t::string_make(llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr)
 	{
 		auto str = this->make(func, builder, this->type_string->handle);
-		auto dataPtr = builder.CreateStructGEP(str, 0);
-		auto dataVal = builder.CreateGlobalString(cstr);
-		builder.CreateStore(dataVal, dataPtr);
+		auto dataP = builder.CreateStructGEP(str, 0);
+		auto dataV = builder.CreateGlobalString(cstr);
+		builder.CreateStore(dataV, dataP);
+		
+		auto lengthP = builder.CreateStructGEP(str, 1);
+		auto lengthV = builder.getInt32(std::strlen(cstr));
+		builder.CreateStore(lengthV, lengthP);
+		
 		return str;
 	}
 	
 	llvm::Value* llvm_module_t::string_from_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* cstr)
 	{
 		llvm::Value* str = this->make(func, builder, type_string->handle);
-		llvm::Value* ptr = builder.CreateStructGEP(str, 0);
-		builder.CreateStore(cstr, ptr);
+		
+		llvm::Value* dataP = builder.CreateStructGEP(str, 0);
+		builder.CreateStore(cstr, dataP);
+		
+		auto lengthP = builder.CreateStructGEP(str, 1);
+		auto lengthV = this->cstr_len(func, builder, cstr);
+		builder.CreateStore(lengthV, lengthP);
+		
 		return str;
 	}
 	
