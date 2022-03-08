@@ -164,7 +164,10 @@ _BeginNamespace(eokas)
 		llvm_type_t* define_type_string();
 		
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type);
+		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type, llvm::Value* count);
 		void free(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr);
+		
+		llvm::Value* array_set(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* array, const llvm::ArrayRef<llvm::Value*>& elements);
 		
 		llvm::Value* cstr_len(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		llvm::Value* cstr_from_value(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);

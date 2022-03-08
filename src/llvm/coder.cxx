@@ -1013,16 +1013,18 @@ _BeginNamespace(eokas)
 			if(arrayElements.empty() || arrayElementType == nullptr)
 				arrayElementType = llvm::Type::getInt32Ty(context);
 			
-			auto arrayType = llvm::ArrayType::get(arrayElementType, node->elements.size());
-			auto arrayPtr = module->make(this->scope->func, builder, arrayType);
-			for (u32_t i = 0; i<arrayElements.size(); i++)
+			auto elementT = module->get_type(arrayElementType);
+			if(elementT == nullptr)
 			{
-				auto elementV = arrayElements.at(i);
-				auto elementP = builder.CreateConstGEP2_32(arrayType, arrayPtr, 0, i);
-				builder.CreateStore(elementV, elementP);
+				printf("The type of array-elements is undefined.\n");
+				return nullptr;
 			}
 			
-			return arrayPtr;
+			auto arrayT = module->define_type_array(elementT);
+			auto arrayP = module->make(func, builder, arrayT->handle);
+			module->array_set(scope->func, builder, arrayP, arrayElements);
+
+			return arrayP;
 		}
 		
 		llvm::Value* encode_expr_index_ref(struct ast_expr_index_ref_t* node)

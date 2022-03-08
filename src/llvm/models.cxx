@@ -471,10 +471,42 @@ _BeginNamespace(eokas)
 		return val;
 	}
 	
+	llvm::Value* llvm_module_t::make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type, llvm::Value* count)
+	{
+		auto mallocF = module.getFunction("malloc");
+		llvm::Constant* stride = llvm::ConstantExpr::getSizeOf(type);
+		llvm::Value* len = builder.CreateMul(stride, count);
+		llvm::Value* ptr = builder.CreateCall(mallocF, {len});
+		llvm::Value* val = builder.CreateBitCast(ptr, type->getPointerTo());
+		return val;
+	}
+	
 	void llvm_module_t::free(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr)
 	{
 		auto freeF = module.getFunction("free");
 		builder.CreateCall(freeF, {ptr});
+	}
+	
+	llvm::Value* llvm_module_t::array_set(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* array, const llvm::ArrayRef<llvm::Value*>& elements)
+	{
+		auto* arrayT = this->get_type(array->getType());
+		auto* elementT = arrayT->handle->getStructElementType(0);
+		auto* countV = builder.getInt64(elements.size());
+
+		auto* dataP = builder.CreateStructGEP(array, 0);
+		auto* dataV = this->make(func, builder, elementT, countV);
+		for (size_t i = 0; i < elements.size(); i++)
+		{
+			auto elementV = elements[i];
+			auto elementP = builder.CreateConstGEP1_64(elementT, dataV, i);
+			builder.CreateStore(elementV, elementP);
+		}
+		builder.CreateStore(dataV, dataP);
+		
+		auto* countP = builder.CreateStructGEP(array, 1);
+		builder.CreateStore(countV, countP);
+		
+		return array;
 	}
 	
 	llvm::Value* llvm_module_t::cstr_len(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
