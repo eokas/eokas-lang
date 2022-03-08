@@ -1201,83 +1201,36 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			const String staticTypePrefix = "$_Static";
-			const String staticMemberName = "$_static";
-			
-			auto* thisStaticInfo = module->new_struct(staticTypePrefix + node->name);
 			auto* thisInstanceInfo = module->new_struct(node->name);
 			
 			for (const auto& thisMember: node->members)
 			{
 				auto& mem = thisMember.second;
-				if(mem->isStatic)
+				
+				const String& memName = mem->name;
+				if(thisInstanceInfo->get_member(memName) != nullptr)
 				{
-					const String& memName = mem->name;
-					if(thisStaticInfo->get_member(memName) != nullptr)
-					{
-						printf("The member named '%s' is already exists.\n", memName.cstr());
-						return false;
-					}
-					
-					const auto& memType = this->encode_type(mem->type);
-					if(memType == nullptr)
-						return false;
-					
-					const auto& memValue = this->encode_expr(mem->value);
-					if(memValue == nullptr)
-						return false;
-					
-					thisStaticInfo->add_member(memName, memType, memValue);
+					printf("The member named '%s' is already exists.\n", memName.cstr());
+					return false;
 				}
-				else
+				
+				auto memType = this->encode_type(mem->type);
+				if(memType == nullptr)
+					return false;
+				
+				auto memValue = this->encode_expr(mem->value);
+				if(memValue == nullptr)
 				{
-					const String& memName = mem->name;
-					if(thisInstanceInfo->get_member(memName) != nullptr)
-					{
-						printf("The member named '%s' is already exists.\n", memName.cstr());
-						return false;
-					}
-					
-					auto memType = this->encode_type(mem->type);
-					if(memType == nullptr)
-						return false;
-					
-					auto memValue = this->encode_expr(mem->value);
-					if(memValue == nullptr)
-					{
-						memValue = module->get_default_value(memType);
-					}
-					
-					thisInstanceInfo->add_member(memName, memType, memValue);
+					memValue = module->get_default_value(memType);
 				}
+				
+				thisInstanceInfo->add_member(memName, memType, memValue);
 			}
 			
-			thisStaticInfo->resolve();
 			thisInstanceInfo->resolve();
-			if(!this->scope->addType(thisStaticInfo->name, thisStaticInfo->type) ||
-			   !this->scope->addType(thisInstanceInfo->name, thisInstanceInfo->type))
+			if(!this->scope->addType(thisInstanceInfo->name, thisInstanceInfo->type))
 			{
 				printf("There is a same type named %s in this scope.\n", thisInstanceInfo->name.cstr());
-				return false;
-			}
-			
-			// make static object
-			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticInfo->type);
-			for (u32_t index = 0; index<thisStaticInfo->members.size(); index++)
-			{
-				auto mem = thisStaticInfo->members.at(index);
-				auto memV = mem->value != nullptr ? mem->value : module->get_default_value(mem->type);
-				
-				if(memV != nullptr)
-				{
-					String memN = String::format("%s.%s", thisInstanceInfo->name.cstr(), mem->name.cstr());
-					llvm::Value* memP = builder.CreateStructGEP(thisStaticInfo->type, staticV, index, memN.cstr());
-					builder.CreateStore(memV, memP);
-				}
-			}
-			if(!this->scope->addSymbol(thisInstanceInfo->name, staticV))
-			{
-				printf("There is a same symbol named %s in this scope.\n", thisInstanceInfo->name.cstr());
 				return false;
 			}
 			

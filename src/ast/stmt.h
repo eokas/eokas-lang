@@ -18,11 +18,10 @@ namespace eokas
 		String name;
 		ast_type_t* type;
 		ast_expr_t* value;
-		bool isStatic;
 		bool isConst;
 		
 		explicit ast_stmt_struct_member_t(ast_node_t* parent)
-			: ast_stmt_t(ast_node_category_t::stmt_struct_member, parent), name(""), type(nullptr), value(nullptr), isStatic(false), isConst(false)
+			: ast_stmt_t(ast_node_category_t::stmt_struct_member, parent), name(""), type(nullptr), value(nullptr), isConst(false)
 		{
 		}
 	};

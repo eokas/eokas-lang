@@ -887,14 +887,11 @@ _BeginNamespace(eokas)
 	}
 	
 	/**
-	 * struct_member := ['static'] ('var' | 'val') ID : type [ '=' expr ] ;
+	 * struct_member := ('var' | 'val') ID : type [ '=' expr ] ;
 	*/
 	ast_stmt_struct_member_t* parser_impl_t::parse_stmt_struct_member(ast_node_t* p)
 	{
 		auto* node = factory->create_stmt_struct_member(p);
-		
-		// [static]
-		node->isStatic = this->check_token(token_t::Static, false);
 		
 		// (val | var)
 		switch (this->token().type)

@@ -11,7 +11,6 @@ _BeginNamespace(eokas)
 		{
 			Var,
 			Val,
-			Static,
 			Make,
 			Struct,
 			Enum,
