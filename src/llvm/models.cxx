@@ -279,16 +279,16 @@ _BeginNamespace(eokas)
 		type_f64 = this->new_type("f64", llvm::Type::getDoubleTy(context), llvm::ConstantFP::get(context, llvm::APFloat(0.0)));
 		type_bool = this->new_type("bool", llvm::Type::getInt1Ty(context), llvm::ConstantInt::get(context, llvm::APInt(1, 0)));
 		
-		type_i8_ref = llvm_typedef_ref_t::define_type(this, type_i8);
+		type_cstr = this->define_type_ref(type_i8);
 		
-		type_string = llvm_typedef_string_t::define_type(this);
-		type_string_ref = llvm_typedef_ref_t::define_type(this, type_string);
+		type_string = this->define_type_string();
+		type_string_ref = this->define_type_ref(type_string);
 		
 		type_enum = this->new_type("enum", nullptr, nullptr);
 		type_enum->add_member("value", type_i32, type_i32->defval);
 		type_enum->resolve();
 		
-		type_enum_ref = llvm_typedef_ref_t::define_type(this, type_enum);
+		type_enum_ref = this->define_type_ref(type_enum);
 		
 		this->declare_func_malloc();
 		this->declare_func_free();
@@ -364,7 +364,7 @@ _BeginNamespace(eokas)
 	llvm::Function* llvm_module_t::declare_func_malloc()
 	{
 		String name = "malloc";
-		llvm::Type* ret = type_i8_ref->handle;
+		llvm::Type* ret = type_cstr->handle;
 		std::vector<llvm::Type*> args = {type_i64->handle};
 		bool varg = false;
 		
@@ -375,7 +375,7 @@ _BeginNamespace(eokas)
 	{
 		String name = "free";
 		llvm::Type* ret = type_void->handle;
-		std::vector<llvm::Type*> args = {type_i8_ref->handle};
+		std::vector<llvm::Type*> args = {type_cstr->handle};
 		bool varg = false;
 		
 		return llvm_model_t::declare_func(module, name, ret, args, varg);
@@ -385,7 +385,7 @@ _BeginNamespace(eokas)
 	{
 		String name = "printf";
 		llvm::Type* ret = type_i32->handle;
-		std::vector<llvm::Type*> args = {type_i8_ref->handle};
+		std::vector<llvm::Type*> args = {type_cstr->handle};
 		bool varg = true;
 		
 		return llvm_model_t::declare_func(module, name, ret, args, varg);
@@ -395,7 +395,7 @@ _BeginNamespace(eokas)
 	{
 		String name = "sprintf";
 		llvm::Type* ret = type_i32->handle;
-		std::vector<llvm::Type*> args = {type_i8_ref->handle, type_i8_ref->handle};
+		std::vector<llvm::Type*> args = {type_cstr->handle, type_cstr->handle};
 		bool varg = true;
 		
 		return llvm_model_t::declare_func(module, name, ret, args, varg);
@@ -405,7 +405,7 @@ _BeginNamespace(eokas)
 	{
 		String name = "strlen";
 		llvm::Type* ret = type_i32->handle;
-		std::vector<llvm::Type*> args = {type_i8_ref->handle};
+		std::vector<llvm::Type*> args = {type_cstr->handle};
 		bool varg = true;
 		
 		return llvm_model_t::declare_func(module, name, ret, args, varg);
@@ -429,6 +429,37 @@ _BeginNamespace(eokas)
 			
 			builder.CreateRet(retval);
 		});
+	}
+	
+	llvm_type_t* llvm_module_t::define_type_ref(llvm_type_t* element_type)
+	{
+		String name = String::format("Ref<%s>", element_type->name.cstr());
+		llvm_type_t* type = this->new_type(name, nullptr, nullptr);
+		type->ref(element_type);
+		return type;
+	}
+	
+	llvm_type_t* llvm_module_t::define_type_array(llvm_type_t* element_type)
+	{
+		String name = String::format("Array<%s>", element_type->name.cstr());
+		llvm_type_t* type = this->new_type(name, nullptr, nullptr);
+		
+		type->add_member("data", this->define_type_ref(element_type));
+		type->add_member("length", this->type_u64);
+		
+		type->resolve();
+		
+		return type;
+	}
+	
+	llvm_type_t* llvm_module_t::define_type_string()
+	{
+		String name = "String";
+		llvm_type_t* type = this->new_type(name, nullptr, nullptr);
+		type->add_member("data", this->type_cstr);
+		type->add_member("length", this->type_u32);
+		type->resolve();
+		return type;
 	}
 	
 	llvm::Value* llvm_module_t::make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type)
@@ -459,7 +490,7 @@ _BeginNamespace(eokas)
 	{
 		llvm::Type* vt = val->getType();
 		
-		if(vt == type_i8_ref->handle)
+		if(vt == type_cstr->handle)
 			return val;
 		
 		if(vt == type_string_ref->handle)
@@ -518,7 +549,7 @@ _BeginNamespace(eokas)
 		builder.CreateBr(branch_end);
 		
 		builder.SetInsertPoint(branch_end);
-		llvm::PHINode* phi = builder.CreatePHI(type_i8_ref->handle, 2);
+		llvm::PHINode* phi = builder.CreatePHI(type_cstr->handle, 2);
 		phi->addIncoming(val_true, branch_true);
 		phi->addIncoming(val_false, branch_false);
 		
@@ -542,6 +573,7 @@ _BeginNamespace(eokas)
 	llvm::Value* llvm_module_t::string_make(llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr)
 	{
 		auto str = this->make(func, builder, this->type_string->handle);
+		
 		auto dataP = builder.CreateStructGEP(str, 0);
 		auto dataV = builder.CreateGlobalString(cstr);
 		builder.CreateStore(dataV, dataP);
@@ -575,7 +607,7 @@ _BeginNamespace(eokas)
 			return val;
 		
 		llvm::Value* cstr = nullptr;
-		if(vt == type_i8_ref->handle)
+		if(vt == type_cstr->handle)
 			cstr = val;
 		else if(vt == type_bool->handle)
 			cstr = this->cstr_from_bool(func, builder, val);
@@ -591,6 +623,11 @@ _BeginNamespace(eokas)
 	{
 		auto dataPtr = builder.CreateStructGEP(str, 0);
 		return builder.CreateGEP(dataPtr, index);
+	}
+	
+	llvm::Value* llvm_module_t::string_concat(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* str1, llvm::Value* str2)
+	{
+		return nullptr;
 	}
 	
 	llvm::Value* llvm_module_t::print(llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args)

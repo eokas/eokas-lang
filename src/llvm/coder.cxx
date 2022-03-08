@@ -959,7 +959,7 @@ _BeginNamespace(eokas)
 				
 				if(paramT != argV->getType())
 				{
-					if(paramT == module->type_i8_ref->handle)
+					if(paramT == module->type_cstr->handle)
 					{
 						argV = module->cstr_from_value(scope->func, builder, argV);
 					}

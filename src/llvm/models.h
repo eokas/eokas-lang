@@ -2,7 +2,6 @@
 #define _EOKAS_LLVM_MODELS_H_
 
 #include "./header.h"
-#include "./types.h"
 
 #include <llvm/IR/IRBuilder.h>
 
@@ -138,7 +137,7 @@ _BeginNamespace(eokas)
 		llvm_type_t* type_f32;
 		llvm_type_t* type_f64;
 		llvm_type_t* type_bool;
-		llvm_type_t* type_i8_ref;
+		llvm_type_t* type_cstr;
 		llvm_type_t* type_string;
 		llvm_type_t* type_string_ref;
 		llvm_type_t* type_enum;
@@ -160,6 +159,10 @@ _BeginNamespace(eokas)
 		
 		llvm::Function* define_func_print();
 		
+		llvm_type_t* define_type_ref(llvm_type_t* element_type);
+		llvm_type_t* define_type_array(llvm_type_t* element_type);
+		llvm_type_t* define_type_string();
+		
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type);
 		void free(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr);
 		
@@ -174,6 +177,7 @@ _BeginNamespace(eokas)
 		llvm::Value* string_from_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* cstr);
 		llvm::Value* string_from_value(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		llvm::Value* string_get_char(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* str, llvm::Value* index);
+		llvm::Value* string_concat(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* str1, llvm::Value* str2);
 		
 		llvm::Value* print(llvm::Function* func, llvm::IRBuilder<>& builder, const std::vector<llvm::Value*>& args);
 		
