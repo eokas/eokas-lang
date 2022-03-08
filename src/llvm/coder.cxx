@@ -78,9 +78,9 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			llvm_type_t* mainRet = module->type_i32;
+			auto* mainRet = module->type_i32;
 			std::vector<llvm::Type*> mainArgs;
-			llvm::Function* mainPtr = llvm_model_t::declare_func(module->module, "main", mainRet->handle, mainArgs, false);
+			llvm::Function* mainPtr = llvm_model_t::declare_func(module->module, "main", mainRet, mainArgs, false);
 			this->func = mainPtr;
 			
 			this->pushScope(mainPtr);
@@ -100,7 +100,7 @@ _BeginNamespace(eokas)
 					if(mainPtr->getReturnType()->isVoidTy())
 						builder.CreateRetVoid();
 					else
-						builder.CreateRet(mainRet->defval);
+						builder.CreateRet(module->get_default_value(mainRet));
 				}
 			}
 			this->popScope();
@@ -108,7 +108,7 @@ _BeginNamespace(eokas)
 			return true;
 		}
 		
-		llvm_type_t* encode_type(struct ast_type_t* node)
+		llvm::Type* encode_type(struct ast_type_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -126,7 +126,7 @@ _BeginNamespace(eokas)
 			return nullptr;
 		}
 		
-		llvm_type_t* encode_type_ref(struct ast_type_ref_t* node)
+		llvm::Type* encode_type_ref(struct ast_type_ref_t* node)
 		{
 			if(node == nullptr)
 			{
@@ -139,7 +139,7 @@ _BeginNamespace(eokas)
 			return type;
 		}
 		
-		llvm_type_t* encode_type_array(struct ast_type_array_t* node)
+		llvm::Type* encode_type_array(struct ast_type_array_t* node)
 		{
 			if(node == nullptr)
 			{
@@ -151,10 +151,8 @@ _BeginNamespace(eokas)
 			if(elementType == nullptr)
 				return nullptr;
 			
-			String name = String::format("Array<%s, %d>", elementType->name.cstr(), node->length);
-			llvm::Type* handle = llvm::ArrayType::get(elementType->handle, node->length);
-			llvm::Value* defval = llvm::ConstantPointerNull::get(handle->getPointerTo());
-			return module->new_type(name, handle, defval);
+			// TODO: check if the array-type is defined in this scope.
+			return module->define_type_array(elementType);
 		}
 		
 		llvm::Value* encode_expr(struct ast_expr_t* node)
@@ -851,13 +849,13 @@ _BeginNamespace(eokas)
 				auto* argType = this->encode_type(arg->type);
 				if(argType == nullptr)
 					return nullptr;
-				if(argType->handle->isFunctionTy() || argType->handle->isStructTy() || argType->handle->isArrayTy())
-					argTypes.push_back(argType->handle->getPointerTo());
+				if(argType->isFunctionTy() || argType->isStructTy() || argType->isArrayTy())
+					argTypes.push_back(argType->getPointerTo());
 				else
-					argTypes.push_back(argType->handle);
+					argTypes.push_back(argType);
 			}
 			
-			llvm::FunctionType* funcType = llvm::FunctionType::get(retType->handle, argTypes, false);
+			llvm::FunctionType* funcType = llvm::FunctionType::get(retType, argTypes, false);
 			llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "", module->module);
 			
 			u32_t index = 0;
@@ -905,7 +903,7 @@ _BeginNamespace(eokas)
 					if(funcPtr->getReturnType()->isVoidTy())
 						builder.CreateRetVoid();
 					else
-						builder.CreateRet(retType->defval);
+						builder.CreateRet(module->get_default_value(retType));
 				}
 				
 				// up-value
@@ -959,11 +957,11 @@ _BeginNamespace(eokas)
 				
 				if(paramT != argV->getType())
 				{
-					if(paramT == module->type_cstr->handle)
+					if(paramT == module->type_cstr)
 					{
 						argV = module->cstr_from_value(scope->func, builder, argV);
 					}
-					if(paramT == module->type_string_ref->handle)
+					if(paramT == module->type_string_ref)
 					{
 						argV = module->string_from_value(scope->func, builder, argV);
 					}
@@ -1012,16 +1010,9 @@ _BeginNamespace(eokas)
 			
 			if(arrayElements.empty() || arrayElementType == nullptr)
 				arrayElementType = llvm::Type::getInt32Ty(context);
-			
-			auto elementT = module->get_type(arrayElementType);
-			if(elementT == nullptr)
-			{
-				printf("The type of array-elements is undefined.\n");
-				return nullptr;
-			}
-			
-			auto arrayT = module->define_type_array(elementT);
-			auto arrayP = module->make(func, builder, arrayT->handle);
+				
+			auto arrayT = module->define_type_array(arrayElementType);
+			auto arrayP = module->make(func, builder, arrayT);
 			module->array_set(scope->func, builder, arrayP, arrayElements);
 
 			return arrayP;
@@ -1055,7 +1046,7 @@ _BeginNamespace(eokas)
 					return nullptr;
 				}
 			}
-			else if(objT == module->type_string_ref->handle)
+			else if(objT == module->type_string_ref)
 			{
 				if(keyT->isIntegerTy())
 				{
@@ -1083,9 +1074,13 @@ _BeginNamespace(eokas)
 			if(structType == nullptr)
 				return nullptr;
 			
+			auto* structInfo = module->get_struct(structType);
+			if(structInfo == nullptr)
+				return nullptr;
+			
 			for (auto& objectMember: node->members)
 			{
-				auto structMember = structType->get_member(objectMember.first);
+				auto structMember = structInfo->get_member(objectMember.first);
 				if(structMember == nullptr)
 				{
 					printf("Object member '%s' is not defined in struct.\n", objectMember.first.cstr());
@@ -1095,11 +1090,11 @@ _BeginNamespace(eokas)
 			}
 			
 			// make object instance
-			llvm::Value* instance = module->make(this->scope->func, builder, structType->handle);
+			llvm::Value* instance = module->make(this->scope->func, builder, structType);
 			
-			for (u32_t index = 0; index<structType->members.size(); index++)
+			for (u32_t index = 0; index<structInfo->members.size(); index++)
 			{
-				auto& structMember = structType->members.at(index);
+				auto& structMember = structInfo->members.at(index);
 				auto objectMember = node->members.find(structMember->name);
 				llvm::Value* memV = nullptr;
 				if(objectMember != node->members.end())
@@ -1111,13 +1106,13 @@ _BeginNamespace(eokas)
 				}
 				else
 				{
-					memV = structMember->value != nullptr ? structMember->value : structMember->type->defval;
+					memV = structMember->value != nullptr ? structMember->value : module->get_default_value(structMember->type);
 				}
 				
 				if(memV)
 				{
 					String memN = String::format("this.%s", structMember->name.cstr());
-					llvm::Value* memP = builder.CreateStructGEP(structType->handle, instance, index, memN.cstr());
+					llvm::Value* memP = builder.CreateStructGEP(structType, instance, index, memN.cstr());
 					builder.CreateStore(memV, memP);
 				}
 			}
@@ -1143,22 +1138,22 @@ _BeginNamespace(eokas)
 				return nullptr;
 			}
 			
-			auto structTypeDef = module->get_type(objT->getPointerElementType());
-			if(structTypeDef == nullptr)
+			auto structInfo = module->get_struct(objT->getPointerElementType());
+			if(structInfo == nullptr)
 			{
 				printf("Can't find the type of this value.\n");
 				return nullptr;
 			}
 			
 			
-			auto index = structTypeDef->get_member_index(node->key);
+			auto index = structInfo->get_member_index(node->key);
 			if(index == -1)
 			{
 				printf("The object doesn't have a member named '%s'. \n", node->key.cstr());
 				return nullptr;
 			}
 			
-			auto structType = structTypeDef->handle;
+			auto structType = structInfo->type;
 			llvm::Value* value = builder.CreateStructGEP(structType, objV, index);
 			return value;
 		}
@@ -1209,30 +1204,8 @@ _BeginNamespace(eokas)
 			const String staticTypePrefix = "$_Static";
 			const String staticMemberName = "$_static";
 			
-			auto* thisStaticType = module->new_type(staticTypePrefix + node->name, nullptr, nullptr);
-			auto* thisInstanceType = module->new_type(node->name, nullptr, nullptr);
-			
-			if(node->base != nullptr)
-			{
-				auto baseInstanceType = this->encode_type(node->base);
-				if(baseInstanceType == nullptr)
-					return false;
-				auto baseStaticType = this->scope->getType(staticTypePrefix + baseInstanceType->name, true);
-				if(baseStaticType == nullptr)
-					return false;
-				
-				String err;
-				if(!thisStaticType->extends(baseStaticType, err))
-				{
-					printf(err.cstr());
-					return false;
-				}
-				if(!thisInstanceType->extends(baseInstanceType, err))
-				{
-					printf(err.cstr());
-					return false;
-				}
-			}
+			auto* thisStaticInfo = module->new_struct(staticTypePrefix + node->name);
+			auto* thisInstanceInfo = module->new_struct(node->name);
 			
 			for (const auto& thisMember: node->members)
 			{
@@ -1240,7 +1213,7 @@ _BeginNamespace(eokas)
 				if(mem->isStatic)
 				{
 					const String& memName = mem->name;
-					if(thisStaticType->get_member(memName) != nullptr)
+					if(thisStaticInfo->get_member(memName) != nullptr)
 					{
 						printf("The member named '%s' is already exists.\n", memName.cstr());
 						return false;
@@ -1254,12 +1227,12 @@ _BeginNamespace(eokas)
 					if(memValue == nullptr)
 						return false;
 					
-					thisStaticType->add_member(memName, memType, memValue);
+					thisStaticInfo->add_member(memName, memType, memValue);
 				}
 				else
 				{
 					const String& memName = mem->name;
-					if(thisInstanceType->get_member(memName) != nullptr)
+					if(thisInstanceInfo->get_member(memName) != nullptr)
 					{
 						printf("The member named '%s' is already exists.\n", memName.cstr());
 						return false;
@@ -1272,40 +1245,42 @@ _BeginNamespace(eokas)
 					auto memValue = this->encode_expr(mem->value);
 					if(memValue == nullptr)
 					{
-						memValue = memType->defval;
+						memValue = module->get_default_value(memType);
 					}
 					
-					thisInstanceType->add_member(memName, memType, memValue);
+					thisInstanceInfo->add_member(memName, memType, memValue);
 				}
 			}
 			
-			thisStaticType->resolve();
-			thisInstanceType->resolve();
-			if(!this->scope->addType(thisStaticType->name, thisStaticType) || !this->scope->addType(thisInstanceType->name, thisInstanceType))
+			thisStaticInfo->resolve();
+			thisInstanceInfo->resolve();
+			
+			if(!this->scope->addType(thisStaticInfo->name, thisStaticInfo->type) ||
+			   !this->scope->addType(thisInstanceInfo->name, thisInstanceInfo->type))
 			{
-				printf("There is a same type named %s in this scope.\n", thisInstanceType->name.cstr());
+				printf("There is a same type named %s in this scope.\n", thisInstanceInfo->name.cstr());
 				return false;
 			}
 			
 			// make static object
-			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticType->handle);
+			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticInfo->type);
 
-			for (u32_t index = 0; index<thisStaticType->members.size(); index++)
+			for (u32_t index = 0; index<thisStaticInfo->members.size(); index++)
 			{
-				auto& mem = thisStaticType->members.at(index);
-				auto& memV = mem->value != nullptr ? mem->value : mem->type->defval;
+				auto mem = thisStaticInfo->members.at(index);
+				auto memV = mem->value != nullptr ? mem->value : module->get_default_value(mem->type);
 				
 				if(memV != nullptr)
 				{
-					String memN = String::format("%s.%s", thisInstanceType->name.cstr(), mem->name.cstr());
-					llvm::Value* memP = builder.CreateStructGEP(thisStaticType->handle, staticV, index, memN.cstr());
+					String memN = String::format("%s.%s", thisInstanceInfo->name.cstr(), mem->name.cstr());
+					llvm::Value* memP = builder.CreateStructGEP(thisStaticInfo->type, staticV, index, memN.cstr());
 					builder.CreateStore(memV, memP);
 				}
 			}
 			
-			if(!this->scope->addSymbol(thisInstanceType->name, staticV))
+			if(!this->scope->addSymbol(thisInstanceInfo->name, staticV))
 			{
-				printf("There is a same symbol named %s in this scope.\n", thisInstanceType->name.cstr());
+				printf("There is a same symbol named %s in this scope.\n", thisInstanceInfo->name.cstr());
 				return false;
 			}
 			
@@ -1319,38 +1294,38 @@ _BeginNamespace(eokas)
 			
 			const String name = node->name;
 			
-			auto* thisStaticType = module->new_type(node->name, nullptr, nullptr);
+			auto* thisStaticInfo = module->new_struct(node->name);
 			for (const auto& thisMember: node->members)
 			{
 				auto memName = thisMember.first;
-				if(thisStaticType->get_member(memName) != nullptr)
+				if(thisStaticInfo->get_member(memName) != nullptr)
 				{
 					printf("The member named '%s' is already exists.\n", memName.cstr());
 					return false;
 				}
 				
 				auto v = builder.getInt32(thisMember.second);
-				auto o = builder.CreateAlloca(module->type_enum->handle);
+				auto o = builder.CreateAlloca(module->type_enum);
 				auto n = String::format("%s.%s", node->name.cstr(), memName.cstr());
-				auto p = builder.CreateStructGEP(module->type_enum->handle, o, 0, n.cstr());
+				auto p = builder.CreateStructGEP(module->type_enum, o, 0, n.cstr());
 				builder.CreateStore(v, p);
 				auto memValue = o;
 				
-				thisStaticType->add_member(memName, module->type_enum, memValue);
+				thisStaticInfo->add_member(memName, module->type_enum, memValue);
 			}
 			
-			thisStaticType->resolve();
+			thisStaticInfo->resolve();
 			
 			// make static object
-			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticType->handle);
+			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticInfo->type);
 			
-			for (u32_t index = 0; index<thisStaticType->members.size(); index++)
+			for (u32_t index = 0; index<thisStaticInfo->members.size(); index++)
 			{
-				auto& mem = thisStaticType->members.at(index);
+				auto& mem = thisStaticInfo->members.at(index);
 				auto memV = builder.CreateLoad(mem->value);
 				
 				String memN = String::format("%s.%s", name.cstr(), mem->name.cstr());
-				llvm::Value* memP = builder.CreateStructGEP(thisStaticType->handle, staticV, index, memN.cstr());
+				llvm::Value* memP = builder.CreateStructGEP(thisStaticInfo->type, staticV, index, memN.cstr());
 				builder.CreateStore(memV, memP);
 			}
 			
@@ -1379,13 +1354,11 @@ _BeginNamespace(eokas)
 				auto* argType = this->encode_type(arg.second);
 				if(argType == nullptr)
 					return false;
-				argTypes.push_back(argType->handle);
+				argTypes.push_back(argType);
 			}
 			
-			llvm::FunctionType* procType = llvm::FunctionType::get(retType->handle, argTypes, false);
-			auto handler = procType->getPointerTo();
-			auto defval = llvm::ConstantPointerNull::get(handler);
-			this->scope->addType(node->name, module->new_type(node->name, handler, defval));
+			llvm::FunctionType* procType = llvm::FunctionType::get(retType, argTypes, false);
+			this->scope->addType(node->name, procType->getPointerTo());
 			
 			return true;
 		}
@@ -1412,7 +1385,7 @@ _BeginNamespace(eokas)
 			llvm::Type* vtype = value->getType();
 			if(type != nullptr)
 			{
-				stype = type->handle;
+				stype = type;
 				do
 				{
 					if(stype == vtype)
@@ -1421,7 +1394,7 @@ _BeginNamespace(eokas)
 						break;
 					if(vtype->isPointerTy() && vtype->getPointerElementType() == stype)
 					{
-						stype = type->handle = vtype;
+						stype = type = vtype;
 						break;
 					}
 					

@@ -6,10 +6,7 @@
 #include <llvm/IR/IRBuilder.h>
 
 _BeginNamespace(eokas)
-	
-	struct llvm_scope_t;
-	struct llvm_type_t;
-	
+
 	template<typename T>
 	struct table_t
 	{
@@ -49,7 +46,7 @@ _BeginNamespace(eokas)
 		std::vector<llvm_scope_t*> children;
 		
 		table_t<llvm::Value> symbols;
-		table_t<llvm_type_t> types;
+		table_t<llvm::Type> types;
 		
 		explicit llvm_scope_t(llvm_scope_t* parent, llvm::Function* func);
 		virtual ~llvm_scope_t();
@@ -59,41 +56,36 @@ _BeginNamespace(eokas)
 		bool addSymbol(const String& name, llvm::Value* expr);
 		llvm::Value* getSymbol(const String& name, bool lookup);
 		
-		bool addType(const String& name, llvm_type_t* type);
-		llvm_type_t* getType(const String& name, bool lookup);
+		bool addType(const String& name, llvm::Type* type);
+		llvm::Type* getType(const String& name, bool lookup);
 	};
 	
-	struct llvm_type_t
+	struct llvm_struct_t
 	{
 		struct member_t
 		{
 			String name = "";
-			llvm_type_t* type = nullptr;
+			llvm::Type* type = nullptr;
 			llvm::Value* value = nullptr;
 		};
 		
 		llvm::LLVMContext& context;
-		
 		String name;
+		llvm::Type* type;
 		std::vector<member_t*> members;
 		
-		llvm::Type* handle;
-		llvm::Value* defval;
-		llvm_scope_t* scope;
 		
-		explicit llvm_type_t(llvm::LLVMContext& context, const String& name, llvm::Type* handle, llvm::Value* defval);
-		virtual ~llvm_type_t() noexcept;
 		
-		bool extends(llvm_type_t* base, String& err);
-		member_t* add_member(const String& name, llvm_type_t* type, llvm::Value* value = nullptr);
+		explicit llvm_struct_t(llvm::LLVMContext& context, const String& name);
+		virtual ~llvm_struct_t() noexcept;
+		
+		member_t* add_member(const String& name, llvm::Type* type, llvm::Value* value = nullptr);
 		member_t* add_member(const member_t* other);
 		member_t* get_member(const String& name) const;
 		member_t* get_member(size_t index) const;
 		size_t get_member_index(const String& name) const;
 		
-		void resolve(bool force = false);
-		
-		void ref(llvm_type_t* element_type);
+		void resolve();
 	};
 
 	using llvm_code_delegate_t = std::function<void(llvm::LLVMContext&, llvm::Module& module, llvm::Function* func, llvm::IRBuilder<>& builder)>;
@@ -123,33 +115,35 @@ _BeginNamespace(eokas)
 		llvm_scope_t* root;
 		llvm::Function* entry;
 		
-		std::vector<llvm_type_t*> types;
+		std::vector<llvm_struct_t*> structs;
 
-		llvm_type_t* type_void;
-		llvm_type_t* type_i8;
-		llvm_type_t* type_i16;
-		llvm_type_t* type_i32;
-		llvm_type_t* type_i64;
-		llvm_type_t* type_u8;
-		llvm_type_t* type_u16;
-		llvm_type_t* type_u32;
-		llvm_type_t* type_u64;
-		llvm_type_t* type_f32;
-		llvm_type_t* type_f64;
-		llvm_type_t* type_bool;
-		llvm_type_t* type_cstr;
-		llvm_type_t* type_string;
-		llvm_type_t* type_string_ref;
-		llvm_type_t* type_enum;
-		llvm_type_t* type_enum_ref;
+		llvm::Type* type_void;
+		llvm::Type* type_i8;
+		llvm::Type* type_i16;
+		llvm::Type* type_i32;
+		llvm::Type* type_i64;
+		llvm::Type* type_u8;
+		llvm::Type* type_u16;
+		llvm::Type* type_u32;
+		llvm::Type* type_u64;
+		llvm::Type* type_f32;
+		llvm::Type* type_f64;
+		llvm::Type* type_bool;
+		llvm::Type* type_cstr;
+		llvm::Type* type_string;
+		llvm::Type* type_string_ref;
+		llvm::Type* type_enum;
+		llvm::Type* type_enum_ref;
 		
 		llvm_module_t(const String& name, llvm::LLVMContext& context);
 		~llvm_module_t() noexcept;
 		
-		llvm_type_t* new_type(const String& name, llvm::Type* handle, llvm::Value* defval);
-		llvm_type_t* new_type(const String& name, llvm_type_t* base);
-		llvm_type_t* get_type(const String& name);
-		llvm_type_t* get_type(llvm::Type* handle);
+		String get_type_name(llvm::Type* type);
+		llvm::Value* get_default_value(llvm::Type* type);
+		
+		llvm_struct_t* new_struct(const String& name);
+		llvm_struct_t* get_struct(const String& name);
+		llvm_struct_t* get_struct(llvm::Type* handle);
 		
 		llvm::Function* declare_func_malloc();
 		llvm::Function* declare_func_free();
@@ -159,9 +153,8 @@ _BeginNamespace(eokas)
 		
 		llvm::Function* define_func_print();
 		
-		llvm_type_t* define_type_ref(llvm_type_t* element_type);
-		llvm_type_t* define_type_array(llvm_type_t* element_type);
-		llvm_type_t* define_type_string();
+		llvm::Type* define_type_array(llvm::Type* element_type);
+		llvm::Type* define_type_string();
 		
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type);
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type, llvm::Value* count);

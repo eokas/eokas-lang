@@ -65,17 +65,13 @@ _BeginNamespace(eokas)
 		}
 	}
 	
-	bool llvm_scope_t::addType(const String& name, llvm_type_t* type)
+	bool llvm_scope_t::addType(const String& name, llvm::Type* type)
 	{
 		bool ret = this->types.add(name, type);
-		if(ret)
-		{
-			type->scope = this;
-		}
 		return ret;
 	}
 	
-	llvm_type_t* llvm_scope_t::getType(const String& name, bool lookup)
+	llvm::Type* llvm_scope_t::getType(const String& name, bool lookup)
 	{
 		if(lookup)
 		{
@@ -93,31 +89,17 @@ _BeginNamespace(eokas)
 		}
 	}
 	
-	llvm_type_t::llvm_type_t(llvm::LLVMContext& context, const String& name, llvm::Type* handle, llvm::Value* defval)
-		: context(context), name(name), members(), handle(handle), defval(defval), scope(nullptr)
+	llvm_struct_t::llvm_struct_t(llvm::LLVMContext& context, const String& name)
+		: context(context), type(nullptr), name(name), members()
 	{
 	}
 	
-	llvm_type_t::~llvm_type_t() noexcept
+	llvm_struct_t::~llvm_struct_t() noexcept
 	{
 		_DeleteList(this->members);
 	}
 	
-	bool llvm_type_t::extends(llvm_type_t* base, String& err)
-	{
-		for (const auto& baseMember: base->members)
-		{
-			if(this->get_member(baseMember->name) != nullptr)
-			{
-				err = String::format("The member named '%s' is already exists. \n", baseMember->name.cstr());
-				return false;
-			}
-			this->add_member(baseMember);
-		}
-		return true;
-	}
-	
-	llvm_type_t::member_t* llvm_type_t::add_member(const String& name, llvm_type_t* type, llvm::Value* value)
+	llvm_struct_t::member_t* llvm_struct_t::add_member(const String& name, llvm::Type* type, llvm::Value* value)
 	{
 		auto* m = new member_t();
 		m->name = name;
@@ -128,12 +110,12 @@ _BeginNamespace(eokas)
 		return m;
 	}
 	
-	llvm_type_t::member_t* llvm_type_t::add_member(const member_t* other)
+	llvm_struct_t::member_t* llvm_struct_t::add_member(const member_t* other)
 	{
 		return this->add_member(other->name, other->type, other->value);
 	}
 	
-	llvm_type_t::member_t* llvm_type_t::get_member(const String& name) const
+	llvm_struct_t::member_t* llvm_struct_t::get_member(const String& name) const
 	{
 		for (auto& m: this->members)
 		{
@@ -143,14 +125,14 @@ _BeginNamespace(eokas)
 		return nullptr;
 	}
 	
-	llvm_type_t::member_t* llvm_type_t::get_member(size_t index) const
+	llvm_struct_t::member_t* llvm_struct_t::get_member(size_t index) const
 	{
 		if(index>=this->members.size())
 			return nullptr;
 		return this->members.at(index);
 	}
 	
-	size_t llvm_type_t::get_member_index(const String& name) const
+	size_t llvm_struct_t::get_member_index(const String& name) const
 	{
 		for (size_t index = 0; index<this->members.size(); index++)
 		{
@@ -160,35 +142,16 @@ _BeginNamespace(eokas)
 		return -1;
 	}
 	
-	void llvm_type_t::resolve(bool force)
+	void llvm_struct_t::resolve()
 	{
-		if(force || this->handle == nullptr)
+		auto structType = llvm::StructType::create(context, this->name.cstr());
+		std::vector<llvm::Type*> body;
+		for (auto& member: this->members)
 		{
-			llvm::StructType* type = llvm::StructType::create(context, this->name.cstr());
-			std::vector<llvm::Type*> body;
-			for (auto& member: this->members)
-			{
-				member->type->resolve();
-				body.push_back(member->type->handle);
-			}
-			type->setBody(body);
-			this->handle = type;
+			body.push_back(member->type);
 		}
-		
-		if(force || this->defval == nullptr)
-		{
-			auto structType = llvm::cast<llvm::StructType>(this->handle);
-			auto structRefType = structType->getPointerTo();
-			this->defval = llvm::ConstantPointerNull::get(structRefType);
-		}
-	}
-	
-	void llvm_type_t::ref(llvm_type_t* element_type)
-	{
-		auto handle = llvm::PointerType::get(element_type->handle, 0);
-		auto defval = llvm::ConstantPointerNull::get(handle);
-		this->handle = handle;
-		this->defval = defval;
+		structType->setBody(body);
+		this->type = structType;
 	}
 	
 	llvm::Function* llvm_model_t::declare_func(llvm::Module& module, const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg)
@@ -266,29 +229,29 @@ _BeginNamespace(eokas)
 	llvm_module_t::llvm_module_t(const String& name, llvm::LLVMContext& context)
 		: context(context), module(name.cstr(), context), root(new llvm_scope_t(nullptr, nullptr))
 	{
-		type_void = this->new_type("void", llvm::Type::getVoidTy(context), llvm::ConstantInt::get(context, llvm::APInt(8, 0)));
-		type_i8 = this->new_type("i8", llvm::Type::getInt8Ty(context), llvm::ConstantInt::get(context, llvm::APInt(8, 0)));
-		type_i16 = this->new_type("i16", llvm::Type::getInt16Ty(context), llvm::ConstantInt::get(context, llvm::APInt(16, 0)));
-		type_i32 = this->new_type("i32", llvm::Type::getInt32Ty(context), llvm::ConstantInt::get(context, llvm::APInt(32, 0)));
-		type_i64 = this->new_type("i64", llvm::Type::getInt64Ty(context), llvm::ConstantInt::get(context, llvm::APInt(64, 0)));
-		type_u8 = this->new_type("u8", llvm::Type::getInt8Ty(context), llvm::ConstantInt::get(context, llvm::APInt(8, 0)));
-		type_u16 = this->new_type("u16", llvm::Type::getInt16Ty(context), llvm::ConstantInt::get(context, llvm::APInt(16, 0)));
-		type_u32 = this->new_type("u32", llvm::Type::getInt32Ty(context), llvm::ConstantInt::get(context, llvm::APInt(32, 0)));
-		type_u64 = this->new_type("u64", llvm::Type::getInt64Ty(context), llvm::ConstantInt::get(context, llvm::APInt(64, 0)));
-		type_f32 = this->new_type("f32", llvm::Type::getFloatTy(context), llvm::ConstantFP::get(context, llvm::APFloat(0.0f)));
-		type_f64 = this->new_type("f64", llvm::Type::getDoubleTy(context), llvm::ConstantFP::get(context, llvm::APFloat(0.0)));
-		type_bool = this->new_type("bool", llvm::Type::getInt1Ty(context), llvm::ConstantInt::get(context, llvm::APInt(1, 0)));
+		type_void = llvm::Type::getVoidTy(context);
+		type_i8 = llvm::Type::getInt8Ty(context);
+		type_i16 = llvm::Type::getInt16Ty(context);
+		type_i32 = llvm::Type::getInt32Ty(context);
+		type_i64 = llvm::Type::getInt64Ty(context);
+		type_u8 = llvm::Type::getInt8Ty(context);
+		type_u16 = llvm::Type::getInt16Ty(context);
+		type_u32 = llvm::Type::getInt32Ty(context);
+		type_u64 = llvm::Type::getInt64Ty(context);
+		type_f32 = llvm::Type::getFloatTy(context);
+		type_f64 = llvm::Type::getDoubleTy(context);
+		type_bool = llvm::Type::getInt1Ty(context);
 		
-		type_cstr = this->define_type_ref(type_i8);
+		type_cstr = type_i8->getPointerTo();
 		
 		type_string = this->define_type_string();
-		type_string_ref = this->define_type_ref(type_string);
+		type_string_ref = type_string->getPointerTo();
 		
-		type_enum = this->new_type("enum", nullptr, nullptr);
-		type_enum->add_member("value", type_i32, type_i32->defval);
-		type_enum->resolve();
+		auto enumT = llvm::StructType::create(context, "enum");
+		enumT->setBody({ type_i32 });
+		type_enum = enumT;
 		
-		type_enum_ref = this->define_type_ref(type_enum);
+		type_enum_ref = type_enum->getPointerTo();
 		
 		this->declare_func_malloc();
 		this->declare_func_free();
@@ -313,32 +276,64 @@ _BeginNamespace(eokas)
 	
 	llvm_module_t::~llvm_module_t() noexcept
 	{
-		_DeleteList(this->types);
+		_DeleteList(this->structs);
 		_DeletePointer(root);
 	}
 	
-	llvm_type_t* llvm_module_t::new_type(const String& name, llvm::Type* handle, llvm::Value* defval)
+	String llvm_module_t::get_type_name(llvm::Type* type)
 	{
-		auto type = new llvm_type_t(context, name, handle, defval);
-		this->types.push_back(type);
-		return type;
-	}
-	
-	llvm_type_t* llvm_module_t::new_type(const String& name, llvm_type_t* base)
-	{
-		auto type = this->new_type(name, nullptr, nullptr);
-		for (const auto& baseMember: base->members)
+		if(type == type_i8) return "i8";
+		if(type == type_i16) return "i16";
+		if(type == type_i32) return "i32";
+		if(type == type_i64) return "i64";
+		
+		if(type == type_u8) return "u8";
+		if(type == type_u16) return "u16";
+		if(type == type_u32) return "u32";
+		if(type == type_u64) return "u64";
+		
+		if(type == type_f32) return "f32";
+		if(type == type_f64) return "f64";
+		
+		if(type == type_bool) return "bool";
+		if(type == type_cstr) return "cstr";
+		
+		if(type->isStructTy()) return type->getStructName().data();
+		if(type->isFunctionTy()) return "func";
+		
+		if(type->isPointerTy())
 		{
-			type->add_member(baseMember);
+			return String::format("Ref<%s>", this->get_type_name(type->getPointerElementType()).cstr());
 		}
-		type->resolve();
+		
+		return "";
+	}
+	
+	llvm::Value* llvm_module_t::get_default_value(llvm::Type* type)
+	{
+		if(type->isIntegerTy())
+		{
+			auto bits = type->getIntegerBitWidth();
+			return llvm::ConstantInt::get(context, llvm::APInt(bits, 0));
+		}
+		if(type->isFloatingPointTy())
+		{
+			return llvm::ConstantFP::get(context, llvm::APFloat(0.0f));
+		}
+		return llvm::ConstantPointerNull::get(llvm::Type::getVoidTy(context)->getPointerTo());
+	}
+	
+	llvm_struct_t* llvm_module_t::new_struct(const String& name)
+	{
+		auto type = new llvm_struct_t(context, name);
+		this->structs.push_back(type);
 		return type;
 	}
 	
-	llvm_type_t* llvm_module_t::get_type(const String& name)
+	llvm_struct_t* llvm_module_t::get_struct(const String& name)
 	{
-		auto iter = this->types.begin();
-		while(iter != this->types.end())
+		auto iter = this->structs.begin();
+		while(iter != this->structs.end())
 		{
 			auto type = *iter;
 			if(type->name == name)
@@ -348,13 +343,13 @@ _BeginNamespace(eokas)
 		return nullptr;
 	}
 	
-	llvm_type_t* llvm_module_t::get_type(llvm::Type* handle)
+	llvm_struct_t* llvm_module_t::get_struct(llvm::Type* handle)
 	{
-		auto iter = this->types.begin();
-		while(iter != this->types.end())
+		auto iter = this->structs.begin();
+		while(iter != this->structs.end())
 		{
 			auto type = *iter;
-			if(type->handle == handle)
+			if(type->type == handle)
 				return type;
 			++iter;
 		}
@@ -364,8 +359,8 @@ _BeginNamespace(eokas)
 	llvm::Function* llvm_module_t::declare_func_malloc()
 	{
 		String name = "malloc";
-		llvm::Type* ret = type_cstr->handle;
-		std::vector<llvm::Type*> args = {type_i64->handle};
+		llvm::Type* ret = type_cstr;
+		std::vector<llvm::Type*> args = {type_i64};
 		bool varg = false;
 		
 		return llvm_model_t::declare_func(module, name, ret, args, varg);
@@ -374,8 +369,8 @@ _BeginNamespace(eokas)
 	llvm::Function* llvm_module_t::declare_func_free()
 	{
 		String name = "free";
-		llvm::Type* ret = type_void->handle;
-		std::vector<llvm::Type*> args = {type_cstr->handle};
+		llvm::Type* ret = type_void;
+		std::vector<llvm::Type*> args = {type_cstr};
 		bool varg = false;
 		
 		return llvm_model_t::declare_func(module, name, ret, args, varg);
@@ -384,8 +379,8 @@ _BeginNamespace(eokas)
 	llvm::Function* llvm_module_t::declare_func_printf()
 	{
 		String name = "printf";
-		llvm::Type* ret = type_i32->handle;
-		std::vector<llvm::Type*> args = {type_cstr->handle};
+		llvm::Type* ret = type_i32;
+		std::vector<llvm::Type*> args = {type_cstr};
 		bool varg = true;
 		
 		return llvm_model_t::declare_func(module, name, ret, args, varg);
@@ -394,8 +389,8 @@ _BeginNamespace(eokas)
 	llvm::Function* llvm_module_t::declare_func_sprintf()
 	{
 		String name = "sprintf";
-		llvm::Type* ret = type_i32->handle;
-		std::vector<llvm::Type*> args = {type_cstr->handle, type_cstr->handle};
+		llvm::Type* ret = type_i32;
+		std::vector<llvm::Type*> args = {type_cstr, type_cstr};
 		bool varg = true;
 		
 		return llvm_model_t::declare_func(module, name, ret, args, varg);
@@ -404,8 +399,8 @@ _BeginNamespace(eokas)
 	llvm::Function* llvm_module_t::declare_func_strlen()
 	{
 		String name = "strlen";
-		llvm::Type* ret = type_i32->handle;
-		std::vector<llvm::Type*> args = {type_cstr->handle};
+		llvm::Type* ret = type_i32;
+		std::vector<llvm::Type*> args = {type_cstr};
 		bool varg = true;
 		
 		return llvm_model_t::declare_func(module, name, ret, args, varg);
@@ -414,8 +409,8 @@ _BeginNamespace(eokas)
 	llvm::Function* llvm_module_t::define_func_print()
 	{
 		String name = "print";
-		llvm::Type* ret = type_i32->handle;
-		std::vector<llvm::Type*> args = {type_string_ref->handle};
+		llvm::Type* ret = type_i32;
+		std::vector<llvm::Type*> args = {type_string_ref};
 		bool varg = false;
 		
 		return llvm_model_t::define_func(module, name, ret, args, varg, [&](llvm::LLVMContext& context, llvm::Module& module, llvm::Function* func, llvm::IRBuilder<>& builder)->void
@@ -431,35 +426,32 @@ _BeginNamespace(eokas)
 		});
 	}
 	
-	llvm_type_t* llvm_module_t::define_type_ref(llvm_type_t* element_type)
+	llvm::Type* llvm_module_t::define_type_array(llvm::Type* element_type)
 	{
-		String name = String::format("Ref<%s>", element_type->name.cstr());
-		llvm_type_t* type = this->new_type(name, nullptr, nullptr);
-		type->ref(element_type);
-		return type;
+		String name = String::format("Array<%s>", this->get_type_name(element_type).cstr());
+
+		auto structType = llvm::StructType::create(context);
+		structType->setName(name.cstr());
+		structType->setBody({
+			element_type->getPointerTo(),
+			this->type_u64
+		});
+		
+		return structType;
 	}
 	
-	llvm_type_t* llvm_module_t::define_type_array(llvm_type_t* element_type)
-	{
-		String name = String::format("Array<%s>", element_type->name.cstr());
-		llvm_type_t* type = this->new_type(name, nullptr, nullptr);
-		
-		type->add_member("data", this->define_type_ref(element_type));
-		type->add_member("length", this->type_u64);
-		
-		type->resolve();
-		
-		return type;
-	}
-	
-	llvm_type_t* llvm_module_t::define_type_string()
+	llvm::Type* llvm_module_t::define_type_string()
 	{
 		String name = "String";
-		llvm_type_t* type = this->new_type(name, nullptr, nullptr);
-		type->add_member("data", this->type_cstr);
-		type->add_member("length", this->type_u32);
-		type->resolve();
-		return type;
+		
+		auto structType = llvm::StructType::create(context);
+		structType->setName(name.cstr());
+		structType->setBody({
+			this->type_cstr,
+			this->type_u64
+		});
+		
+		return structType;
 	}
 	
 	llvm::Value* llvm_module_t::make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type)
@@ -489,8 +481,8 @@ _BeginNamespace(eokas)
 	
 	llvm::Value* llvm_module_t::array_set(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* array, const llvm::ArrayRef<llvm::Value*>& elements)
 	{
-		auto* arrayT = this->get_type(array->getType());
-		auto* elementT = arrayT->handle->getStructElementType(0);
+		auto* arrayT = array->getType();
+		auto* elementT = arrayT->getStructElementType(0);
 		auto* countV = builder.getInt64(elements.size());
 
 		auto* dataP = builder.CreateStructGEP(array, 0);
@@ -522,16 +514,16 @@ _BeginNamespace(eokas)
 	{
 		llvm::Type* vt = val->getType();
 		
-		if(vt == type_cstr->handle)
+		if(vt == type_cstr)
 			return val;
 		
-		if(vt == type_string_ref->handle)
+		if(vt == type_string_ref)
 			return this->cstr_from_string(func, builder, val);
 		
-		if(vt == type_bool->handle)
+		if(vt == type_bool)
 			return this->cstr_from_bool(func, builder, val);
 		
-		if(vt == type_enum_ref->handle)
+		if(vt == type_enum_ref)
 			return this->cstr_from_enum(func, builder, val);
 		
 		return this->cstr_from_number(func, builder, val);
@@ -539,7 +531,7 @@ _BeginNamespace(eokas)
 	
 	llvm::Value* llvm_module_t::cstr_from_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* str)
 	{
-		llvm::Value* ptr = builder.CreateStructGEP(type_string->handle, str, 0);
+		llvm::Value* ptr = builder.CreateStructGEP(type_string, str, 0);
 		llvm::Value* cstr = builder.CreateLoad(ptr);
 		return cstr;
 	}
@@ -548,7 +540,7 @@ _BeginNamespace(eokas)
 	{
 		llvm::Type* vt = val->getType();
 		
-		llvm::Value* buf = builder.CreateAlloca(llvm::ArrayType::get(type_i8->handle, 64));
+		llvm::Value* buf = builder.CreateAlloca(llvm::ArrayType::get(type_i8, 64));
 		
 		llvm::StringRef vf = "%x";
 		if(vt->isIntegerTy())
@@ -581,7 +573,7 @@ _BeginNamespace(eokas)
 		builder.CreateBr(branch_end);
 		
 		builder.SetInsertPoint(branch_end);
-		llvm::PHINode* phi = builder.CreatePHI(type_cstr->handle, 2);
+		llvm::PHINode* phi = builder.CreatePHI(type_cstr, 2);
 		phi->addIncoming(val_true, branch_true);
 		phi->addIncoming(val_false, branch_false);
 		
@@ -590,10 +582,10 @@ _BeginNamespace(eokas)
 	
 	llvm::Value* llvm_module_t::cstr_from_enum(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
 	{
-		llvm::Value* ptr = builder.CreateStructGEP(type_enum->handle, val, 0);
+		llvm::Value* ptr = builder.CreateStructGEP(type_enum, val, 0);
 		llvm::Value* code = builder.CreateLoad(ptr);
 		
-		llvm::Value* buf = builder.CreateAlloca(llvm::ArrayType::get(type_i8->handle, 64));
+		llvm::Value* buf = builder.CreateAlloca(llvm::ArrayType::get(type_i8, 64));
 		llvm::Value* fmt = builder.CreateGlobalString("%d");
 		
 		auto sprintf = module.getFunction("sprintf");
@@ -604,7 +596,7 @@ _BeginNamespace(eokas)
 	
 	llvm::Value* llvm_module_t::string_make(llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr)
 	{
-		auto str = this->make(func, builder, this->type_string->handle);
+		auto str = this->make(func, builder, this->type_string);
 		
 		auto dataP = builder.CreateStructGEP(str, 0);
 		auto dataV = builder.CreateGlobalString(cstr);
@@ -619,7 +611,7 @@ _BeginNamespace(eokas)
 	
 	llvm::Value* llvm_module_t::string_from_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* cstr)
 	{
-		llvm::Value* str = this->make(func, builder, type_string->handle);
+		llvm::Value* str = this->make(func, builder, type_string);
 		
 		llvm::Value* dataP = builder.CreateStructGEP(str, 0);
 		builder.CreateStore(cstr, dataP);
@@ -635,15 +627,15 @@ _BeginNamespace(eokas)
 	{
 		llvm::Type* vt = val->getType();
 		
-		if(vt == type_string_ref->handle)
+		if(vt == type_string_ref)
 			return val;
 		
 		llvm::Value* cstr = nullptr;
-		if(vt == type_cstr->handle)
+		if(vt == type_cstr)
 			cstr = val;
-		else if(vt == type_bool->handle)
+		else if(vt == type_bool)
 			cstr = this->cstr_from_bool(func, builder, val);
-		else if(vt == type_enum_ref->handle)
+		else if(vt == type_enum_ref)
 			cstr = this->cstr_from_enum(func, builder, val);
 		else
 			cstr = this->cstr_from_number(func, builder, val);

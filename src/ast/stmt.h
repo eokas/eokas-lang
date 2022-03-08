@@ -30,11 +30,10 @@ namespace eokas
 	struct ast_stmt_struct_def_t : public ast_stmt_t
 	{
 		String name;
-		ast_type_ref_t* base;
 		std::map<String, ast_stmt_struct_member_t*> members;
 		
 		explicit ast_stmt_struct_def_t(ast_node_t* parent)
-			: ast_stmt_t(ast_node_category_t::stmt_struct_def, parent), name(""), base(nullptr), members()
+			: ast_stmt_t(ast_node_category_t::stmt_struct_def, parent), name(""), members()
 		{
 		}
 	};

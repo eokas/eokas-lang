@@ -848,7 +848,7 @@ _BeginNamespace(eokas)
 	}
 	
 	/**
-	 * struct_def := 'struct' ID [':' type_ref] '{' struct_member '};';
+	 * struct_def := 'struct' ID '{' struct_member '};';
 	*/
 	ast_stmt_struct_def_t* parser_impl_t::parse_stmt_struct_def(ast_node_t* p)
 	{
@@ -863,14 +863,6 @@ _BeginNamespace(eokas)
 		
 		node->name = this->token().value;
 		this->next_token();
-		
-		// : base
-		if(this->check_token(token_t::Colon, false))
-		{
-			node->base = this->parse_type_ref(node);
-			if(node->base == nullptr)
-				return nullptr;
-		}
 		
 		// {
 		if(!this->check_token(token_t::LCB))
