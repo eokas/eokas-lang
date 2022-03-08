@@ -132,8 +132,6 @@ _BeginNamespace(eokas)
 		llvm::Type* type_cstr;
 		llvm::Type* type_string;
 		llvm::Type* type_string_ref;
-		llvm::Type* type_enum;
-		llvm::Type* type_enum_ref;
 		
 		llvm_module_t(const String& name, llvm::LLVMContext& context);
 		~llvm_module_t() noexcept;
@@ -167,8 +165,7 @@ _BeginNamespace(eokas)
 		llvm::Value* cstr_from_string(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* str);
 		llvm::Value* cstr_from_number(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
 		llvm::Value* cstr_from_bool(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
-		llvm::Value* cstr_from_enum(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);
-		
+
 		llvm::Value* string_make(llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr);
 		llvm::Value* string_from_cstr(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* cstr);
 		llvm::Value* string_from_value(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val);

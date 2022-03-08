@@ -246,13 +246,6 @@ _BeginNamespace(eokas)
 		
 		type_string = this->define_type_string();
 		type_string_ref = type_string->getPointerTo();
-		
-		auto enumT = llvm::StructType::create(context, "enum");
-		enumT->setBody({ type_i32 });
-		type_enum = enumT;
-		
-		type_enum_ref = type_enum->getPointerTo();
-		
 		this->declare_func_malloc();
 		this->declare_func_free();
 		this->declare_func_printf();
@@ -523,9 +516,6 @@ _BeginNamespace(eokas)
 		if(vt == type_bool)
 			return this->cstr_from_bool(func, builder, val);
 		
-		if(vt == type_enum_ref)
-			return this->cstr_from_enum(func, builder, val);
-		
 		return this->cstr_from_number(func, builder, val);
 	}
 	
@@ -580,20 +570,6 @@ _BeginNamespace(eokas)
 		return phi;
 	}
 	
-	llvm::Value* llvm_module_t::cstr_from_enum(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
-	{
-		llvm::Value* ptr = builder.CreateStructGEP(type_enum, val, 0);
-		llvm::Value* code = builder.CreateLoad(ptr);
-		
-		llvm::Value* buf = builder.CreateAlloca(llvm::ArrayType::get(type_i8, 64));
-		llvm::Value* fmt = builder.CreateGlobalString("%d");
-		
-		auto sprintf = module.getFunction("sprintf");
-		builder.CreateCall(sprintf, {buf, fmt, code});
-		
-		return buf;
-	}
-	
 	llvm::Value* llvm_module_t::string_make(llvm::Function* func, llvm::IRBuilder<>& builder, const char* cstr)
 	{
 		auto str = this->make(func, builder, this->type_string);
@@ -635,8 +611,6 @@ _BeginNamespace(eokas)
 			cstr = val;
 		else if(vt == type_bool)
 			cstr = this->cstr_from_bool(func, builder, val);
-		else if(vt == type_enum_ref)
-			cstr = this->cstr_from_enum(func, builder, val);
 		else
 			cstr = this->cstr_from_number(func, builder, val);
 		
