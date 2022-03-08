@@ -157,29 +157,21 @@ _BeginNamespace(eokas)
 	}
 	
 	/**
-	 * type_array := 'array' '<' type ',' int_num '>';
+	 * type_array := 'array' '<' type '>';
 	*/
 	ast_type_array_t* parser_impl_t::parse_type_array(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::Array))
 			return nullptr;
 		
+		auto* node = factory->create_type_array(p);
+		
 		if(!this->check_token(token_t::Less))
 			return nullptr;
 		
-		auto* node = factory->create_type_array(p);
 		node->elementType = this->parse_type(node);
 		if(node->elementType == nullptr)
 			return nullptr;
-		
-		if(!this->check_token(token_t::Comma))
-			return nullptr;
-		
-		if(!this->check_token(token_t::DInt, true, false))
-			return nullptr;
-		
-		node->length = String::stringToValue<i32_t>(this->token().value);
-		this->next_token(); // ignore length.
 		
 		if(!this->check_token(token_t::Greater))
 			return nullptr;

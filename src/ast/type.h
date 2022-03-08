@@ -26,10 +26,9 @@ namespace eokas
 	struct ast_type_array_t : public ast_type_t
 	{
 		ast_type_t* elementType;
-		u32_t length;
 		
 		explicit ast_type_array_t(ast_node_t* parent)
-			: ast_type_t(ast_node_category_t::type_array, parent), elementType(nullptr), length(0)
+			: ast_type_t(ast_node_category_t::type_array, parent), elementType(nullptr)
 		{
 		}
 	};
