@@ -1,4 +1,5 @@
 
-var str: string = "Hello eokas.";
+var a: array<i32> = [2, 4, 8, 16];
+a[2] = 2;
 
-print(str[0]);
+print(a[2]);

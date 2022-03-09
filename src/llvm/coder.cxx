@@ -147,12 +147,13 @@ _BeginNamespace(eokas)
 				return nullptr;
 			}
 			
-			auto* elementType = this->encode_type(node->elementType);
-			if(elementType == nullptr)
+			auto* elementT = this->encode_type(node->elementType);
+			if(elementT == nullptr)
 				return nullptr;
 			
 			// TODO: check if the array-type is defined in this scope.
-			return module->define_type_array(elementType);
+			auto arrayT = module->define_type_array(elementT);
+			return arrayT->getPointerTo();
 		}
 		
 		llvm::Value* encode_expr(struct ast_expr_t* node)
@@ -1033,12 +1034,11 @@ _BeginNamespace(eokas)
 			auto objT = objV->getType();
 			auto keyT = keyV->getType();
 			
-			if(objT->isPointerTy() && objT->getPointerElementType()->isArrayTy())
+			if(module->is_array_type(objT))
 			{
 				if(keyT->isIntegerTy())
 				{
-					llvm::Value* ptr = builder.CreateGEP(objV, {builder.getInt32(0), keyV});
-					return ptr;
+					return module->array_get(scope->func, builder, objV, keyV);
 				}
 				else
 				{

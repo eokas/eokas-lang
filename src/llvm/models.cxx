@@ -426,11 +426,27 @@ _BeginNamespace(eokas)
 		auto structType = llvm::StructType::create(context);
 		structType->setName(name.cstr());
 		structType->setBody({
-			element_type->getPointerTo(),
+			llvm::ArrayType::get(element_type, 0)->getPointerTo(),
 			this->type_u64
 		});
 		
 		return structType;
+	}
+	
+	bool llvm_module_t::is_array_type(llvm::Type* type)
+	{
+		if(!type->isPointerTy())
+			return false;
+		type = type->getPointerElementType();
+		if(!type->isStructTy() || type->getStructNumElements() != 2)
+			return false;
+		
+		auto dataT = type->getStructElementType(0);
+		auto countT = type->getStructElementType(1);
+		
+		return dataT->isPointerTy()
+			&& dataT->getPointerElementType()->isArrayTy()
+			&& countT->isIntegerTy(64);
 	}
 	
 	llvm::Type* llvm_module_t::define_type_string()
@@ -474,24 +490,32 @@ _BeginNamespace(eokas)
 	
 	llvm::Value* llvm_module_t::array_set(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* array, const llvm::ArrayRef<llvm::Value*>& elements)
 	{
-		auto* arrayT = array->getType();
-		auto* elementT = arrayT->getStructElementType(0);
-		auto* countV = builder.getInt64(elements.size());
-
+		auto elementT = elements[0]->getType();
+		auto arrayT = llvm::ArrayType::get(elementT, elements.size());
+		
 		auto* dataP = builder.CreateStructGEP(array, 0);
-		auto* dataV = this->make(func, builder, elementT, countV);
+		auto* dataV = this->make(func, builder, arrayT);
 		for (size_t i = 0; i < elements.size(); i++)
 		{
+			auto elementP = builder.CreateConstGEP2_64(dataV, 0, i);
 			auto elementV = elements[i];
-			auto elementP = builder.CreateConstGEP1_64(elementT, dataV, i);
 			builder.CreateStore(elementV, elementP);
 		}
 		builder.CreateStore(dataV, dataP);
 		
-		auto* countP = builder.CreateStructGEP(array, 1);
+		auto countP = builder.CreateStructGEP(array, 1);
+		auto countV = builder.getInt64(elements.size());
 		builder.CreateStore(countV, countP);
 		
 		return array;
+	}
+	
+	llvm::Value* llvm_module_t::array_get(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* array, llvm::Value* index)
+	{
+		auto dataP = builder.CreateStructGEP(array, 0);
+		auto dataV = builder.CreateLoad(dataP);
+		auto val = builder.CreateInBoundsGEP(dataV, {builder.getInt64(0), index});
+		return val;
 	}
 	
 	llvm::Value* llvm_module_t::cstr_len(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* val)
