@@ -1,6 +1,6 @@
 
-#ifndef  _EOKAS_ARCHAISM_MATH_H_
-#define  _EOKAS_ARCHAISM_MATH_H_
+#ifndef  _EOKAS_BASE_MATH_H_
+#define  _EOKAS_BASE_MATH_H_
 
 #include "header.h"
 
@@ -531,4 +531,4 @@ public:
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_MATH_H_
+#endif//_EOKAS_BASE_MATH_H_

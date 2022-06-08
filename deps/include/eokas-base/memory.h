@@ -1,6 +1,6 @@
 
-#ifndef  _EOKAS_ARCHAISM_MEMORY_H_
-#define  _EOKAS_ARCHAISM_MEMORY_H_
+#ifndef  _EOKAS_BASE_MEMORY_H_
+#define  _EOKAS_BASE_MEMORY_H_
 
 #include "header.h"
 #include "stream.h"
@@ -108,4 +108,4 @@ private:
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_MEMORY_H_
+#endif//_EOKAS_BASE_MEMORY_H_

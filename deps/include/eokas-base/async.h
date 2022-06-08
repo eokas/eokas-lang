@@ -1,5 +1,5 @@
-#ifndef _EOKAS_ARCHAISM_ASYNC_H_
-#define _EOKAS_ARCHAISM_ASYNC_H_
+#ifndef _EOKAS_BASE_ASYNC_H_
+#define _EOKAS_BASE_ASYNC_H_
 
 #include "header.h"
 
@@ -23,13 +23,13 @@ public:
 	inline ~ThreadPool()
 	{
 		mRunning = false;
-		mCond.notify_all(); // »½ÐÑËùÓÐÏß³ÌÖ´ÐÐ
+		mCond.notify_all(); // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß³ï¿½Ö´ï¿½ï¿½
 		for (std::thread& thread : mThreads) 
 		{
-			//thread.detach(); // ÈÃÏß³Ì¡°×ÔÉú×ÔÃð¡±
+			//thread.detach(); // ï¿½ï¿½ï¿½ß³Ì¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 			if (thread.joinable())
 			{
-				// µÈ´ýÈÎÎñ½áÊø£¬ Ç°Ìá£ºÏß³ÌÒ»¶¨»áÖ´ÐÐÍê
+				// ï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ç°ï¿½á£ºï¿½ß³ï¿½Ò»ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ï¿½ï¿½ï¿½
 				thread.join(); 
 			}
 		}
@@ -45,7 +45,7 @@ public:
 			{
 				while (mRunning)
 				{
-					// »ñÈ¡Ò»¸ö´ýÖ´ÐÐµÄ task
+					// ï¿½ï¿½È¡Ò»ï¿½ï¿½ï¿½ï¿½Ö´ï¿½Ðµï¿½ task
 					Task task;
 					{
 						std::unique_lock<std::mutex> lock{ mMutex };
@@ -54,17 +54,17 @@ public:
 							return !mRunning || !mTasks.empty();
 						});
 
-						// wait Ö±µ½ÓÐ task
+						// wait Ö±ï¿½ï¿½ï¿½ï¿½ task
 						if (!mRunning && mTasks.empty())
 							return;
 
-						// °´ÏÈ½øÏÈ³ö´Ó¶ÓÁÐÈ¡Ò»¸ö task
+						// ï¿½ï¿½ï¿½È½ï¿½ï¿½È³ï¿½ï¿½Ó¶ï¿½ï¿½ï¿½È¡Ò»ï¿½ï¿½ task
 						task = std::move(mTasks.front());
 						mTasks.pop();
 					}
 
 					mIdleCount--;
-					task(); // Ö´ÐÐÈÎÎñ
+					task(); // Ö´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 					mIdleCount++;
 				}
 			});
@@ -73,9 +73,9 @@ public:
 		}
 	}
 
-	// Ö´ÐÐÒ»¸öÈÎÎñ
-	// µ÷ÓÃ.get()»ñÈ¡·µ»ØÖµ»áµÈ´ýÈÎÎñÖ´ÐÐÍê, »ñÈ¡·µ»ØÖµ
-	// ÓÐÁ½ÖÖ·½·¨¿ÉÒÔÊµÏÖµ÷ÓÃÀà³ÉÔ±£¬
+	// Ö´ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	// ï¿½ï¿½ï¿½ï¿½.get()ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½Öµï¿½ï¿½È´ï¿½ï¿½ï¿½ï¿½ï¿½Ö´ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½Öµ
+	// ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Êµï¿½Öµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô±ï¿½ï¿½
 	// 1, bind: .exec(std::bind(&Dog::sayHello, &dog));
 	// 2, mem_fn: .exec(std::mem_fn(&Dog::sayHello), this)
 	template<typename F, typename... Args>
@@ -86,7 +86,7 @@ public:
 
 		using RetType = decltype(f(args...)); 
 
-		// °Ñº¯ÊýÈë¿Ú¼°²ÎÊý,´ò°ü(°ó¶¨)
+		// ï¿½Ñºï¿½ï¿½ï¿½ï¿½ï¿½Ú¼ï¿½ï¿½ï¿½ï¿½ï¿½,ï¿½ï¿½ï¿½(ï¿½ï¿½)
 		auto task = std::make_shared<std::packaged_task<RetType()>>(
 			bind(std::forward<F>(f), std::forward<Args>(args)...)
 		);
@@ -105,19 +105,19 @@ public:
 			this->expand(1);
 		}
 
-		// »½ÐÑÒ»¸öÏß³ÌÖ´ÐÐ
+		// ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ß³ï¿½Ö´ï¿½ï¿½
 		mCond.notify_one(); 
 
 		return future;
 	}
 
-	//¿ÕÏÐÏß³ÌÊýÁ¿
+	//ï¿½ï¿½ï¿½ï¿½ï¿½ß³ï¿½ï¿½ï¿½ï¿½ï¿½
 	int idle_size() const
 	{ 
 		return mIdleCount; 
 	}
 
-	//Ïß³ÌÊýÁ¿
+	//ï¿½ß³ï¿½ï¿½ï¿½ï¿½ï¿½
 	int size() const
 	{ 
 		return mThreads.size(); 
@@ -135,4 +135,4 @@ private:
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_ASYNC_H_
+#endif//_EOKAS_BASE_ASYNC_H_

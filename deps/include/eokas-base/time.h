@@ -1,6 +1,6 @@
 
-#ifndef  _EOKAS_ARCHAISM_TIME_H_
-#define  _EOKAS_ARCHAISM_TIME_H_
+#ifndef  _EOKAS_BASE_TIME_H_
+#define  _EOKAS_BASE_TIME_H_
 
 #include "header.h"
 #include "string.h"
@@ -115,4 +115,4 @@ private:
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_TIME_H_
+#endif//_EOKAS_BASE_TIME_H_

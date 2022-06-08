@@ -1,6 +1,6 @@
 
-#ifndef  _EOKAS_ARCHAISM_FILE_H_
-#define  _EOKAS_ARCHAISM_FILE_H_
+#ifndef  _EOKAS_BASE_FILE_H_
+#define  _EOKAS_BASE_FILE_H_
 
 #include "header.h"
 #include "stream.h"
@@ -95,4 +95,4 @@ public:
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_FILE_H_
+#endif//_EOKAS_BASE_FILE_H_

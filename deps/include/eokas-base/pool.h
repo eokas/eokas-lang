@@ -1,6 +1,6 @@
 
-#ifndef  _EOKAS_ARCHAISM_POOL_H_
-#define  _EOKAS_ARCHAISM_POOL_H_
+#ifndef  _EOKAS_BASE_POOL_H_
+#define  _EOKAS_BASE_POOL_H_
 
 #include "header.h"
 #include <functional>
@@ -135,4 +135,4 @@ private:
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_ASCIL_H_
+#endif//_EOKAS_BASE_ASCIL_H_

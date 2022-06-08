@@ -17,48 +17,57 @@ static void bad_command(const char* command);
 
 int main(int argc, char** argv)
 {
-	Args args(argc, argv);
-	if(args.count()<2)
+	cli::Command cli;
+	
+	cli.command("about", "About eokas.", [&](auto& cmd)->int
 	{
 		about();
 		return 0;
-	}
-	
-	String command = args.get(1);
-	if(command == "-?" || command == "-help")
+	});
+	cli.command("help", "Show eokas command-line messages.", [&](auto& cmd)->int
 	{
 		help();
-	}
-	else if(command.startsWith("-c"))
+		return 0;
+	});
+	cli.command("compile", "Compile eokas source code.", [&](const cli::Command& cmd)->int
 	{
-		String file = args.get(2);
-		printf("=> Source file: %s\n", file.cstr());
+		const auto& fileOption = cmd.options.at("--file,-f");
+		String fileName = fileOption.value;
+		printf("=> Source file: %s\n", fileName.cstr());
 		try
 		{
-			eokas_main(file, llvm_aot);
-		} catch (std::exception& e)
+			eokas_main(fileName, llvm_aot);
+			return 0;
+		}
+		catch (std::exception& e)
 		{
 			printf("ERROR: %s \n", e.what());
+			return 1;
 		}
-	}
-	else if(command.startsWith("-r"))
+	});
+	cli.command("run", "Run eokas source just in time", [&](const cli::Command& cmd)->int
 	{
-		String file = args.get(2);
-		printf("=> Source file: %s\n", file.cstr());
+		const auto& fileOption = cmd.options.at("--file,-f");
+		String fileName = fileOption.value;
+		printf("=> Source file: %s\n", fileName.cstr());
 		try
 		{
-			eokas_main(file, llvm_jit);
-		} catch (std::exception& e)
+			eokas_main(fileName, llvm_jit);
+			return 0;
+		}
+		catch (std::exception& e)
 		{
 			printf("ERROR: %s \n", e.what());
+			return 1;
 		}
-	}
-	else
-	{
-		bad_command(command.cstr());
-	}
+	});
 	
-	return 0;
+	cli.set(argv[0], "eokas-lang", [&](auto& cmd)->int
+	{
+		help();
+	});
+	
+	return cli.exec(argc, argv);
 }
 
 static void eokas_main(const String& fileName, bool(*proc)(ast_module_t* m))
@@ -99,22 +108,16 @@ static void eokas_main(const String& fileName, bool(*proc)(ast_module_t* m))
 	out.close();
 }
 
-static void about(void)
+static void about()
 {
 	printf("eokas %s\n", _EOKAS_VERSION);
 }
 
-static void help(void)
+static void help()
 {
 	printf("\n-?, -help\n"
 		   "\tPrint command line help message.\n"
 	
 		   "\nfileName [-c] [-e] [-t]\n"
 		   "\tComple or Execute a file, show exec-time.\n");
-}
-
-static void bad_command(const char* command)
-{
-	printf("The command '%s' is undefined in eokas. "
-		   "You can use the command %s to get the help infomation.\n", command, "'eokas -?' or 'eokas -help'");
 }

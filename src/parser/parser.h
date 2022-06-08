@@ -1,7 +1,7 @@
 #ifndef _EOKAS_PARSER_H_
 #define _EOKAS_PARSER_H_
 
-#include <libarchaism/archaism.h>
+#include <eokas-base/main.h>
 
 _BeginNamespace(eokas)
 	

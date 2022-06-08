@@ -1,6 +1,6 @@
 
-#ifndef  _EOKAS_ARCHAISM_STRING_H_
-#define  _EOKAS_ARCHAISM_STRING_H_
+#ifndef  _EOKAS_BASE_STRING_H_
+#define  _EOKAS_BASE_STRING_H_
 
 #include "header.h"
 #include <sstream>
@@ -316,4 +316,4 @@ using StringValueMap = std::map<String, StringValue>;
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_STRING_H_
+#endif//_EOKAS_BASE_STRING_H_

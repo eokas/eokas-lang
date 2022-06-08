@@ -1,6 +1,6 @@
 
-#ifndef  _EOKAS_ARCHAISM_DICTIONARY_H_
-#define  _EOKAS_ARCHAISM_DICTIONARY_H_
+#ifndef  _EOKAS_BASE_DICTIONARY_H_
+#define  _EOKAS_BASE_DICTIONARY_H_
 
 #include "header.h"
 
@@ -114,4 +114,4 @@ private:
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_DICTIONARY_H_
+#endif//_EOKAS_BASE_DICTIONARY_H_

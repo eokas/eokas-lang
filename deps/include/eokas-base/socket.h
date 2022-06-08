@@ -1,10 +1,10 @@
 
-#ifndef  _EOKAS_ARCHAISM_SOCKET_H_
-#define  _EOKAS_ARCHAISM_SOCKET_H_
+#ifndef  _EOKAS_BASE_SOCKET_H_
+#define  _EOKAS_BASE_SOCKET_H_
 
 #include "header.h"
 
-#if _EOKAS_PLATFORM == _EOKAS_PLATFORM_WIN32
+#if _EOKAS_OS == _EOKAS_OS_WIN32
 
 #include <WinSock2.h>
 
@@ -13,7 +13,7 @@
 using socket_t = SOCKET;
 using socklen_t = int;
 
-#elif _EOKAS_PLATFORM == _EOKAS_PLATFORM_MACOS || _EOKAS_PLATFORM == _EOKAS_PLATFORM_IOS
+#elif _EOKAS_OS == _EOKAS_OS_MACOS || _EOKAS_OS == _EOKAS_OS_IOS
 
 #include <unistd.h>
 #include <sys/socket.h>
@@ -184,4 +184,4 @@ public:
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_NETWORK_H_
+#endif//_EOKAS_BASE_NETWORK_H_

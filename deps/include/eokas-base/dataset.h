@@ -1,6 +1,6 @@
 
-#ifndef  _EOKAS_ARCHAISM_DATASET_H_
-#define  _EOKAS_ARCHAISM_DATASET_H_
+#ifndef  _EOKAS_BASE_DATASET_H_
+#define  _EOKAS_BASE_DATASET_H_
 
 #include "header.h"
 #include "string.h"
@@ -197,4 +197,4 @@ private:
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_DATASET_H_
+#endif//_EOKAS_BASE_DATASET_H_

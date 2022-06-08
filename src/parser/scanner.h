@@ -1,7 +1,7 @@
 #ifndef _EOKAS_SCANNER_H_
 #define _EOKAS_SCANNER_H_
 
-#include <libarchaism/archaism.h>
+#include <eokas-base/main.h>
 
 _BeginNamespace(eokas)
 	

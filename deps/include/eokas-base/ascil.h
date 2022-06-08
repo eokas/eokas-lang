@@ -1,6 +1,6 @@
 
-#ifndef  _EOKAS_ARCHAISM_ASCIL_H_
-#define  _EOKAS_ARCHAISM_ASCIL_H_
+#ifndef  _EOKAS_BASE_ASCIL_H_
+#define  _EOKAS_BASE_ASCIL_H_
 
 #include "header.h"
 
@@ -50,4 +50,4 @@ struct Ascil
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_ASCIL_H_
+#endif//_EOKAS_BASE_ASCIL_H_

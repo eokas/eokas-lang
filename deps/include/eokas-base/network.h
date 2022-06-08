@@ -1,6 +1,6 @@
 
-#ifndef  _EOKAS_ARCHAISM_NETWORK_H_
-#define  _EOKAS_ARCHAISM_NETWORK_H_
+#ifndef  _EOKAS_BASE_NETWORK_H_
+#define  _EOKAS_BASE_NETWORK_H_
 
 #include "header.h"
 #include "socket.h"
@@ -33,7 +33,7 @@ using NetworkCallback = void(*)(NetworkSession* session, NetworkOperation* oper,
 
 struct NetworkOperation
 {
-#if _EOKAS_PLATFORM == _EOKAS_PLATFORM_WIN32
+#if _EOKAS_OS == _EOKAS_OS_WIN32
 	OVERLAPPED overlapped;
 	WSABUF wsabuf;
 #endif
@@ -73,4 +73,4 @@ public:
 
 _EndNamespace(eokas)
 
-#endif//_EOKAS_ARCHAISM_NETWORK_H_
+#endif//_EOKAS_BASE_NETWORK_H_
