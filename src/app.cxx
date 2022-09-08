@@ -17,48 +17,51 @@ static void bad_command(const char* command);
 
 int main(int argc, char** argv)
 {
-	Args args(argc, argv);
-	if(args.count()<2)
-	{
+	cli::Command program(argv[0]);
+	
+	program.action([&](const cli::Command& cmd)->void{
 		about();
+	});
+	
+	program.subCommand("help", "")
+		.action([&](const cli::Command& cmd)->void {
+			help();
+		});
+	
+	program.subCommand("compile", "")
+		.option("--file,-f", "", "")
+		.action([&](const cli::Command& cmd)->void{
+			auto file = cmd.fetchValue("--file").string();
+			if(file.isEmpty())
+				throw std::invalid_argument("The argument 'file' is empty.");
+
+			printf("=> Source file: %s\n", file.cstr());
+			
+			eokas_main(file, llvm_aot);
+		});
+	
+	program.subCommand("run", "")
+		.option("--file,-f", "", "")
+		.action([&](const cli::Command& cmd)->void{
+			auto file = cmd.fetchValue("--file").string();
+			if(file.isEmpty())
+				throw std::invalid_argument("The argument 'file' is empty.");
+			
+			printf("=> Source file: %s\n", file.cstr());
+			
+			eokas_main(file, llvm_jit);
+		});
+		
+	try
+	{
+		program.exec(argc, argv);
 		return 0;
 	}
-	
-	String command = args.get(1);
-	if(command == "-?" || command == "-help")
+	catch(const std::exception& e)
 	{
-		help();
+		printf("ERROR: %s", e.what());
+		return -1;
 	}
-	else if(command.startsWith("-c"))
-	{
-		String file = args.get(2);
-		printf("=> Source file: %s\n", file.cstr());
-		try
-		{
-			eokas_main(file, llvm_aot);
-		} catch (std::exception& e)
-		{
-			printf("ERROR: %s \n", e.what());
-		}
-	}
-	else if(command.startsWith("-r"))
-	{
-		String file = args.get(2);
-		printf("=> Source file: %s\n", file.cstr());
-		try
-		{
-			eokas_main(file, llvm_jit);
-		} catch (std::exception& e)
-		{
-			printf("ERROR: %s \n", e.what());
-		}
-	}
-	else
-	{
-		bad_command(command.cstr());
-	}
-	
-	return 0;
 }
 
 static void eokas_main(const String& fileName, bool(*proc)(ast_module_t* m))

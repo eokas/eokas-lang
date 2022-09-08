@@ -1,7 +1,7 @@
 #ifndef _EOKAS_AST_HEADER_H_
 #define _EOKAS_AST_HEADER_H_
 
-#include <libarchaism/archaism.h>
+#include <eokas-base/main.h>
 
 namespace eokas
 {
