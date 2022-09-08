@@ -33,6 +33,7 @@ _BeginNamespace(eokas)
 		
 		llvm_scope_t* scope;
 		llvm::Function* func;
+		std::map<llvm::Value*, llvm_struct_t*> upvals;
 		
 		llvm::BasicBlock* continuePoint;
 		llvm::BasicBlock* breakPoint;
@@ -42,12 +43,14 @@ _BeginNamespace(eokas)
 		{
 			this->scope = nullptr;
 			this->func = nullptr;
+			this->upvals.clear();
 			this->continuePoint = nullptr;
 			this->breakPoint = nullptr;
 		}
 		
 		virtual ~llvm_coder_t()
 		{
+			_DeleteMap(this->upvals);
 		}
 		
 		void pushScope(llvm::Function* f = nullptr)
@@ -135,8 +138,14 @@ _BeginNamespace(eokas)
 			}
 			
 			const String& name = node->name;
-			auto* type = this->scope->getType(name, true);
-			return type;
+			auto type = this->scope->getType(name, true);
+			if(type.handle == nullptr)
+			{
+				printf("The type '%s' is undefined.\n", name.cstr());
+				return nullptr;
+			}
+			
+			return type.handle;
 		}
 		
 		llvm::Type* encode_type_array(struct ast_type_array_t* node)
@@ -826,13 +835,38 @@ _BeginNamespace(eokas)
 				return nullptr;
 			
 			auto symbol = this->scope->getSymbol(node->name, true);
-			if(symbol == nullptr)
+			if(symbol.value == nullptr)
 			{
 				printf("Symbol '%s' is undefined.\n", node->name.cstr());
 				return nullptr;
 			}
 			
-			return symbol;
+			// local-value-ref
+			if(symbol.scope->func == this->func)
+			{
+				return symbol.value;
+			}
+			
+			// up-value-ref
+			{
+				auto upvalStruct = this->upvals[this->func];
+				int index = upvalStruct->get_member_index(node->name);
+				if(index < 0)
+				{
+					upvalStruct->add_member(node->name, symbol.value->getType(), symbol.value);
+					upvalStruct->resolve();
+					index = upvalStruct->get_member_index(node->name);
+				}
+				if(index < 0)
+				{
+					printf("Create up-value '%s' failed.\n", node->name.cstr());
+					return nullptr;
+				}
+				
+				auto arg0 = this->func->getArg(0);
+				auto ptr = builder.CreateConstGEP2_32(arg0->getType()->getPointerElementType(), arg0, 0, index);
+				return ptr;
+			}
 		}
 		
 		llvm::Value* encode_expr_func_def(struct ast_expr_func_def_t* node)
@@ -840,11 +874,16 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
+			auto upvalStruct = new llvm_struct_t(context, "");
+
 			auto* retType = this->encode_type(node->type);
 			if(retType == nullptr)
 				return nullptr;
 			
 			std::vector<llvm::Type*> argTypes;
+			{
+				argTypes.push_back(upvalStruct->type->getPointerTo());
+			}
 			for (auto arg: node->args)
 			{
 				auto* argType = this->encode_type(arg->type);
@@ -859,17 +898,11 @@ _BeginNamespace(eokas)
 			llvm::FunctionType* funcType = llvm::FunctionType::get(retType, argTypes, false);
 			llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "", module->module);
 			
-			u32_t index = 0;
-			for (auto& arg: funcPtr->args())
-			{
-				const char* name = node->args[index++]->name.cstr();
-				arg.setName(name);
-			}
-			
 			auto oldFunc = this->func;
 			auto oldIB = builder.GetInsertBlock();
 			
 			this->func = funcPtr;
+			this->upvals[funcPtr] = upvalStruct;
 			
 			this->pushScope(funcPtr);
 			{
@@ -881,11 +914,13 @@ _BeginNamespace(eokas)
 				this->scope->addSymbol("self", self);
 				
 				// args
-				for (auto& arg: funcPtr->args())
+				for(size_t index = 0; index < node->args.size(); index++)
 				{
-					const char* name = arg.getName().data();
-					auto expr = &arg;
-					if(!this->scope->addSymbol(name, expr))
+					const char* name = node->args.at(index)->name.cstr();
+					auto arg = funcPtr->getArg(index+1);
+					arg->setName(name);
+					
+					if(!this->scope->addSymbol(name, arg))
 					{
 						printf("The symbol name '%s' is already existed.\n", name);
 						return nullptr;
@@ -906,14 +941,17 @@ _BeginNamespace(eokas)
 					else
 						builder.CreateRet(module->get_default_value(retType));
 				}
-				
-				// up-value
-				// TODO: up-values
 			}
 			this->popScope();
 			
 			this->func = oldFunc;
 			builder.SetInsertPoint(oldIB);
+			
+			// upvals
+			{
+				upvalStruct->resolve();
+				upvalStruct->defval = this->module->make(func, builder, upvalStruct);
+			}
 			
 			return funcPtr;
 		}
@@ -932,13 +970,13 @@ _BeginNamespace(eokas)
 			
 			auto funcPtr = llvm_model_t::get_value(builder, funcExpr);
 			llvm::FunctionType* funcType = nullptr;
-			if(funcExpr->getType()->isFunctionTy())
+			if(funcPtr->getType()->isFunctionTy())
 			{
-				funcType = llvm::cast<llvm::FunctionType>(funcExpr->getType());
+				funcType = llvm::cast<llvm::FunctionType>(funcPtr->getType());
 			}
-			else if(funcExpr->getType()->isPointerTy() && funcExpr->getType()->getPointerElementType()->isFunctionTy())
+			else if(funcPtr->getType()->isPointerTy() && funcPtr->getType()->getPointerElementType()->isFunctionTy())
 			{
-				funcType = llvm::cast<llvm::FunctionType>(funcExpr->getType()->getPointerElementType());
+				funcType = llvm::cast<llvm::FunctionType>(funcPtr->getType()->getPointerElementType());
 			}
 			else
 			{
@@ -947,6 +985,16 @@ _BeginNamespace(eokas)
 			}
 			
 			std::vector<llvm::Value*> args;
+			
+			auto f = builder.CreateLoad(funcPtr);
+			
+			auto upvalStruct = this->upvals[funcPtr];
+			if(upvalStruct != nullptr)
+			{
+				auto upvalPtr = upvalStruct->defval;
+				args.push_back(upvalPtr);
+			}
+
 			for (auto i = 0; i<node->args.size(); i++)
 			{
 				auto* paramT = funcType->getParamType(i);
@@ -962,7 +1010,7 @@ _BeginNamespace(eokas)
 					{
 						argV = module->cstr_from_value(scope->func, builder, argV);
 					}
-					if(paramT == module->type_string_ref)
+					if(paramT == module->type_string_ptr)
 					{
 						argV = module->string_from_value(scope->func, builder, argV);
 					}
@@ -1046,7 +1094,7 @@ _BeginNamespace(eokas)
 					return nullptr;
 				}
 			}
-			else if(objT == module->type_string_ref)
+			else if(objT == module->type_string_ptr)
 			{
 				if(keyT->isIntegerTy())
 				{
@@ -1302,7 +1350,7 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			if(this->scope->getType(node->name, false) != nullptr)
+			if(this->scope->getType(node->name, false).handle != nullptr)
 				return false;
 			
 			auto* retType = this->encode_type(node->type);
@@ -1327,7 +1375,7 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			if(this->scope->getSymbol(node->name, false) != nullptr)
+			if(this->scope->getSymbol(node->name, false).value != nullptr)
 			{
 				printf("The symbol '%s' is undefined.", node->name.cstr());
 				return false;

@@ -2,22 +2,24 @@
 
 namespace eokas
 {
-	ast_scope_t::ast_scope_t(ast_scope_t* parent)
-		: parent(parent), children(), types(), symbols()
+	ast_scope_t::ast_scope_t(ast_expr_func_def_t* func, ast_scope_t* parent)
+		: func(func), parent(parent), children(), types(), symbols()
 	{
 	}
 	
 	ast_scope_t::~ast_scope_t()
 	{
+		this->func = nullptr;
 		this->parent = nullptr;
 		_DeleteList(this->children);
 		this->types.clear();
 		this->symbols.clear();
 	}
 	
-	ast_scope_t* ast_scope_t::add_child()
+	ast_scope_t* ast_scope_t::add_child(ast_expr_func_def_t* func)
 	{
-		auto* child = new ast_scope_t(this);
+		func = func != nullptr ? func : this->func;
+		auto* child = new ast_scope_t(func, this);
 		this->children.push_back(child);
 		return child;
 	}

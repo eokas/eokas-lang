@@ -8,10 +8,10 @@ namespace eokas
 	class ast_scope_t
 	{
 	public:
-		explicit ast_scope_t(ast_scope_t* parent);
+		explicit ast_scope_t(ast_expr_func_def_t* func, ast_scope_t* parent);
 		virtual ~ast_scope_t();
 		
-		ast_scope_t* add_child();
+		ast_scope_t* add_child(ast_expr_func_def_t* func = nullptr);
 		
 		ast_type_t* get_type(const String& name, bool lookup = true);
 		void set_type(const String& name, ast_type_t* type);
@@ -20,6 +20,7 @@ namespace eokas
 		void set_symbol(const String& name, ast_stmt_symbol_def_t* symbol);
 	
 	private:
+		ast_expr_func_def_t* func;
 		ast_scope_t* parent;
 		std::list<ast_scope_t*> children;
 		std::map<String, ast_type_t*> types;

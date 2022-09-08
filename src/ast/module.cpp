@@ -12,7 +12,7 @@ namespace eokas
 	{
 		this->entry = factory->create_expr_func_def(nullptr);
 		this->func = this->entry;
-		this->scope = new ast_scope_t(nullptr);
+		this->scope = new ast_scope_t(this->func, nullptr);
 	}
 	
 	ast_module_t::~ast_module_t()

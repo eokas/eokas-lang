@@ -1,5 +1,12 @@
 
-var a: array<i32> = [2, 4, 8, 16];
-a[2] = 2;
+proc F():i32;
 
-print(a[2]);
+val create = func() :F {
+    var a = 3;
+    return func() : i32 {
+        return a + 1;
+    };
+};
+
+var f = create();
+f(); // 4

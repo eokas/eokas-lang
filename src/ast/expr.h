@@ -111,9 +111,12 @@ namespace eokas
 		ast_type_t* type;
 		std::vector<arg_t*> args;
 		std::vector<ast_stmt_t*> body;
-		
+
 		explicit ast_expr_func_def_t(ast_node_t* parent)
-			: ast_expr_t(ast_node_category_t::expr_func_def, parent), type(nullptr), args(), body()
+			: ast_expr_t(ast_node_category_t::expr_func_def, parent)
+			, type(nullptr)
+			, args()
+			, body()
 		{
 		}
 		

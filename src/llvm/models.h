@@ -41,8 +41,19 @@ _BeginNamespace(eokas)
 	
 	struct llvm_scope_t
 	{
+		struct llvm_scoped_symbol_t
+		{
+			llvm_scope_t* scope = nullptr;
+			llvm::Value* value = nullptr;
+		};
+		struct llvm_scoped_type_t
+		{
+			llvm_scope_t* scope = nullptr;
+			llvm::Type* handle = nullptr;
+		};
+		
 		llvm_scope_t* parent;
-		llvm::Function* func;
+		llvm::Value* func;
 		std::vector<llvm_scope_t*> children;
 		
 		table_t<llvm::Value> symbols;
@@ -54,10 +65,10 @@ _BeginNamespace(eokas)
 		llvm_scope_t* addChild(llvm::Function* f = nullptr);
 		
 		bool addSymbol(const String& name, llvm::Value* expr);
-		llvm::Value* getSymbol(const String& name, bool lookup);
+		llvm_scoped_symbol_t getSymbol(const String& name, bool lookup);
 		
 		bool addType(const String& name, llvm::Type* type);
-		llvm::Type* getType(const String& name, bool lookup);
+		llvm_scoped_type_t getType(const String& name, bool lookup);
 	};
 	
 	struct llvm_struct_t
@@ -71,11 +82,9 @@ _BeginNamespace(eokas)
 		
 		llvm::LLVMContext& context;
 		String name;
-		llvm::Type* type;
+		llvm::StructType* type;
 		std::vector<member_t*> members;
-		
-		
-		
+
 		explicit llvm_struct_t(llvm::LLVMContext& context, const String& name);
 		virtual ~llvm_struct_t() noexcept;
 		
@@ -87,7 +96,7 @@ _BeginNamespace(eokas)
 		
 		void resolve();
 	};
-
+	
 	using llvm_code_delegate_t = std::function<void(llvm::LLVMContext&, llvm::Module& module, llvm::Function* func, llvm::IRBuilder<>& builder)>;
 	
 	struct llvm_model_t
@@ -131,7 +140,8 @@ _BeginNamespace(eokas)
 		llvm::Type* type_bool;
 		llvm::Type* type_cstr;
 		llvm::Type* type_string;
-		llvm::Type* type_string_ref;
+		llvm::Type* type_string_ptr;
+		llvm::Type* type_void_ptr;
 		
 		llvm_module_t(const String& name, llvm::LLVMContext& context);
 		~llvm_module_t() noexcept;
@@ -157,6 +167,7 @@ _BeginNamespace(eokas)
 		
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type);
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type, llvm::Value* count);
+		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm_struct_t* type);
 		void free(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr);
 		
 		llvm::Value* array_set(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* array, const llvm::ArrayRef<llvm::Value*>& elements);

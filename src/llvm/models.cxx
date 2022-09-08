@@ -47,21 +47,29 @@ _BeginNamespace(eokas)
 		return ret;
 	}
 	
-	llvm::Value* llvm_scope_t::getSymbol(const String& name, bool lookup)
+	llvm_scope_t::llvm_scoped_symbol_t llvm_scope_t::getSymbol(const String& name, bool lookup)
 	{
+		llvm_scoped_symbol_t ret;
+		
 		if(lookup)
 		{
 			for (auto scope = this; scope != nullptr; scope = scope->parent)
 			{
 				auto symbol = scope->symbols.get(name);
 				if(symbol != nullptr)
-					return symbol;
+				{
+					ret.scope = scope;
+					ret.value = symbol;
+					return ret;
+				}
 			}
-			return nullptr;
+			return ret;
 		}
 		else
 		{
-			return this->symbols.get(name);
+			ret.scope = this;
+			ret.value = this->symbols.get(name);
+			return ret;
 		}
 	}
 	
@@ -71,27 +79,36 @@ _BeginNamespace(eokas)
 		return ret;
 	}
 	
-	llvm::Type* llvm_scope_t::getType(const String& name, bool lookup)
+	llvm_scope_t::llvm_scoped_type_t llvm_scope_t::getType(const String& name, bool lookup)
 	{
+		llvm_scoped_type_t ret;
+		
 		if(lookup)
 		{
 			for (auto scope = this; scope != nullptr; scope = scope->parent)
 			{
 				auto type = scope->types.get(name);
 				if(type != nullptr)
-					return type;
+				{
+					ret.scope = scope;
+					ret.handle = type;
+					return ret;
+				}
 			}
-			return nullptr;
+			return ret;
 		}
 		else
 		{
-			return this->types.get(name);
+			ret.scope = this;
+			ret.handle = this->types.get(name);
+			return ret;
 		}
 	}
 	
 	llvm_struct_t::llvm_struct_t(llvm::LLVMContext& context, const String& name)
-		: context(context), type(nullptr), name(name), members()
+		: context(context), name(name), members()
 	{
+		this->type = llvm::StructType::create(context, name.cstr());
 	}
 	
 	llvm_struct_t::~llvm_struct_t() noexcept
@@ -144,14 +161,12 @@ _BeginNamespace(eokas)
 	
 	void llvm_struct_t::resolve()
 	{
-		auto structType = llvm::StructType::create(context, this->name.cstr());
 		std::vector<llvm::Type*> body;
 		for (auto& member: this->members)
 		{
 			body.push_back(member->type);
 		}
-		structType->setBody(body);
-		this->type = structType;
+		this->type->setBody(body);
 	}
 	
 	llvm::Function* llvm_model_t::declare_func(llvm::Module& module, const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg)
@@ -245,7 +260,10 @@ _BeginNamespace(eokas)
 		type_cstr = type_i8->getPointerTo();
 		
 		type_string = this->define_type_string();
-		type_string_ref = type_string->getPointerTo();
+		type_string_ptr = type_string->getPointerTo();
+		
+		type_void_ptr = type_void->getPointerTo();
+		
 		this->declare_func_malloc();
 		this->declare_func_free();
 		this->declare_func_printf();
@@ -262,7 +280,7 @@ _BeginNamespace(eokas)
 		this->root->addType("f32", type_f32);;
 		this->root->addType("f64", type_f64);;
 		this->root->addType("bool", type_bool);;
-		this->root->addType("string", type_string_ref);
+		this->root->addType("string", type_string_ptr);
 		
 		this->root->addSymbol("print", this->define_func_print());
 	}
@@ -403,7 +421,7 @@ _BeginNamespace(eokas)
 	{
 		String name = "print";
 		llvm::Type* ret = type_i32;
-		std::vector<llvm::Type*> args = {type_string_ref};
+		std::vector<llvm::Type*> args = {type_string_ptr};
 		bool varg = false;
 		
 		return llvm_model_t::define_func(module, name, ret, args, varg, [&](llvm::LLVMContext& context, llvm::Module& module, llvm::Function* func, llvm::IRBuilder<>& builder)->void
@@ -482,6 +500,19 @@ _BeginNamespace(eokas)
 		return val;
 	}
 	
+	llvm::Value* llvm_module_t::make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm_struct_t* type)
+	{
+		auto ptr = this->make(func, builder, type->type);
+		for(size_t i = 0; i < type->members.size(); i++)
+		{
+			auto mem = type->members.at(i);
+			auto p = builder.CreateStructGEP(ptr, i);
+			auto v = mem->value;
+			builder.CreateStore(v, p);
+		}
+		return ptr;
+	}
+	
 	void llvm_module_t::free(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Value* ptr)
 	{
 		auto freeF = module.getFunction("free");
@@ -534,7 +565,7 @@ _BeginNamespace(eokas)
 		if(vt == type_cstr)
 			return val;
 		
-		if(vt == type_string_ref)
+		if(vt == type_string_ptr)
 			return this->cstr_from_string(func, builder, val);
 		
 		if(vt == type_bool)
@@ -627,7 +658,7 @@ _BeginNamespace(eokas)
 	{
 		llvm::Type* vt = val->getType();
 		
-		if(vt == type_string_ref)
+		if(vt == type_string_ptr)
 			return val;
 		
 		llvm::Value* cstr = nullptr;
