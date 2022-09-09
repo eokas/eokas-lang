@@ -3,8 +3,18 @@
 _BeginNamespace(eokas)
 	
 	
-	const char* const token_t::names[] = {"var", "val", "make", "struct", "enum", "proc", "func", "array", "if", "else", "loop", "continue", "break", "return", "true", "false", ",", ";", ":", "?", "@", "#", "$", "+", "-", "*", "/", "%", "^", "~", "(", ")", "[", "]", "{", "}", "&", "&&", "|", "||", "=", "==", "!", "!=", ">", ">=", "<", "<=", ">|", "|<", ".", "..", "...",
-										  "<b-int>", "<x-int>", "<d-int>", "<float>", "<string>", "<identifier>", "<eos>"};
+	const char* const token_t::names[] = {
+		"var", "val", "make",
+		"struct", "enum", "proc", "func", "array",
+		"if", "else", "loop", "continue", "break", "return", "true", "false",
+		",", ";", ":", "?", "@", "#", "$",
+		"+", "-", "*", "/", "%", "^", "~",
+		"(", ")", "[", "]", "{", "}",
+		"&", "&&", "|", "||",
+		"=", "==", "!", "!=", ">", ">=", "<", "<=",
+		">|", "|<",
+		".", "..", "...",
+		"<b-int>", "<x-int>", "<d-int>", "<float>", "<string>", "<identifier>", "<eos>"};
 	
 	token_t::token_t()
 		: type(Unknown), value()
