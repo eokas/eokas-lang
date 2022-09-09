@@ -430,7 +430,12 @@ public:
 	static const f32_t EPSILON_5;
 	static const f32_t EPSILON_6;
 	static const f32_t PI;
-    static const f32_t PI2;
+    static const f32_t PI_MUL_2;
+    static const f32_t PI_DIV_2;
+    static const f32_t INV_PI;
+    static const f32_t SQRT_2;
+    static const f32_t SQRT_3;
+
 	static const f32_t DEGREES_PER_RADIAN;
 	static const f32_t RADIANS_PER_DEGREE;
 

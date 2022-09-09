@@ -22,6 +22,8 @@
 #include "pool.h"
 #include "logger.h"
 #include "dataset.h"
+#include "hom.h"
+#include "json.h"
 #include "pixels.h"
 #include "socket.h"
 #include "file.h"

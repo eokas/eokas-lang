@@ -17,57 +17,51 @@ static void bad_command(const char* command);
 
 int main(int argc, char** argv)
 {
-	cli::Command cli;
+	cli::Command program(argv[0]);
 	
-	cli.command("about", "About eokas.", [&](auto& cmd)->int
-	{
+	program.action([&](const cli::Command& cmd)->void{
 		about();
-		return 0;
-	});
-	cli.command("help", "Show eokas command-line messages.", [&](auto& cmd)->int
-	{
-		help();
-		return 0;
-	});
-	cli.command("compile", "Compile eokas source code.", [&](const cli::Command& cmd)->int
-	{
-		const auto& fileOption = cmd.options.at("--file,-f");
-		String fileName = fileOption.value;
-		printf("=> Source file: %s\n", fileName.cstr());
-		try
-		{
-			eokas_main(fileName, llvm_aot);
-			return 0;
-		}
-		catch (std::exception& e)
-		{
-			printf("ERROR: %s \n", e.what());
-			return 1;
-		}
-	});
-	cli.command("run", "Run eokas source just in time", [&](const cli::Command& cmd)->int
-	{
-		const auto& fileOption = cmd.options.at("--file,-f");
-		String fileName = fileOption.value;
-		printf("=> Source file: %s\n", fileName.cstr());
-		try
-		{
-			eokas_main(fileName, llvm_jit);
-			return 0;
-		}
-		catch (std::exception& e)
-		{
-			printf("ERROR: %s \n", e.what());
-			return 1;
-		}
 	});
 	
-	cli.set(argv[0], "eokas-lang", [&](auto& cmd)->int
-	{
-		help();
-	});
+	program.subCommand("help", "")
+		.action([&](const cli::Command& cmd)->void {
+			help();
+		});
 	
-	return cli.exec(argc, argv);
+	program.subCommand("compile", "")
+		.option("--file,-f", "", "")
+		.action([&](const cli::Command& cmd)->void{
+			auto file = cmd.fetchValue("--file").string();
+			if(file.isEmpty())
+				throw std::invalid_argument("The argument 'file' is empty.");
+
+			printf("=> Source file: %s\n", file.cstr());
+			
+			eokas_main(file, llvm_aot);
+		});
+	
+	program.subCommand("run", "")
+		.option("--file,-f", "", "")
+		.action([&](const cli::Command& cmd)->void{
+			auto file = cmd.fetchValue("--file").string();
+			if(file.isEmpty())
+				throw std::invalid_argument("The argument 'file' is empty.");
+			
+			printf("=> Source file: %s\n", file.cstr());
+			
+			eokas_main(file, llvm_jit);
+		});
+		
+	try
+	{
+		program.exec(argc, argv);
+		return 0;
+	}
+	catch(const std::exception& e)
+	{
+		printf("ERROR: %s", e.what());
+		return -1;
+	}
 }
 
 static void eokas_main(const String& fileName, bool(*proc)(ast_module_t* m))
@@ -108,16 +102,22 @@ static void eokas_main(const String& fileName, bool(*proc)(ast_module_t* m))
 	out.close();
 }
 
-static void about()
+static void about(void)
 {
 	printf("eokas %s\n", _EOKAS_VERSION);
 }
 
-static void help()
+static void help(void)
 {
 	printf("\n-?, -help\n"
 		   "\tPrint command line help message.\n"
 	
 		   "\nfileName [-c] [-e] [-t]\n"
 		   "\tComple or Execute a file, show exec-time.\n");
+}
+
+static void bad_command(const char* command)
+{
+	printf("The command '%s' is undefined in eokas. "
+		   "You can use the command %s to get the help infomation.\n", command, "'eokas -?' or 'eokas -help'");
 }

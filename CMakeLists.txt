@@ -4,19 +4,25 @@ project(eokas)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
 
-set(LLVM_SDK ~/Documents/Library/clang+llvm-12.0.0-x86_64-apple-darwin)
+include_directories(
+        deps/eokas-base/include
+        $ENV{LLVM_SDK_PATH}/include
+)
+link_directories(
+        deps/eokas-base/lib/${CMAKE_BUILD_TYPE}
+        $ENV{LLVM_SDK_PATH}/lib
+)
+
+message("LLVM_SDK_PATH: " $ENV{LLVM_SDK_PATH})
+
 set(LLVM_DEPS m z curses xml2)
 set(LLVM_LIBS LLVMWindowsManifest LLVMXRay LLVMLibDriver LLVMDlltoolDriver LLVMCoverage LLVMLineEditor LLVMXCoreDisassembler LLVMXCoreCodeGen LLVMXCoreDesc LLVMXCoreInfo LLVMX86Disassembler LLVMX86AsmParser LLVMX86CodeGen LLVMX86Desc LLVMX86Info LLVMWebAssemblyDisassembler LLVMWebAssemblyAsmParser LLVMWebAssemblyCodeGen LLVMWebAssemblyDesc LLVMWebAssemblyInfo LLVMSystemZDisassembler LLVMSystemZAsmParser LLVMSystemZCodeGen LLVMSystemZDesc LLVMSystemZInfo LLVMSparcDisassembler LLVMSparcAsmParser LLVMSparcCodeGen LLVMSparcDesc LLVMSparcInfo LLVMRISCVDisassembler LLVMRISCVAsmParser LLVMRISCVCodeGen LLVMRISCVDesc LLVMRISCVInfo LLVMPowerPCDisassembler LLVMPowerPCAsmParser LLVMPowerPCCodeGen LLVMPowerPCDesc LLVMPowerPCInfo LLVMNVPTXCodeGen LLVMNVPTXDesc LLVMNVPTXInfo LLVMMSP430Disassembler LLVMMSP430AsmParser LLVMMSP430CodeGen LLVMMSP430Desc LLVMMSP430Info LLVMMipsDisassembler LLVMMipsAsmParser LLVMMipsCodeGen LLVMMipsDesc LLVMMipsInfo LLVMLanaiDisassembler LLVMLanaiCodeGen LLVMLanaiAsmParser LLVMLanaiDesc LLVMLanaiInfo LLVMHexagonDisassembler LLVMHexagonCodeGen LLVMHexagonAsmParser LLVMHexagonDesc LLVMHexagonInfo LLVMBPFDisassembler LLVMBPFAsmParser LLVMBPFCodeGen LLVMBPFDesc LLVMBPFInfo LLVMAVRDisassembler LLVMAVRAsmParser LLVMAVRCodeGen LLVMAVRDesc LLVMAVRInfo LLVMARMDisassembler LLVMARMAsmParser LLVMARMCodeGen LLVMARMDesc LLVMARMUtils LLVMARMInfo LLVMAMDGPUDisassembler LLVMAMDGPUAsmParser LLVMAMDGPUCodeGen LLVMAMDGPUDesc LLVMAMDGPUUtils LLVMAMDGPUInfo LLVMAArch64Disassembler LLVMAArch64AsmParser LLVMAArch64CodeGen LLVMAArch64Desc LLVMAArch64Utils LLVMAArch64Info LLVMOrcJIT LLVMMCJIT LLVMJITLink LLVMOrcTargetProcess LLVMOrcShared LLVMInterpreter LLVMExecutionEngine LLVMRuntimeDyld LLVMSymbolize LLVMDebugInfoPDB LLVMDebugInfoGSYM LLVMOption LLVMObjectYAML LLVMMCA LLVMMCDisassembler LLVMLTO LLVMCFGuard LLVMFrontendOpenACC LLVMExtensions Polly PollyISL LLVMPasses LLVMObjCARCOpts LLVMHelloNew LLVMCoroutines LLVMipo LLVMInstrumentation LLVMVectorize LLVMLinker LLVMFrontendOpenMP LLVMDWARFLinker LLVMGlobalISel LLVMMIRParser LLVMAsmPrinter LLVMDebugInfoDWARF LLVMSelectionDAG LLVMCodeGen LLVMIRReader LLVMAsmParser LLVMInterfaceStub LLVMFileCheck LLVMFuzzMutate LLVMTarget LLVMScalarOpts LLVMInstCombine LLVMAggressiveInstCombine LLVMTransformUtils LLVMBitWriter LLVMAnalysis LLVMProfileData LLVMObject LLVMTextAPI LLVMMCParser LLVMMC LLVMDebugInfoCodeView LLVMDebugInfoMSF LLVMBitReader LLVMCore LLVMRemarks LLVMBitstreamReader LLVMBinaryFormat LLVMTableGen LLVMSupport LLVMDemangle)
-
-include_directories(deps/include)
-link_directories(deps/lib/Debug)
-
-include_directories(${LLVM_SDK}/include)
-link_directories(${LLVM_SDK}/lib)
+set(LIBS eokas-base ${LLVM_DEPS} ${LLVM_LIBS})
 
 aux_source_directory(src SRC)
 aux_source_directory(src/parser SRC_PARSER)
 aux_source_directory(src/ast SRC_AST)
 aux_source_directory(src/llvm SRC_LLVM)
-add_executable(eokas ${SRC} ${SRC_PARSER} ${SRC_AST} ${SRC_LLVM})
-target_link_libraries(eokas eokas-base ${LLVM_DEPS} ${LLVM_LIBS})
+
+add_executable(${PROJECT_NAME} ${SRC} ${SRC_PARSER} ${SRC_AST} ${SRC_LLVM})
+target_link_libraries(${PROJECT_NAME} ${LIBS})
