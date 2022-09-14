@@ -1,5 +1,5 @@
 # eokas
-Eokas is a programming language and this is the compiler of it.
+Eokas is an open source programming language that is similar to C++ but makes it easy to build simple, reliable, and efficient software.
 
 ## Build
 
