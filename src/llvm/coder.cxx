@@ -158,7 +158,7 @@ _BeginNamespace(eokas)
 				return nullptr;
 			
 			// TODO: check if the array-type is defined in this scope.
-			auto arrayT = module->define_type_array(elementT);
+			auto arrayT = module->define_schema_array(elementT);
 			return arrayT->getPointerTo();
 		}
 		
@@ -1039,7 +1039,7 @@ _BeginNamespace(eokas)
 			if(arrayElements.empty() || arrayElementType == nullptr)
 				arrayElementType = llvm::Type::getInt32Ty(context);
 				
-			auto arrayT = module->define_type_array(arrayElementType);
+			auto arrayT = module->define_schema_array(arrayElementType);
 			auto arrayP = module->make(func, builder, arrayT);
 			module->array_set(scope->func, builder, arrayP, arrayElements);
 
@@ -1061,7 +1061,7 @@ _BeginNamespace(eokas)
 			auto objT = objV->getType();
 			auto keyT = keyV->getType();
 			
-			if(module->is_array_type(objT))
+			if(module->is_schema_array(objT))
 			{
 				if(keyT->isIntegerTy())
 				{

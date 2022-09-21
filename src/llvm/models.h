@@ -167,9 +167,10 @@ _BeginNamespace(eokas)
 		
 		llvm::Function* define_func_print();
 		
-		llvm::Type* define_type_array(llvm::Type* element_type);
-		bool is_array_type(llvm::Type* type);
-		llvm::Type* define_type_string();
+		llvm::Type* define_schema_array(llvm::Type* element_type);
+		bool is_schema_array(llvm::Type* type);
+		
+		llvm::Type* define_schema_string();
 		
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type);
 		llvm::Value* make(llvm::Function* func, llvm::IRBuilder<>& builder, llvm::Type* type, llvm::Value* count);

@@ -21,7 +21,7 @@
 #include <vector>
 
 _BeginNamespace(eokas)
-	
+
 	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent, llvm::Function* func)
 		: parent(parent), func(func), children(), symbols(), schemas()
 	{ }
@@ -262,7 +262,7 @@ _BeginNamespace(eokas)
 		
 		type_cstr = type_i8->getPointerTo();
 		
-		type_string = this->define_type_string();
+		type_string = this->define_schema_string();
 		type_string_ptr = type_string->getPointerTo();
 		
 		type_void_ptr = type_void->getPointerTo();
@@ -440,7 +440,7 @@ _BeginNamespace(eokas)
 		});
 	}
 	
-	llvm::Type* llvm_module_t::define_type_array(llvm::Type* element_type)
+	llvm::Type* llvm_module_t::define_schema_array(llvm::Type* element_type)
 	{
 		String name = String::format("Array<%s>", this->get_type_name(element_type).cstr());
 
@@ -454,7 +454,7 @@ _BeginNamespace(eokas)
 		return structType;
 	}
 	
-	bool llvm_module_t::is_array_type(llvm::Type* type)
+	bool llvm_module_t::is_schema_array(llvm::Type* type)
 	{
 		if(!type->isPointerTy())
 			return false;
@@ -470,7 +470,7 @@ _BeginNamespace(eokas)
 			&& countT->isIntegerTy(64);
 	}
 	
-	llvm::Type* llvm_module_t::define_type_string()
+	llvm::Type* llvm_module_t::define_schema_string()
 	{
 		String name = "String";
 		
