@@ -1,12 +1,8 @@
 
-proc F():i32;
 
-val create = func() :F {
-    var a = 3;
-    return func() : i32 {
-        return a + 1;
-    };
+val f = func() :i32 {
+    return 4;
 };
 
-var f = create();
-f(); // 4
+var a = f();
+print(a);

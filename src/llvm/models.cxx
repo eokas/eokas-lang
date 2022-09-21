@@ -23,9 +23,8 @@
 _BeginNamespace(eokas)
 	
 	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent, llvm::Function* func)
-		: parent(parent), func(func), children(), symbols(), types()
-	{
-	}
+		: parent(parent), func(func), children(), symbols(), schemas()
+	{ }
 	
 	llvm_scope_t::~llvm_scope_t()
 	{
@@ -43,65 +42,69 @@ _BeginNamespace(eokas)
 	
 	bool llvm_scope_t::addSymbol(const String& name, llvm::Value* expr)
 	{
-		bool ret = this->symbols.add(name, expr);
+		auto* symbol = new llvm_symbol_t();
+		symbol->scope = this;
+		symbol->type = expr->getType();
+		symbol->value = expr;
+		
+		bool ret = this->symbols.add(name, symbol);
 		return ret;
 	}
 	
-	llvm_scope_t::llvm_scoped_symbol_t llvm_scope_t::getSymbol(const String& name, bool lookup)
+	bool llvm_scope_t::addSymbol(const String& name, llvm::Type* type)
 	{
-		llvm_scoped_symbol_t ret;
+		auto* symbol = new llvm_symbol_t();
+		symbol->scope = this;
+		symbol->type = type;
+		symbol->value = nullptr;
 		
+		bool ret = this->symbols.add(name, symbol);
+		return ret;
+	}
+	
+	llvm_symbol_t* llvm_scope_t::getSymbol(const String& name, bool lookup)
+	{
 		if(lookup)
 		{
 			for (auto scope = this; scope != nullptr; scope = scope->parent)
 			{
 				auto symbol = scope->symbols.get(name);
 				if(symbol != nullptr)
-				{
-					ret.scope = scope;
-					ret.value = symbol;
-					return ret;
-				}
+					return symbol;
 			}
-			return ret;
+			return nullptr;
 		}
 		else
 		{
-			ret.scope = this;
-			ret.value = this->symbols.get(name);
-			return ret;
+			return this->symbols.get(name);
 		}
 	}
 	
-	bool llvm_scope_t::addType(const String& name, llvm::Type* type)
+	bool llvm_scope_t::addSchema(const String& name, llvm::Type* type)
 	{
-		bool ret = this->types.add(name, type);
+		auto* schema = new llvm_schema_t();
+		schema->scope = this;
+		schema->type = type;
+		
+		bool ret = this->schemas.add(name, schema);
 		return ret;
 	}
 	
-	llvm_scope_t::llvm_scoped_type_t llvm_scope_t::getType(const String& name, bool lookup)
+	llvm_schema_t* llvm_scope_t::getSchema(const String& name, bool lookup)
 	{
-		llvm_scoped_type_t ret;
-		
 		if(lookup)
 		{
 			for (auto scope = this; scope != nullptr; scope = scope->parent)
 			{
-				auto type = scope->types.get(name);
-				if(type != nullptr)
-				{
-					ret.scope = scope;
-					ret.handle = type;
-					return ret;
-				}
+				auto* schema = scope->schemas.get(name);
+				if(schema != nullptr)
+					return schema;
 			}
-			return ret;
+			return nullptr;
 		}
 		else
 		{
-			ret.scope = this;
-			ret.handle = this->types.get(name);
-			return ret;
+			return this->schemas.get(name);
 		}
 	}
 	
@@ -270,17 +273,17 @@ _BeginNamespace(eokas)
 		this->declare_func_sprintf();
 		this->declare_func_strlen();
 		
-		this->root->addType("void", type_void);
-		this->root->addType("i8", type_i8);
-		this->root->addType("i32", type_i32);
-		this->root->addType("i64", type_i64);
-		this->root->addType("u8", type_u8);
-		this->root->addType("u32", type_u32);
-		this->root->addType("u64", type_u64);
-		this->root->addType("f32", type_f32);;
-		this->root->addType("f64", type_f64);;
-		this->root->addType("bool", type_bool);;
-		this->root->addType("string", type_string_ptr);
+		this->root->addSchema("void", type_void);
+		this->root->addSchema("i8", type_i8);
+		this->root->addSchema("i32", type_i32);
+		this->root->addSchema("i64", type_i64);
+		this->root->addSchema("u8", type_u8);
+		this->root->addSchema("u32", type_u32);
+		this->root->addSchema("u64", type_u64);
+		this->root->addSchema("f32", type_f32);;
+		this->root->addSchema("f64", type_f64);;
+		this->root->addSchema("bool", type_bool);;
+		this->root->addSchema("string", type_string_ptr);
 		
 		this->root->addSymbol("print", this->define_func_print());
 	}

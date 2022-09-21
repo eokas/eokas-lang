@@ -7,18 +7,21 @@
 
 _BeginNamespace(eokas)
 
-	template<typename T>
+	template<typename T, bool gc = true>
 	struct table_t
 	{
 		std::map<String, T*> table;
 		
 		explicit table_t()
 			: table()
-		{
-		}
+		{ }
 		
 		~table_t()
 		{
+			if(gc && !this->table.empty())
+			{
+				_DeleteMap(this->table);
+			}
 			this->table.clear();
 		}
 		
@@ -38,26 +41,28 @@ _BeginNamespace(eokas)
 			return iter->second;
 		}
 	};
+
+	struct llvm_symbol_t
+	{
+		struct llvm_scope_t* scope = nullptr;
+		llvm::Type* type = nullptr;
+		llvm::Value* value = nullptr;
+	};
+	
+	struct llvm_schema_t
+	{
+		struct llvm_scope_t* scope = nullptr;
+		llvm::Type* type = nullptr;
+	};
 	
 	struct llvm_scope_t
 	{
-		struct llvm_scoped_symbol_t
-		{
-			llvm_scope_t* scope = nullptr;
-			llvm::Value* value = nullptr;
-		};
-		struct llvm_scoped_type_t
-		{
-			llvm_scope_t* scope = nullptr;
-			llvm::Type* handle = nullptr;
-		};
-		
 		llvm_scope_t* parent;
-		llvm::Value* func;
+		llvm::Function* func;
 		std::vector<llvm_scope_t*> children;
 		
-		table_t<llvm::Value> symbols;
-		table_t<llvm::Type> types;
+		table_t<llvm_symbol_t> symbols;
+		table_t<llvm_schema_t> schemas;
 		
 		explicit llvm_scope_t(llvm_scope_t* parent, llvm::Function* func);
 		virtual ~llvm_scope_t();
@@ -65,10 +70,11 @@ _BeginNamespace(eokas)
 		llvm_scope_t* addChild(llvm::Function* f = nullptr);
 		
 		bool addSymbol(const String& name, llvm::Value* expr);
-		llvm_scoped_symbol_t getSymbol(const String& name, bool lookup);
+		bool addSymbol(const String& name, llvm::Type* type);
+		llvm_symbol_t* getSymbol(const String& name, bool lookup);
 		
-		bool addType(const String& name, llvm::Type* type);
-		llvm_scoped_type_t getType(const String& name, bool lookup);
+		bool addSchema(const String& name, llvm::Type* type);
+		llvm_schema_t* getSchema(const String& name, bool lookup);
 	};
 	
 	struct llvm_struct_t

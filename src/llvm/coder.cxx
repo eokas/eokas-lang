@@ -33,7 +33,6 @@ _BeginNamespace(eokas)
 		
 		llvm_scope_t* scope;
 		llvm::Function* func;
-		std::map<llvm::Value*, llvm_struct_t*> upvals;
 		
 		llvm::BasicBlock* continuePoint;
 		llvm::BasicBlock* breakPoint;
@@ -43,14 +42,12 @@ _BeginNamespace(eokas)
 		{
 			this->scope = nullptr;
 			this->func = nullptr;
-			this->upvals.clear();
 			this->continuePoint = nullptr;
 			this->breakPoint = nullptr;
 		}
 		
 		virtual ~llvm_coder_t()
 		{
-			_DeleteMap(this->upvals);
 		}
 		
 		void pushScope(llvm::Function* f = nullptr)
@@ -138,14 +135,14 @@ _BeginNamespace(eokas)
 			}
 			
 			const String& name = node->name;
-			auto type = this->scope->getType(name, true);
-			if(type.handle == nullptr)
+			auto* schema = this->scope->getSchema(name, true);
+			if(schema == nullptr)
 			{
 				printf("The type '%s' is undefined.\n", name.cstr());
 				return nullptr;
 			}
 			
-			return type.handle;
+			return schema->type;
 		}
 		
 		llvm::Type* encode_type_array(struct ast_type_array_t* node)
@@ -834,26 +831,27 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			auto symbol = this->scope->getSymbol(node->name, true);
-			if(symbol.value == nullptr)
+			auto* symbol = this->scope->getSymbol(node->name, true);
+			if(symbol == nullptr)
 			{
 				printf("Symbol '%s' is undefined.\n", node->name.cstr());
 				return nullptr;
 			}
 			
 			// local-value-ref
-			if(symbol.scope->func == this->func)
+			if(symbol->scope->func == this->func)
 			{
-				return symbol.value;
+				return symbol->value;
 			}
 			
+			/*
 			// up-value-ref
 			{
 				auto upvalStruct = this->upvals[this->func];
 				int index = upvalStruct->get_member_index(node->name);
 				if(index < 0)
 				{
-					upvalStruct->add_member(node->name, symbol.value->getType(), symbol.value);
+					upvalStruct->add_member(node->name, symbol->type, symbol->value);
 					upvalStruct->resolve();
 					index = upvalStruct->get_member_index(node->name);
 				}
@@ -867,6 +865,9 @@ _BeginNamespace(eokas)
 				auto ptr = builder.CreateConstGEP2_32(arg0->getType()->getPointerElementType(), arg0, 0, index);
 				return ptr;
 			}
+			*/
+			
+			return symbol->value;
 		}
 		
 		llvm::Value* encode_expr_func_def(struct ast_expr_func_def_t* node)
@@ -874,16 +875,11 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return nullptr;
 			
-			auto upvalStruct = new llvm_struct_t(context, "");
-
 			auto* retType = this->encode_type(node->type);
 			if(retType == nullptr)
 				return nullptr;
 			
 			std::vector<llvm::Type*> argTypes;
-			{
-				argTypes.push_back(upvalStruct->type->getPointerTo());
-			}
 			for (auto arg: node->args)
 			{
 				auto* argType = this->encode_type(arg->type);
@@ -902,8 +898,7 @@ _BeginNamespace(eokas)
 			auto oldIB = builder.GetInsertBlock();
 			
 			this->func = funcPtr;
-			this->upvals[funcPtr] = upvalStruct;
-			
+
 			this->pushScope(funcPtr);
 			{
 				llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", funcPtr);
@@ -947,12 +942,6 @@ _BeginNamespace(eokas)
 			this->func = oldFunc;
 			builder.SetInsertPoint(oldIB);
 			
-			// upvals
-			{
-				upvalStruct->resolve();
-				upvalStruct->defval = this->module->make(func, builder, upvalStruct);
-			}
-			
 			return funcPtr;
 		}
 		
@@ -964,7 +953,7 @@ _BeginNamespace(eokas)
 			llvm::Value* funcExpr = this->encode_expr(node->func);
 			if(funcExpr == nullptr)
 			{
-				printf("Function is undefined.\n");
+				printf("The function is undefined.\n");
 				return nullptr;
 			}
 			
@@ -985,16 +974,6 @@ _BeginNamespace(eokas)
 			}
 			
 			std::vector<llvm::Value*> args;
-			
-			auto f = builder.CreateLoad(funcPtr);
-			
-			auto upvalStruct = this->upvals[funcPtr];
-			if(upvalStruct != nullptr)
-			{
-				auto upvalPtr = upvalStruct->defval;
-				args.push_back(upvalPtr);
-			}
-
 			for (auto i = 0; i<node->args.size(); i++)
 			{
 				auto* paramT = funcType->getParamType(i);
@@ -1276,9 +1255,9 @@ _BeginNamespace(eokas)
 			}
 			
 			thisInstanceInfo->resolve();
-			if(!this->scope->addType(thisInstanceInfo->name, thisInstanceInfo->type))
+			if(!this->scope->addSchema(thisInstanceInfo->name, thisInstanceInfo->type))
 			{
-				printf("There is a same type named %s in this scope.\n", thisInstanceInfo->name.cstr());
+				printf("There is a same schema named %s in this scope.\n", thisInstanceInfo->name.cstr());
 				return false;
 			}
 			
@@ -1318,10 +1297,10 @@ _BeginNamespace(eokas)
 			}
 			thisStaticInfo->resolve();
 			
-			if(!this->scope->addType(thisStaticInfo->name, thisStaticInfo->type) ||
-			   !this->scope->addType(thisInstanceInfo->name, thisInstanceInfo->type))
+			if(!this->scope->addSchema(thisStaticInfo->name, thisStaticInfo->type) ||
+			   !this->scope->addSchema(thisInstanceInfo->name, thisInstanceInfo->type))
 			{
-				printf("There is a same type named %s in this scope.\n", thisInstanceInfo->name.cstr());
+				printf("There is a same schema named %s in this scope.\n", thisInstanceInfo->name.cstr());
 				return false;
 			}
 			
@@ -1350,7 +1329,7 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			if(this->scope->getType(node->name, false).handle != nullptr)
+			if(this->scope->getSchema(node->name, false) != nullptr)
 				return false;
 			
 			auto* retType = this->encode_type(node->type);
@@ -1365,7 +1344,7 @@ _BeginNamespace(eokas)
 			}
 			
 			llvm::FunctionType* procType = llvm::FunctionType::get(retType, argTypes, false);
-			this->scope->addType(node->name, procType->getPointerTo());
+			this->scope->addSchema(node->name, procType->getPointerTo());
 			
 			return true;
 		}
@@ -1375,7 +1354,7 @@ _BeginNamespace(eokas)
 			if(node == nullptr)
 				return false;
 			
-			if(this->scope->getSymbol(node->name, false).value != nullptr)
+			if(this->scope->getSymbol(node->name, false) != nullptr)
 			{
 				printf("The symbol '%s' is undefined.", node->name.cstr());
 				return false;
