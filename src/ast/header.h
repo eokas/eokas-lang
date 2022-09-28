@@ -23,7 +23,13 @@ namespace eokas
 		
 		expr_index_ref, expr_module_ref,
 		
-		stmt_struct_def, stmt_struct_member, stmt_enum_def, stmt_proc_def, stmt_symbol_def, stmt_break, stmt_continue, stmt_return, stmt_if, stmt_loop, stmt_block, stmt_assign, stmt_call,
+		stmt_struct_def, stmt_struct_member,
+
+        stmt_enum_def, stmt_proc_def,
+
+        stmt_symbol_def, stmt_break, stmt_continue, stmt_return, stmt_if, stmt_loop, stmt_block, stmt_assign, stmt_call,
+
+        stmt_module_def, stmt_export, stmt_import,
 	};
 	
 	enum class ast_binary_oper_t
