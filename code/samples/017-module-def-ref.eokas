@@ -1,0 +1,16 @@
+
+module system.math {
+    import
+
+    export val add = func(a: i32, b: i32): i32 {
+        return a + b;
+    };
+
+    export val sub = func(a: i32, b: i32): i32 {
+        return a - b;
+    };
+
+    export val mul = func(a: i32, b: i32): i32 {
+        return a * b;
+    };
+}
