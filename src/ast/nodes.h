@@ -83,7 +83,7 @@ namespace eokas
 	{
 		String name = "";
 
-		explicit ast_node_type_ref_t(ast_node_t* parent)
+		ast_node_type_ref_t(ast_node_t* parent)
 			: ast_node_t(ast_category_t::TYPE_REF, parent)
 		{}
 	};
@@ -93,7 +93,7 @@ namespace eokas
 		String name = "";
 		std::vector<ast_node_type_t*> args = {};
 
-		explicit ast_node_type_gen_t(ast_node_t* parent)
+		ast_node_type_gen_t(ast_node_t* parent)
 			: ast_node_t(ast_category_t::TYPE_GEN, parent)
 		{}
 	};
@@ -110,7 +110,7 @@ namespace eokas
 		std::vector<arg_t*> args = {};
 		std::vector<ast_node_stmt*> body = {};
 
-		explicit ast_node_func_def_t(ast_node_t* parent)
+		ast_node_func_def_t(ast_node_t* parent)
 			: ast_node_t(ast_category_t::FUNC_DEF, parent)
 		{}
 
@@ -156,7 +156,7 @@ namespace eokas
 		ast_node_expr_t* value = nullptr;
 		bool variable = false;
 
-		explicit ast_node_symbol_def_t(ast_node_t* parent)
+		ast_node_symbol_def_t(ast_node_t* parent)
 			: ast_node_t(ast_category_t::SYMBOL_DEF, parent)
 		{}
 	};
@@ -165,7 +165,7 @@ namespace eokas
 	{
 		String name = "";
 
-		explicit ast_node_symbol_ref_t(ast_node_t* parent)
+		ast_node_symbol_ref_t(ast_node_t* parent)
 			: ast_expr_t(ast_category_t::SYMBOL_REF, parent)
 		{}
 	};
