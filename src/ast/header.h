@@ -5,41 +5,45 @@
 
 namespace eokas
 {
-	enum class ast_node_category_t
+	enum class ast_category_t
 	{
-		none,
-		
-		module,
-		
-		type_ref, type_array, type_generic,
-		
-		expr_trinary, expr_binary, expr_unary, expr_int, expr_float, expr_bool, expr_string, expr_symbol_ref,
-		
-		expr_func_def, expr_func_ref,
-		
-		expr_array_def,
-		
-		expr_object_def, expr_object_ref,
-		
-		expr_index_ref, expr_module_ref,
-		
-		stmt_struct_def, stmt_struct_member,
+		NONE,
 
-        stmt_enum_def, stmt_proc_def,
+		MODULE, IMPORT, EXPORT,
+		TYPE, EXPR, STMT,
 
-        stmt_symbol_def, stmt_break, stmt_continue, stmt_return, stmt_if, stmt_loop, stmt_block, stmt_assign, stmt_call,
+		TYPE_REF, TYPE_GEN,
+        FUNC_DEF, FUNC_REF,
+        SYMBOL_DEF, SYMBOL_REF,
 
-        stmt_module_def, stmt_export, stmt_import,
+        EXPR_TRINARY, EXPR_BINARY, EXPR_UNARY,
+        LITERAL_INT, LITERAL_FLOAT, LITERAL_BOOL, LITERAL_STRING,
+        ARRAY_DEF, ARRAY_REF,
+		OBJECT_DEF, OBJECT_REF,
+
+		STRUCT_DEF, ENUM_DEF, PROC_DEF,
+
+        RETURN, IF, LOOP, BREAK, CONTINUE, BLOCK, ASSIGN,
 	};
 	
 	enum class ast_binary_oper_t
 	{
-		Or = 100, And = 200, Equal = 300, NEqual, LEqual, GEqual, Less, Greater, Add = 400, Sub, Mul = 500, Div, Mod, BitAnd = 600, BitOr, BitXor, ShiftL, ShiftR, MaxPriority = 800, Unknown = 0x7FFFFFFF
+		OR = 100,
+        AND = 200,
+        EQ = 300, NE, LE, GE, LT, GT,
+        ADD = 400, SUB,
+        MUL = 500, DIV, MOD,
+        BIT_AND = 600, BIT_OR, BIT_XOR, SHIFT_L, SHIFT_R,
+        MAX_PRIORITY = 800,
+        UNKNOWN = 0x7FFFFFFF
 	};
 	
 	enum class ast_unary_oper_t
 	{
-		Pos = 900, Neg, Flip, SizeOf, TypeOf, Not = 1000, MaxPriority = 1100, Unknown = 0x7FFFFFFF
+		POS = 900, NEG, FLIP, SIZE_OF, TYPE_OF,
+        NOT = 1000,
+        MAX_PRIORITY = 1100,
+        UNKNOWN = 0x7FFFFFFF
 	};
 	
 	struct ast_pos_t
@@ -59,62 +63,54 @@ namespace eokas
 		}
 	};
 	
-	struct ast_node_t
-	{
-		ast_node_category_t category;
-		ast_node_t* parent;
-		
-		ast_node_t(ast_node_category_t category, ast_node_t* parent)
-			: category(category), parent(parent)
-		{
-		}
-		
-		virtual ~ast_node_t()
-		{
-			this->category = ast_node_category_t::none;
-			this->parent = nullptr;
-		}
-	};
-	
-	struct ast_factory_t;
-	struct ast_scope_t;
-	
-	struct ast_type_t;
-	struct ast_type_ref_t;
-	struct ast_type_array_t;
-	struct ast_type_generic_t;
-	
-	struct ast_expr_t;
-	struct ast_expr_trinary_t;
-	struct ast_expr_binary_t;
-	struct ast_expr_unary_t;
-	struct ast_expr_int_t;
-	struct ast_expr_float_t;
-	struct ast_expr_bool_t;
-	struct ast_expr_string_t;
-	struct ast_expr_symbol_ref_t;
-	struct ast_expr_func_def_t;
-	struct ast_expr_func_ref_t;
-	struct ast_expr_array_def_t;
-	struct ast_expr_index_ref_t;
-	struct ast_expr_object_def_t;
-	struct ast_expr_object_ref_t;
-	struct ast_expr_module_ref_t;
-	
-	struct ast_stmt_t;
-	struct ast_stmt_struct_member_t;
-	struct ast_stmt_struct_def_t;
-	struct ast_stmt_enum_def_t;
-	struct ast_stmt_proc_def_t;
-	struct ast_stmt_symbol_def_t;
-	struct ast_stmt_break_t;
-	struct ast_stmt_continue_t;
-	struct ast_stmt_return_t;
-	struct ast_stmt_if_t;
-	struct ast_stmt_loop_t;
-	struct ast_stmt_block_t;
-	struct ast_stmt_call_t;
-	struct ast_stmt_assign_t;
+    struct ast_node_t;
+
+    struct ast_node_module_t;
+	struct ast_node_import_t;
+    struct ast_node_export_t;
+
+	struct ast_node_type_t;
+	struct ast_node_expr_t;
+	struct ast_node_stmt_t;
+
+	struct ast_node_type_ref_t;
+	struct ast_node_type_gen_t;
+
+    struct ast_node_func_def_t;
+    struct ast_node_func_ref_t;
+
+    struct ast_node_symbol_def_t;
+    struct ast_node_symbol_ref_t;
+
+	struct ast_node_expr_trinary_t;
+	struct ast_node_expr_binary_t;
+	struct ast_node_expr_unary_t;
+
+	struct ast_node_literal_int_t;
+	struct ast_node_literal_float_t;
+	struct ast_node_literal_bool_t;
+	struct ast_node_literal_string_t;
+
+	struct ast_node_array_def_t;
+	struct ast_node_array_ref_t;
+	struct ast_node_object_def_t;
+	struct ast_node_object_ref_t;
+
+	struct ast_node_struct_def_t;
+	struct ast_node_enum_def_t;
+	struct ast_node_proc_def_t;
+
+    struct ast_node_return_t;
+    struct ast_node_if_t;
+    struct ast_node_loop_t;
+	struct ast_node_break_t;
+	struct ast_node_continue_t;
+	struct ast_node_block_t;
+	struct ast_node_assign_t;
+
+    struct ast_factory_t;
+    struct ast_scope_t;
+
 }
 
 #endif //_EOKAS_AST_HEADER_H_

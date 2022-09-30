@@ -2,26 +2,53 @@
 #define _EOKAS_AST_MODULE_H_
 
 #include "header.h"
+#include "nodes.h"
 
 namespace eokas
 {
 	class ast_module_t
 	{
-	public:
-		explicit ast_module_t();
-		virtual ~ast_module_t();
-	
-	public:
-		[[nodiscard]] ast_factory_t* get_factory() const;
-		[[nodiscard]] ast_expr_func_def_t* get_entry() const;
-		[[nodiscard]] ast_expr_func_def_t* get_func() const;
-		[[nodiscard]] ast_scope_t* get_scope() const;
-	
-	private:
 		ast_factory_t* factory;
 		ast_expr_func_def_t* entry;
 		ast_expr_func_def_t* func;
 		ast_scope_t* scope;
+
+	public:
+		explicit ast_module_t()
+			: factory(new ast_factory_t()), entry(nullptr), func(nullptr), scope(nullptr)
+		{
+			this->entry = factory->create_expr_func_def(nullptr);
+			this->func = this->entry;
+			this->scope = new ast_scope_t(this->func, nullptr);
+		}
+
+		virtual ~ast_module_t()
+		{
+			_DeletePointer(this->factory);
+			this->entry = nullptr;
+			this->func = nullptr;
+			_DeletePointer(this->scope);
+		}
+
+		ast_factory_t* get_factory() const
+		{
+			return this->factory;
+		}
+
+		ast_expr_func_def_t* get_entry() const
+		{
+			return this->entry;
+		}
+
+		ast_expr_func_def_t* get_func() const
+		{
+			return this->func;
+		}
+
+		ast_scope_t* get_scope() const
+		{
+			return this->scope;
+		}
 	};
 }
 

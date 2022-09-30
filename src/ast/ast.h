@@ -3,10 +3,8 @@
 
 #include "header.h"
 #include "object.h"
-#include "expr.h"
-#include "type.h"
-#include "stmt.h"
-#include "module.h"
+#include "nodes.h"
+
 #include "factory.h"
 
 namespace eokas
