@@ -7,7 +7,7 @@ _BeginNamespace(eokas)
 		"var", "val", "make",
         "module", "import", "export",
         "func", "proc", "array", "struct", "enum",
-        "if", "else", "loop", "continue", "break", "return", "true", "false",
+        "if", "else", "loop", "break", "continue", "return", "true", "false",
 		",", ";", ":", "?", "@", "#", "$",
 		"+", "-", "*", "/", "%", "^", "~",
 		"(", ")", "[", "]", "{", "}",
@@ -18,13 +18,12 @@ _BeginNamespace(eokas)
 		"<b-int>", "<x-int>", "<d-int>", "<float>", "<string>", "<identifier>", "<eos>"};
 	
 	token_t::token_t()
-		: type(Unknown), value()
-	{
-	}
+		: type(UNKNOWN), value()
+	{ }
 	
 	const char* const token_t::name() const
 	{
-		if(type<Count)
+		if(type < COUNT)
 			return names[type];
 		return nullptr;
 	}
@@ -32,8 +31,8 @@ _BeginNamespace(eokas)
 	bool token_t::infer(token_type defaultType)
 	{
 		bool found = false;
-		int count = (int) (token_t::Count);
-		for (int i = 0; i<count; i++)
+		int count = (int) (token_t::COUNT);
+		for (int i = 0; i < count; i++)
 		{
 			if(this->value == token_t::names[i])
 			{
@@ -51,14 +50,18 @@ _BeginNamespace(eokas)
 	
 	void token_t::clear()
 	{
-		this->type = token_t::Unknown;
+		this->type = token_t::UNKNOWN;
 		this->value = "";
 	}
 	
 	scanner_t::scanner_t()
-		: m_source(nullptr), m_position(nullptr), m_current(0), m_token(), m_look_ahead_token(), m_line(0), m_column(0)
-	{
-	}
+		: m_source(nullptr)
+		, m_position(nullptr)
+		, m_current(0)
+		, m_token()
+		, m_look_ahead_token()
+		, m_line(0), m_column(0)
+	{ }
 	
 	scanner_t::~scanner_t()
 	{
@@ -91,7 +94,7 @@ _BeginNamespace(eokas)
 	
 	void scanner_t::next_token()
 	{
-		if(m_look_ahead_token.type != token_t::Unknown)
+		if(m_look_ahead_token.type != token_t::UNKNOWN)
 		{
 			m_token = m_look_ahead_token;
 			m_look_ahead_token.clear();
@@ -109,7 +112,7 @@ _BeginNamespace(eokas)
 	
 	token_t& scanner_t::look_ahead_token()
 	{
-		if(m_look_ahead_token.type == token_t::Unknown)
+		if(m_look_ahead_token.type == token_t::UNKNOWN)
 		{
 			token_t tmp = m_token;
 			this->scan();
@@ -138,7 +141,7 @@ _BeginNamespace(eokas)
 			switch (m_current)
 			{
 				case '\0':
-					m_token.type = token_t::Eos;
+					m_token.type = token_t::EOS;
 					return;
 				
 				case '\n':
@@ -169,7 +172,7 @@ _BeginNamespace(eokas)
 					}
 					
 					this->save_char(div);
-					m_token.type = token_t::Div;
+					m_token.type = token_t::DIV;
 					return;
 				}
 				
@@ -178,12 +181,12 @@ _BeginNamespace(eokas)
 					if(m_current == '&')
 					{
 						this->save_and_read_char();
-						m_token.type = token_t::And2;
+						m_token.type = token_t::AND2;
 						return;
 					}
 					else
 					{
-						m_token.type = token_t::And;
+						m_token.type = token_t::AND;
 						return;
 					}
 				
@@ -192,18 +195,18 @@ _BeginNamespace(eokas)
 					if(m_current == '|')
 					{
 						this->save_and_read_char();
-						m_token.type = token_t::Or2;
+						m_token.type = token_t::OR2;
 						return;
 					}
 					else if(m_current == '<')
 					{
 						this->save_and_read_char();
-						m_token.type = token_t::ShiftL;
+						m_token.type = token_t::SHIFT_L;
 						return;
 					}
 					else
 					{
-						m_token.type = token_t::Or;
+						m_token.type = token_t::OR;
 						return;
 					}
 				
@@ -212,12 +215,12 @@ _BeginNamespace(eokas)
 					if(m_current == '=')
 					{
 						this->save_and_read_char();
-						m_token.type = token_t::Equal;
+						m_token.type = token_t::EQ;
 						return;
 					}
 					else
 					{
-						m_token.type = token_t::Assign;
+						m_token.type = token_t::ASSIGN;
 						return;
 					}
 				
@@ -226,12 +229,12 @@ _BeginNamespace(eokas)
 					if(m_current == '=')
 					{
 						this->save_and_read_char();
-						m_token.type = token_t::LEqual;
+						m_token.type = token_t::LE;
 						return;
 					}
 					else
 					{
-						m_token.type = token_t::Less;
+						m_token.type = token_t::LT;
 						return;
 					}
 				
@@ -240,18 +243,18 @@ _BeginNamespace(eokas)
 					if(m_current == '|')
 					{
 						this->save_and_read_char();
-						m_token.type = token_t::ShiftR;
+						m_token.type = token_t::SHIFT_R;
 						return;
 					}
 					else if(m_current == '=')
 					{
 						this->save_and_read_char();
-						m_token.type = token_t::GEqual;
+						m_token.type = token_t::GE;
 						return;
 					}
 					else
 					{
-						m_token.type = token_t::Greater;
+						m_token.type = token_t::GT;
 						return;
 					}
 				
@@ -260,12 +263,12 @@ _BeginNamespace(eokas)
 					if(m_current == '=')
 					{
 						this->save_and_read_char();
-						m_token.type = token_t::NEqual;
+						m_token.type = token_t::NE;
 						return;
 					}
 					else
 					{
-						m_token.type = token_t::Not;
+						m_token.type = token_t::NOT;
 						return;
 					}
 				
@@ -277,13 +280,13 @@ _BeginNamespace(eokas)
 						if(m_current == '.')
 						{
 							this->save_and_read_char();
-							m_token.type = token_t::Dot3;
+							m_token.type = token_t::DOT3;
 							return;
 						}
-						m_token.type = token_t::Dot2;
+						m_token.type = token_t::DOT2;
 						return;
 					}
-					m_token.type = token_t::Dot;
+					m_token.type = token_t::DOT;
 					return;
 				
 				case '0':
@@ -313,7 +316,7 @@ _BeginNamespace(eokas)
 					{
 						// single operator + - * / etc.
 						this->save_and_read_char();
-						m_token.infer(token_t::Unknown);
+						m_token.infer(token_t::UNKNOWN);
 						return;
 					}
 			}
@@ -331,7 +334,7 @@ _BeginNamespace(eokas)
 			{
 				this->save_and_read_char();
 			}
-			m_token.type = token_t::BInt;
+			m_token.type = token_t::INT_B;
 		}
 		else if(m_current == 'x' || m_current == 'X') // hex
 		{
@@ -340,7 +343,7 @@ _BeginNamespace(eokas)
 			{
 				this->save_and_read_char();
 			}
-			m_token.type = token_t::XInt;
+			m_token.type = token_t::INT_X;
 		}
 		else // decimal
 		{
@@ -348,7 +351,7 @@ _BeginNamespace(eokas)
 			{
 				this->save_and_read_char();
 			}
-			m_token.type = token_t::DInt;
+			m_token.type = token_t::INT_D;
 			
 			if(m_current == '.')
 			{
@@ -357,7 +360,7 @@ _BeginNamespace(eokas)
 				{
 					this->save_and_read_char();
 				}
-				m_token.type = token_t::Float;
+				m_token.type = token_t::FLOAT;
 			}
 		}
 	}
@@ -369,12 +372,12 @@ _BeginNamespace(eokas)
 		{
 			if(m_current == '\0')
 			{
-				m_token.type = token_t::Unknown;
+				m_token.type = token_t::UNKNOWN;
 				return;
 			}
 			else if(m_current == '\n' || m_current == '\r')
 			{
-				m_token.type = token_t::Unknown;
+				m_token.type = token_t::UNKNOWN;
 				return;
 			}
 			else if(m_current == '\\') // eseokas sequence
@@ -414,13 +417,13 @@ _BeginNamespace(eokas)
 						this->read_char();
 						if(!_ascil_is_hex(m_current))
 						{
-							m_token.type = token_t::Unknown;
+							m_token.type = token_t::UNKNOWN;
 							return;
 						}
 						this->save_and_read_char();
 						if(!_ascil_is_hex(m_current))
 						{
-							m_token.type = token_t::Unknown;
+							m_token.type = token_t::UNKNOWN;
 							return;
 						}
 						this->save_and_read_char();
@@ -431,7 +434,7 @@ _BeginNamespace(eokas)
 						this->save_and_read_char();
 						break;
 					default:
-						m_token.type = token_t::Unknown;
+						m_token.type = token_t::UNKNOWN;
 						return;
 				}
 			}
@@ -441,7 +444,7 @@ _BeginNamespace(eokas)
 			}
 		}
 		this->read_char();
-		m_token.type = token_t::Str;
+		m_token.type = token_t::STRING;
 	}
 	
 	void scanner_t::scan_identifier()
@@ -469,7 +472,7 @@ _BeginNamespace(eokas)
 			switch (m_current)
 			{
 				case '\0':
-					m_token.type = token_t::Eos;
+					m_token.type = token_t::EOS;
 					return;
 				
 				case '\n':

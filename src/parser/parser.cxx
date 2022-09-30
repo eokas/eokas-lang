@@ -78,8 +78,7 @@ _BeginNamespace(eokas)
 	
 	parser_impl_t::parser_impl_t()
 		: scanner(new scanner_t()), factory(nullptr), errormsg()
-	{
-	}
+	{ }
 	
 	parser_impl_t::~parser_impl_t()
 	{
@@ -104,7 +103,7 @@ _BeginNamespace(eokas)
 		auto* entry = module->get_func();
 		
 		this->next_token();
-		while (this->token().type != token_t::Eos)
+		while (this->token().type != token_t::EOS)
 		{
 			ast_stmt_t* stmt = this->parse_stmt(entry);
 			if(stmt == nullptr)
@@ -117,13 +116,13 @@ _BeginNamespace(eokas)
 	
 	ast_type_t* parser_impl_t::parse_type(ast_node_t* p)
 	{
-		if(this->token().type == token_t::Array)
+		if(this->token().type == token_t::ARRAY)
 		{
 			return this->parse_type_array(p);
 		}
 		else if(this->token().type == token_t::ID)
 		{
-			if(this->look_ahead_token().type == token_t::Less)
+			if(this->look_ahead_token().type == token_t::LT)
 			{
 				return this->parse_type_generic(p);
 			}
@@ -161,19 +160,19 @@ _BeginNamespace(eokas)
 	*/
 	ast_type_array_t* parser_impl_t::parse_type_array(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Array))
+		if(!this->check_token(token_t::ARRAY))
 			return nullptr;
 		
 		auto* node = factory->create_type_array(p);
 		
-		if(!this->check_token(token_t::Less))
+		if(!this->check_token(token_t::LT))
 			return nullptr;
 		
 		node->elementType = this->parse_type(node);
 		if(node->elementType == nullptr)
 			return nullptr;
 		
-		if(!this->check_token(token_t::Greater))
+		if(!this->check_token(token_t::GT))
 			return nullptr;
 		
 		return node;
@@ -192,12 +191,12 @@ _BeginNamespace(eokas)
 		this->next_token(); // ignore ID
 		
 		// <
-		if(this->check_token(token_t::Less, false))
+		if(this->check_token(token_t::LT, false))
 		{
 			// >
-			while (!this->check_token(token_t::Greater, false))
+			while (!this->check_token(token_t::GT, false))
 			{
-				if(!node->args.empty() && !this->check_token(token_t::Comma))
+				if(!node->args.empty() && !this->check_token(token_t::COMMA))
 					return nullptr;
 				
 				ast_type_ref_t* arg = this->parse_type_ref(node);
@@ -228,7 +227,7 @@ _BeginNamespace(eokas)
 		if(binary == nullptr)
 			return nullptr;
 		
-		if(this->check_token(token_t::Question, false))
+		if(this->check_token(token_t::QUESTION, false))
 		{
 			auto* trinary = factory->create_expr_trinary(p);
 			trinary->cond = binary;
@@ -238,7 +237,7 @@ _BeginNamespace(eokas)
 			if(trinary->branch_true == nullptr)
 				return nullptr;
 			
-			if(!this->check_token(token_t::Colon))
+			if(!this->check_token(token_t::COLON))
 				return nullptr;
 			
 			trinary->branch_false = this->parse_expr(trinary);
@@ -255,7 +254,7 @@ _BeginNamespace(eokas)
 	{
 		ast_expr_t* left = nullptr;
 		
-		if(priority<(int) ast_binary_oper_t::MaxPriority / 100)
+		if(priority<(int) ast_binary_oper_t::MAX_PRIORITY / 100)
 		{
 			left = this->parse_expr_binary(p, priority + 1);
 		}
@@ -271,12 +270,12 @@ _BeginNamespace(eokas)
 		for (;;)
 		{
 			ast_binary_oper_t oper = this->check_binary_oper(priority, false);
-			if(oper == ast_binary_oper_t::Unknown)
+			if(oper == ast_binary_oper_t::UNKNOWN)
 				break;
 			
 			
 			ast_expr_t* right = nullptr;
-			if(priority<(int) ast_binary_oper_t::MaxPriority / 100)
+			if(priority<(int) ast_binary_oper_t::MAX_PRIORITY / 100)
 			{
 				right = this->parse_expr_binary(p, priority + 1);
 			}
@@ -314,25 +313,25 @@ _BeginNamespace(eokas)
 		token_t& token = this->token();
 		switch (token.type)
 		{
-			case token_t::BInt:
-			case token_t::XInt:
-			case token_t::DInt:
+			case token_t::INT_B:
+			case token_t::INT_X:
+			case token_t::INT_D:
 				right = this->parse_literal_int(p);
 				break;
-			case token_t::Float:
+			case token_t::FLOAT:
 				right = this->parse_literal_float(p);
 				break;
-			case token_t::Str:
+			case token_t::STRING:
 				right = this->parse_literal_string(p);
 				break;
-			case token_t::True:
-			case token_t::False:
+			case token_t::TRUE:
+			case token_t::FALSE:
 				right = this->parse_literal_bool(p);
 				break;
-			case token_t::Func:
+			case token_t::FUNC:
 				right = this->parse_func_def(p);
 				break;
-			case token_t::Make:
+			case token_t::MAKE:
 				right = this->parse_object_def(p);
 				break;
 				/*
@@ -352,7 +351,7 @@ _BeginNamespace(eokas)
 				return nullptr;
 		}
 		
-		if(oper == ast_unary_oper_t::Unknown)
+		if(oper == ast_unary_oper_t::UNKNOWN)
 			return right;
 		
 		auto* unary = factory->create_expr_unary(p);
@@ -379,7 +378,7 @@ _BeginNamespace(eokas)
 			token_t& token = this->token();
 			switch (token.type)
 			{
-				case token_t::Dot: // .
+				case token_t::DOT: // .
 					suffixed = this->parse_object_ref(p, primary);
 					break;
 				case token_t::LSB: // [
@@ -434,21 +433,21 @@ _BeginNamespace(eokas)
 		token_t& token = this->token();
 		switch (token.type)
 		{
-			case token_t::BInt:
+			case token_t::INT_B:
 			{
 				auto* node = factory->create_expr_int(p);
 				node->value = String::binstrToValue<i32_t>(token.value);
 				this->next_token();
 				return node;
 			}
-			case token_t::XInt:
+			case token_t::INT_X:
 			{
 				auto* node = factory->create_expr_int(p);
 				node->value = String::hexstrToValue<i32_t>(token.value);
 				this->next_token();
 				return node;
 			}
-			case token_t::DInt:
+			case token_t::INT_D:
 			{
 				auto* node = factory->create_expr_int(p);
 				node->value = String::stringToValue<i32_t>(token.value);
@@ -466,7 +465,7 @@ _BeginNamespace(eokas)
 		token_t& token = this->token();
 		switch (token.type)
 		{
-			case token_t::Float:
+			case token_t::FLOAT:
 			{
 				auto* node = factory->create_expr_float(p);
 				node->value = String::stringToValue<f32_t>(token.value);
@@ -484,8 +483,8 @@ _BeginNamespace(eokas)
 		token_t& token = this->token();
 		switch (token.type)
 		{
-			case token_t::True:
-			case token_t::False:
+			case token_t::TRUE:
+			case token_t::FALSE:
 			{
 				auto* node = factory->create_expr_bool(p);
 				node->value = String::stringToValue<bool>(token.value);
@@ -503,7 +502,7 @@ _BeginNamespace(eokas)
 		token_t& token = this->token();
 		switch (token.type)
 		{
-			case token_t::Str:
+			case token_t::STRING:
 			{
 				auto* node = factory->create_expr_string(p);
 				node->value = token.value;
@@ -521,7 +520,7 @@ _BeginNamespace(eokas)
 	*/
 	ast_expr_t* parser_impl_t::parse_func_def(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Func))
+		if(!this->check_token(token_t::FUNC))
 			return nullptr;
 		
 		auto* node = factory->create_expr_func_def(p);
@@ -529,7 +528,7 @@ _BeginNamespace(eokas)
 			return nullptr;
 		
 		// : ret-type
-		if(!this->check_token(token_t::Colon))
+		if(!this->check_token(token_t::COLON))
 			return nullptr;
 		
 		node->type = this->parse_type(node);
@@ -565,7 +564,7 @@ _BeginNamespace(eokas)
 			}
 			this->next_token();
 			
-			if(!this->check_token(token_t::Colon))
+			if(!this->check_token(token_t::COLON))
 				return false;
 			
 			ast_type_t* type = this->parse_type(node);
@@ -573,7 +572,7 @@ _BeginNamespace(eokas)
 				return false;
 			
 			node->addArg(name, type);
-		} while (this->check_token(token_t::Comma, false));
+		} while (this->check_token(token_t::COMMA, false));
 		
 		if(!this->check_token(token_t::RRB))
 			return false;
@@ -612,7 +611,7 @@ _BeginNamespace(eokas)
 		
 		while (!this->check_token(token_t::RRB, false))
 		{
-			if(!node->args.empty() && !this->check_token(token_t::Comma))
+			if(!node->args.empty() && !this->check_token(token_t::COMMA))
 				return nullptr;
 			
 			ast_expr_t* arg = this->parse_expr(node);
@@ -636,7 +635,7 @@ _BeginNamespace(eokas)
 	*/
 	ast_expr_t* parser_impl_t::parse_object_def(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Make))
+		if(!this->check_token(token_t::MAKE))
 			return nullptr;
 		
 		auto* node = factory->create_expr_object_def(p);
@@ -653,7 +652,7 @@ _BeginNamespace(eokas)
 				break;
 			if(!this->parse_object_field(node))
 				return nullptr;
-		} while (this->check_token(token_t::Comma, false));
+		} while (this->check_token(token_t::COMMA, false));
 		
 		if(!this->check_token(token_t::RCB))
 			return nullptr;
@@ -672,7 +671,7 @@ _BeginNamespace(eokas)
 		const String key = this->token().value;
 		this->next_token();
 		
-		if(!this->check_token(token_t::Assign, false) && !this->check_token(token_t::Colon, false))
+		if(!this->check_token(token_t::ASSIGN, false) && !this->check_token(token_t::COLON, false))
 		{
 			return false;
 		}
@@ -707,7 +706,7 @@ _BeginNamespace(eokas)
 				return nullptr;
 			
 			node->elements.push_back(expr);
-		} while (this->check_token(token_t::Comma, false));
+		} while (this->check_token(token_t::COMMA, false));
 		
 		if(!this->check_token(token_t::RSB))
 			return nullptr;
@@ -745,7 +744,7 @@ _BeginNamespace(eokas)
 	{
 		auto* node = factory->create_expr_object_ref(p);
 		
-		if(!this->check_token(token_t::Dot))
+		if(!this->check_token(token_t::DOT))
 			return nullptr;
 		
 		if(!this->check_token(token_t::ID, true, false))
@@ -792,37 +791,37 @@ _BeginNamespace(eokas)
 		
 		switch (this->token().type)
 		{
-			case token_t::Struct:
+			case token_t::STRUCT:
 				stmt = this->parse_stmt_struct_def(p);
 				break;
-			case token_t::Enum:
+			case token_t::ENUM:
 				stmt = this->parse_stmt_enum_def(p);
 				break;
-			case token_t::Proc:
+			case token_t::PROC:
 				stmt = this->parse_stmt_proc_def(p);
 				semicolon = true;
 				break;
-			case token_t::Var:
-			case token_t::Val:
+			case token_t::VAR:
+			case token_t::VAL:
 				stmt = this->parse_stmt_symbol_def(p);
 				semicolon = true;
 				break;
-			case token_t::Continue:
-				stmt = this->parse_stmt_continue(p);
-				semicolon = true;
-				break;
-			case token_t::Break:
+			case token_t::BREAK:
 				stmt = this->parse_stmt_break(p);
 				semicolon = true;
 				break;
-			case token_t::Return:
+			case token_t::CONTINUE:
+				stmt = this->parse_stmt_continue(p);
+				semicolon = true;
+				break;
+			case token_t::RETURN:
 				stmt = this->parse_stmt_return(p);
 				semicolon = true;
 				break;
-			case token_t::If:
+			case token_t::IF:
 				stmt = this->parse_stmt_if(p);
 				break;
-			case token_t::Loop:
+			case token_t::LOOP:
 				stmt = this->parse_stmt_loop(p);
 				break;
 			case token_t::LCB:
@@ -833,7 +832,7 @@ _BeginNamespace(eokas)
 				semicolon = true;
 		}
 		
-		if(semicolon && !this->check_token(token_t::Semicolon))
+		if(semicolon && !this->check_token(token_t::SEMICOLON))
 			return nullptr;
 		
 		return stmt;
@@ -844,7 +843,7 @@ _BeginNamespace(eokas)
 	*/
 	ast_stmt_struct_def_t* parser_impl_t::parse_stmt_struct_def(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Struct))
+		if(!this->check_token(token_t::STRUCT))
 			return nullptr;
 		
 		auto* node = factory->create_stmt_struct_def(p);
@@ -877,7 +876,7 @@ _BeginNamespace(eokas)
 			}
 			
 			node->members[name] = member;
-		} while (this->check_token(token_t::Semicolon, false));
+		} while (this->check_token(token_t::SEMICOLON, false));
 		
 		// }
 		if(!this->check_token(token_t::RCB))
@@ -896,10 +895,10 @@ _BeginNamespace(eokas)
 		// (val | var)
 		switch (this->token().type)
 		{
-			case token_t::Var:
+			case token_t::VAR:
 				node->isConst = false;
 				break;
-			case token_t::Val:
+			case token_t::VAL:
 				node->isConst = true;
 				break;
 			default:
@@ -917,14 +916,14 @@ _BeginNamespace(eokas)
 		this->next_token();
 		
 		// : type
-		if(!this->check_token(token_t::Colon))
+		if(!this->check_token(token_t::COLON))
 			return nullptr;
 		node->type = this->parse_type(node);
 		if(node->type == nullptr)
 			return nullptr;
 		
 		// [= expr]
-		if(this->check_token(token_t::Assign, false))
+		if(this->check_token(token_t::ASSIGN, false))
 		{
 			node->value = this->parse_expr(node);
 			if(node->value == nullptr)
@@ -940,7 +939,7 @@ _BeginNamespace(eokas)
 	 * */
 	ast_stmt_enum_def_t* parser_impl_t::parse_stmt_enum_def(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Enum))
+		if(!this->check_token(token_t::ENUM))
 			return nullptr;
 		
 		auto* node = factory->create_stmt_enum_def(p);
@@ -976,7 +975,7 @@ _BeginNamespace(eokas)
 			
 			// [= int]
 			i32_t memValue = index;
-			if(this->check_token(token_t::Assign, false))
+			if(this->check_token(token_t::ASSIGN, false))
 			{
 				auto memExpr = this->parse_literal_int(node);
 				if(memExpr == nullptr)
@@ -988,7 +987,7 @@ _BeginNamespace(eokas)
 			
 			node->members[memName] = memValue;
 			index += 1;
-		} while (this->check_token(token_t::Comma, false));
+		} while (this->check_token(token_t::COMMA, false));
 		
 		// }
 		if(!this->check_token(token_t::RCB))
@@ -1003,7 +1002,7 @@ _BeginNamespace(eokas)
 	*/
 	ast_stmt_proc_def_t* parser_impl_t::parse_stmt_proc_def(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Proc))
+		if(!this->check_token(token_t::PROC))
 			return nullptr;
 		
 		auto* node = factory->create_stmt_proc_def(p);
@@ -1037,21 +1036,21 @@ _BeginNamespace(eokas)
 			this->next_token();
 			
 			// : type
-			if(!this->check_token(token_t::Colon))
+			if(!this->check_token(token_t::COLON))
 				return nullptr;
 			ast_type_t* argType = this->parse_type(node);
 			if(argType == nullptr)
 				return nullptr;
 			
 			node->args[argName] = argType;
-		} while (this->check_token(token_t::Comma, false));
+		} while (this->check_token(token_t::COMMA, false));
 		
 		// )
 		if(!this->check_token(token_t::RRB))
 			return nullptr;
 		
 		// : ret-type
-		if(!this->check_token(token_t::Colon))
+		if(!this->check_token(token_t::COLON))
 			return nullptr;
 		node->type = this->parse_type(node);
 		if(node->type == nullptr)
@@ -1065,13 +1064,13 @@ _BeginNamespace(eokas)
 	*/
 	ast_stmt_symbol_def_t* parser_impl_t::parse_stmt_symbol_def(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Var, false, false) && !this->check_token(token_t::Val, false, false))
+		if(!this->check_token(token_t::VAR, false, false) && !this->check_token(token_t::VAL, false, false))
 		{
 			return nullptr;
 		}
 		
 		auto* node = factory->create_stmt_symbol_def(p);
-		node->variable = this->token().type == token_t::Var;
+		node->variable = this->token().type == token_t::VAR;
 		
 		this->next_token(); // ignore 'var' | 'val'
 		
@@ -1083,7 +1082,7 @@ _BeginNamespace(eokas)
 		this->next_token();
 		
 		// : type
-		if(this->check_token(token_t::Colon, false))
+		if(this->check_token(token_t::COLON, false))
 		{
 			node->type = this->parse_type(p);
 			if(node->type == nullptr)
@@ -1091,7 +1090,7 @@ _BeginNamespace(eokas)
 		}
 		
 		// = expr
-		if(!this->check_token(token_t::Assign, true))
+		if(!this->check_token(token_t::ASSIGN, true))
 			return nullptr;
 		
 		node->value = this->parse_expr(node);
@@ -1103,7 +1102,7 @@ _BeginNamespace(eokas)
 	
 	ast_stmt_continue_t* parser_impl_t::parse_stmt_continue(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Continue))
+		if(!this->check_token(token_t::CONTINUE))
 			return nullptr;
 		
 		auto* node = factory->create_stmt_continue(p);
@@ -1113,7 +1112,7 @@ _BeginNamespace(eokas)
 	
 	ast_stmt_break_t* parser_impl_t::parse_stmt_break(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Break))
+		if(!this->check_token(token_t::BREAK))
 			return nullptr;
 		
 		auto* node = factory->create_stmt_break(p);
@@ -1123,12 +1122,12 @@ _BeginNamespace(eokas)
 	
 	ast_stmt_return_t* parser_impl_t::parse_stmt_return(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Return))
+		if(!this->check_token(token_t::RETURN))
 			return nullptr;
 		
 		auto* node = factory->create_stmt_return(p);
 		
-		if(this->check_token(token_t::Semicolon, false, false))
+		if(this->check_token(token_t::SEMICOLON, false, false))
 			return node;
 		
 		node->value = this->parse_expr(node);
@@ -1140,7 +1139,7 @@ _BeginNamespace(eokas)
 	
 	ast_stmt_if_t* parser_impl_t::parse_stmt_if(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::If))
+		if(!this->check_token(token_t::IF))
 			return nullptr;
 		
 		auto* node = factory->create_stmt_if(p);
@@ -1159,7 +1158,7 @@ _BeginNamespace(eokas)
 		if(node->branch_true == nullptr)
 			return nullptr;
 		
-		if(this->check_token(token_t::Else, false))
+		if(this->check_token(token_t::ELSE, false))
 		{
 			node->branch_false = this->parse_stmt(node);
 			if(node->branch_false == nullptr)
@@ -1171,7 +1170,7 @@ _BeginNamespace(eokas)
 	
 	ast_stmt_loop_t* parser_impl_t::parse_stmt_loop(ast_node_t* p)
 	{
-		if(!this->check_token(token_t::Loop))
+		if(!this->check_token(token_t::LOOP))
 			return nullptr;
 		
 		auto* node = factory->create_stmt_loop(p);
@@ -1207,7 +1206,7 @@ _BeginNamespace(eokas)
 		if(stmt == nullptr)
 			return nullptr;
 		
-		if(!this->check_token(token_t::Semicolon))
+		if(!this->check_token(token_t::SEMICOLON))
 			return nullptr;
 		
 		return stmt;
@@ -1219,7 +1218,7 @@ _BeginNamespace(eokas)
 		if(cond == nullptr)
 			return nullptr;
 		
-		if(!this->check_token(token_t::Semicolon))
+		if(!this->check_token(token_t::SEMICOLON))
 			return nullptr;
 		
 		return cond;
@@ -1230,8 +1229,8 @@ _BeginNamespace(eokas)
 		ast_stmt_t* stmt = nullptr;
 		switch (this->token().type)
 		{
-			case token_t::Var:
-			case token_t::Val:
+			case token_t::VAR:
+			case token_t::VAL:
 				stmt = this->parse_stmt_symbol_def(p);
 				break;
 			default:
@@ -1257,7 +1256,7 @@ _BeginNamespace(eokas)
 			
 			node->stmts.push_back(stmt);
 			
-			this->check_token(token_t::Semicolon, false);
+			this->check_token(token_t::SEMICOLON, false);
 		}
 		
 		return node;
@@ -1269,7 +1268,7 @@ _BeginNamespace(eokas)
 		if(left == nullptr)
 			return nullptr;
 		
-		if(this->check_token(token_t::Assign, false))
+		if(this->check_token(token_t::ASSIGN, false))
 		{
 			auto* node = factory->create_stmt_assign(p);
 			node->left = left;
@@ -1330,31 +1329,31 @@ _BeginNamespace(eokas)
 	
 	ast_unary_oper_t parser_impl_t::check_unary_oper(bool required, bool movenext)
 	{
-		ast_unary_oper_t oper = ast_unary_oper_t::Unknown;
+		ast_unary_oper_t oper = ast_unary_oper_t::UNKNOWN;
 		switch (scanner->token().type)
 		{
-			case token_t::Add:
-				oper = ast_unary_oper_t::Pos;
+			case token_t::ADD:
+				oper = ast_unary_oper_t::POS;
 				break;
-			case token_t::Sub:
-				oper = ast_unary_oper_t::Neg;
+			case token_t::SUB:
+				oper = ast_unary_oper_t::NEG;
 				break;
-			case token_t::Not:
-				oper = ast_unary_oper_t::Not;
+			case token_t::NOT:
+				oper = ast_unary_oper_t::NOT;
 				break;
-			case token_t::Flip:
-				oper = ast_unary_oper_t::Flip;
+			case token_t::FLIP:
+				oper = ast_unary_oper_t::FLIP;
 				break;
-			case token_t::At:
-				oper = ast_unary_oper_t::TypeOf;
+			case token_t::AT:
+				oper = ast_unary_oper_t::TYPE_OF;
 				break;
-			case token_t::Pound:
-				oper = ast_unary_oper_t::SizeOf;
+			case token_t::POUND:
+				oper = ast_unary_oper_t::SIZE_OF;
 				break;
 			default:
 				break;
 		}
-		if(oper == ast_unary_oper_t::Unknown)
+		if(oper == ast_unary_oper_t::UNKNOWN)
 		{
 			if(required)
 			{
@@ -1371,71 +1370,71 @@ _BeginNamespace(eokas)
 	
 	ast_binary_oper_t parser_impl_t::check_binary_oper(int priority, bool required, bool movenext)
 	{
-		ast_binary_oper_t oper = ast_binary_oper_t::Unknown;
+		ast_binary_oper_t oper = ast_binary_oper_t::UNKNOWN;
 		switch (scanner->token().type)
 		{
-			case token_t::Or2:
-				oper = ast_binary_oper_t::Or;
+			case token_t::OR2:
+				oper = ast_binary_oper_t::OR;
 				break;
-			case token_t::And2:
-				oper = ast_binary_oper_t::And;
+			case token_t::AND2:
+				oper = ast_binary_oper_t::AND;
 				break;
-			case token_t::Equal:
-				oper = ast_binary_oper_t::Equal;
+			case token_t::EQ:
+				oper = ast_binary_oper_t::EQ;
 				break;
-			case token_t::Greater:
-				oper = ast_binary_oper_t::Greater;
+			case token_t::GT:
+				oper = ast_binary_oper_t::GT;
 				break;
-			case token_t::Less:
-				oper = ast_binary_oper_t::Less;
+			case token_t::LT:
+				oper = ast_binary_oper_t::LT;
 				break;
-			case token_t::GEqual:
-				oper = ast_binary_oper_t::GEqual;
+			case token_t::GE:
+				oper = ast_binary_oper_t::GE;
 				break;
-			case token_t::LEqual:
-				oper = ast_binary_oper_t::LEqual;
+			case token_t::LE:
+				oper = ast_binary_oper_t::LE;
 				break;
-			case token_t::NEqual:
-				oper = ast_binary_oper_t::NEqual;
+			case token_t::NE:
+				oper = ast_binary_oper_t::NE;
 				break;
-			case token_t::Add:
-				oper = ast_binary_oper_t::Add;
+			case token_t::ADD:
+				oper = ast_binary_oper_t::ADD;
 				break;
-			case token_t::Sub:
-				oper = ast_binary_oper_t::Sub;
+			case token_t::SUB:
+				oper = ast_binary_oper_t::SUB;
 				break;
-			case token_t::Mul:
-				oper = ast_binary_oper_t::Mul;
+			case token_t::MUL:
+				oper = ast_binary_oper_t::MUL;
 				break;
-			case token_t::Div:
-				oper = ast_binary_oper_t::Div;
+			case token_t::DIV:
+				oper = ast_binary_oper_t::DIV;
 				break;
-			case token_t::Mod:
-				oper = ast_binary_oper_t::Mod;
+			case token_t::MOD:
+				oper = ast_binary_oper_t::MOD;
 				break;
-			case token_t::And:
-				oper = ast_binary_oper_t::BitAnd;
+			case token_t::AND:
+				oper = ast_binary_oper_t::BIT_AND;
 				break;
-			case token_t::Or:
-				oper = ast_binary_oper_t::BitOr;
+			case token_t::OR:
+				oper = ast_binary_oper_t::BIT_OR;
 				break;
-			case token_t::Xor:
-				oper = ast_binary_oper_t::BitXor;
+			case token_t::XOR:
+				oper = ast_binary_oper_t::BIT_XOR;
 				break;
-			case token_t::ShiftL:
-				oper = ast_binary_oper_t::ShiftL;
+			case token_t::SHIFT_L:
+				oper = ast_binary_oper_t::SHIFT_L;
 				break;
-			case token_t::ShiftR:
-				oper = ast_binary_oper_t::ShiftR;
+			case token_t::SHIFT_R:
+				oper = ast_binary_oper_t::SHIFT_R;
 				break;
 			default:
 				break;
 		}
 		if((int) oper / 100 != priority)
 		{
-			oper = ast_binary_oper_t::Unknown;
+			oper = ast_binary_oper_t::UNKNOWN;
 		}
-		if(oper == ast_binary_oper_t::Unknown)
+		if(oper == ast_binary_oper_t::UNKNOWN)
 		{
 			if(required)
 			{
@@ -1466,7 +1465,7 @@ _BeginNamespace(eokas)
 	{
 		token_t& token = scanner->token();
 		const char* value = token.value.cstr();
-		if(token.type == token_t::Eos)
+		if(token.type == token_t::EOS)
 		{
 			this->error("unexpected eos");
 		}

@@ -9,30 +9,28 @@ _BeginNamespace(eokas)
 	{
 		enum token_type
 		{
-			Var, Val, Make,
-            Module, Import, Export,
-            Func, Proc, Array, Struct, Enum,
-			If, Else, Loop, Continue, Break, Return, True, False,
-			Comma, Semicolon, Colon, Question, At, Pound, Dollar,
-			Add, Sub, Mul, Div, Mod, Xor, Flip,
+			VAR, VAL, MAKE,
+            MODULE, IMPORT, EXPORT,
+            FUNC, PROC, ARRAY, STRUCT, ENUM,
+			IF, ELSE, LOOP,  BREAK, CONTINUE, RETURN, TRUE, FALSE,
+			COMMA, SEMICOLON, COLON, QUESTION, AT, POUND, DOLLAR,
+			ADD, SUB, MUL, DIV, MOD, XOR, FLIP,
 			LRB, RRB, LSB, RSB, LCB, RCB,
-			And, And2, Or, Or2,
-			Assign, Equal, Not, NEqual, Greater, GEqual, Less, LEqual,
-			ShiftL, ShiftR,
-			Dot, Dot2, Dot3,
-			BInt, XInt, DInt, Float, Str, ID, Eos, Count, Unknown
+			AND, AND2, OR, OR2,
+			ASSIGN, EQ, NOT, NE, GT, GE, LT, LE,
+			SHIFT_L, SHIFT_R,
+			DOT, DOT2, DOT3,
+			INT_B, INT_X, INT_D, FLOAT, STRING, ID, EOS, COUNT, UNKNOWN
 		};
-		static const char* const names[Count];
+		
+		static const char* const names[COUNT];
 		
 		token_type type;
 		String value;
 		
 		token_t();
-		
 		const char* const name() const;
-		
 		bool infer(token_type default_type);
-		
 		void clear();
 	};
 	
@@ -40,47 +38,29 @@ _BeginNamespace(eokas)
 	{
 	public:
 		scanner_t();
-		
 		virtual ~scanner_t();
 	
 	public:
 		void ready(const char* source);
-		
 		void clear();
-		
 		const char* source();
-		
 		void next_token();
-		
 		token_t& token();
-		
 		token_t& look_ahead_token();
-		
 		int line();
-		
 		int column();
 	
 	private:
 		void scan();
-		
 		void scan_number();
-		
 		void scan_string(char delimiter);
-		
 		void scan_identifier();
-		
 		void scan_line_comment();
-		
 		void scan_section_comment();
-		
 		void new_line();
-		
 		void read_char();
-		
 		void save_char(char c);
-		
 		void save_and_read_char();
-		
 		bool check_char(const char* charset);
 	
 	private:
