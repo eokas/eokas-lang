@@ -22,8 +22,8 @@
 #include <string>
 #include <vector>
 
-_BeginNamespace(eokas)
-	
+namespace eokas
+{
 	struct llvm_coder_t
 	{
 		llvm::LLVMContext& context;
@@ -37,8 +37,7 @@ _BeginNamespace(eokas)
 		llvm::BasicBlock* continuePoint;
 		llvm::BasicBlock* breakPoint;
 		
-		explicit llvm_coder_t(llvm::LLVMContext& context)
-			: context(context), builder(context), module(nullptr)
+		explicit llvm_coder_t(llvm::LLVMContext& context) : context(context), builder(context), module(nullptr)
 		{
 			this->scope = nullptr;
 			this->func = nullptr;
@@ -351,15 +350,12 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpEQ(
-					builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
-					builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return builder.CreateICmpEQ(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFCmpOEQ(
-					builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return builder.CreateFCmpOEQ(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
@@ -384,21 +380,17 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpNE(
-					builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
-					builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return builder.CreateICmpNE(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFCmpONE(
-					builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return builder.CreateFCmpONE(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFCmpONE(lhs,
-											 builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return builder.CreateFCmpONE(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -418,14 +410,12 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpULE(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
-											 builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return builder.CreateICmpULE(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFCmpOLE(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)),
-											 rhs);
+				return builder.CreateFCmpOLE(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
@@ -450,20 +440,17 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpUGE(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
-											 builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return builder.CreateICmpUGE(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFCmpOGE(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)),
-											 rhs);
+				return builder.CreateFCmpOGE(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFCmpOGE(lhs,
-											 builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return builder.CreateFCmpOGE(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -483,8 +470,7 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpULT(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
-											 builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return builder.CreateICmpULT(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
@@ -514,20 +500,17 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpUGT(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
-											 builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return builder.CreateICmpUGT(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFCmpOGT(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)),
-											 rhs);
+				return builder.CreateFCmpOGT(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFCmpOGT(lhs,
-											 builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return builder.CreateFCmpOGT(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -572,8 +555,7 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFSub(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)),
-										  rhs);
+				return builder.CreateFSub(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
@@ -598,8 +580,7 @@ _BeginNamespace(eokas)
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFMul(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)),
-										  rhs);
+				return builder.CreateFMul(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
@@ -783,9 +764,7 @@ _BeginNamespace(eokas)
 			
 			if(rtype->isIntegerTy())
 			{
-				return builder.CreateXor(
-					rhs,
-				 llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF)));
+				return builder.CreateXor(rhs, llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF)));
 			}
 			printf("Type of RHS is invalid.\n");
 			return nullptr;
@@ -898,7 +877,7 @@ _BeginNamespace(eokas)
 			auto oldIB = builder.GetInsertBlock();
 			
 			this->func = funcPtr;
-
+			
 			this->pushScope(funcPtr);
 			{
 				llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", funcPtr);
@@ -909,10 +888,10 @@ _BeginNamespace(eokas)
 				this->scope->addSymbol("self", self);
 				
 				// args
-				for(size_t index = 0; index < node->args.size(); index++)
+				for (size_t index = 0; index<node->args.size(); index++)
 				{
 					const char* name = node->args.at(index)->name.cstr();
-					auto arg = funcPtr->getArg(index+1);
+					auto arg = funcPtr->getArg(index + 1);
 					arg->setName(name);
 					
 					if(!this->scope->addSymbol(name, arg))
@@ -1038,11 +1017,11 @@ _BeginNamespace(eokas)
 			
 			if(arrayElements.empty() || arrayElementType == nullptr)
 				arrayElementType = llvm::Type::getInt32Ty(context);
-				
+			
 			auto arrayT = module->define_schema_array(arrayElementType);
 			auto arrayP = module->make(func, builder, arrayT);
 			module->array_set(scope->func, builder, arrayP, arrayElements);
-
+			
 			return arrayP;
 		}
 		
@@ -1297,8 +1276,7 @@ _BeginNamespace(eokas)
 			}
 			thisStaticInfo->resolve();
 			
-			if(!this->scope->addSchema(thisStaticInfo->name, thisStaticInfo->type) ||
-			   !this->scope->addSchema(thisInstanceInfo->name, thisInstanceInfo->type))
+			if(!this->scope->addSchema(thisStaticInfo->name, thisStaticInfo->type) || !this->scope->addSchema(thisInstanceInfo->name, thisInstanceInfo->type))
 			{
 				printf("There is a same schema named %s in this scope.\n", thisInstanceInfo->name.cstr());
 				return false;
@@ -1306,7 +1284,7 @@ _BeginNamespace(eokas)
 			
 			// make static object
 			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticInfo->type);
-			for (u32_t index = 0; index < thisStaticInfo->members.size(); index++)
+			for (u32_t index = 0; index<thisStaticInfo->members.size(); index++)
 			{
 				auto& mem = thisStaticInfo->members.at(index);
 				auto memV = builder.CreateLoad(mem->value);
@@ -1654,4 +1632,4 @@ _BeginNamespace(eokas)
 		llvm_coder_t coder(context);
 		return coder.encode(module);
 	}
-_EndNamespace(eokas)
+}

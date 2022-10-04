@@ -3,9 +3,9 @@
 
 #include "header.h"
 
-_BeginNamespace(eokas)
-	
-	llvm_module_t* llvm_encode(llvm::LLVMContext& context, ast_module_t* module);
-_EndNamespace(eokas)
+namespace eokas
+{
+	llvm_module_t* llvm_encode(llvm::LLVMContext& context, ast_node_module_t* module);
+}
 
 #endif//_EOKAS_LLVM_CODER_H_

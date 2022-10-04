@@ -3,10 +3,10 @@
 
 #include "header.h"
 
-_BeginNamespace(eokas)
-	
-	bool llvm_jit(ast_module_t* module);
-	bool llvm_aot(ast_module_t* module);
-_EndNamespace(eokas)
+namespace eokas
+{
+	bool llvm_jit(ast_node_module_t* module);
+	bool llvm_aot(ast_node_module_t* module);
+}
 
 #endif//_EOKAS_LLVM_ENGINE_H_

@@ -7,7 +7,7 @@ using namespace eokas;
 #include <stdio.h>
 #include <iostream>
 
-static void eokas_main(const String& fileName, bool(*)(ast_module_t*));
+static void eokas_main(const String& fileName, bool(*)(ast_node_module_t*));
 
 static void about(void);
 
@@ -64,7 +64,7 @@ int main(int argc, char** argv)
 	}
 }
 
-static void eokas_main(const String& fileName, bool(*proc)(ast_module_t* m))
+static void eokas_main(const String& fileName, bool(*proc)(ast_node_module_t* m))
 {
 	FileStream in(fileName, "rb");
 	if(!in.open())
@@ -82,7 +82,7 @@ static void eokas_main(const String& fileName, bool(*proc)(ast_module_t* m))
 	printf("------------------------------------------\n");
 	
 	parser_t parser;
-	ast_module_t* m = parser.parse(source.cstr());
+	ast_node_module_t* m = parser.parse(source.cstr());
 	printf("=> Module AST: %llX\n", (u64_t)m);
 	if(m == nullptr)
 	{

@@ -20,9 +20,9 @@
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
 
-_BeginNamespace(eokas)
-	
-	bool llvm_jit(ast_module_t* m)
+namespace eokas
+{
+	bool llvm_jit(ast_node_module_t* m)
 	{
 		llvm::InitializeNativeTarget();
 		llvm::InitializeNativeTargetAsmPrinter();
@@ -55,7 +55,7 @@ _BeginNamespace(eokas)
 		return true;
 	}
 	
-	bool llvm_aot(ast_module_t* m)
+	bool llvm_aot(ast_node_module_t* m)
 	{
 		llvm::InitializeAllTargetInfos();
 		llvm::InitializeAllTargets();
@@ -109,4 +109,4 @@ _BeginNamespace(eokas)
 		
 		return true;
 	}
-_EndNamespace(eokas)
+}

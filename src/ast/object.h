@@ -26,7 +26,7 @@ namespace eokas
 			this->symbols.clear();
 		}
 		
-		ast_scope_t* add_child(ast_expr_func_def_t* func = nullptr)
+		ast_scope_t* add_child(ast_node_func_def_t* func = nullptr)
 		{
 			func = func != nullptr ? func : this->func;
 			auto* child = new ast_scope_t(func, this);
