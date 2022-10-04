@@ -10,7 +10,6 @@ namespace eokas
 		NONE,
 
 		MODULE, IMPORT, EXPORT,
-		TYPE, EXPR, STMT,
 
 		TYPE_REF, TYPE_GEN,
         FUNC_DEF, FUNC_REF,
@@ -23,7 +22,7 @@ namespace eokas
 
 		STRUCT_DEF, ENUM_DEF, PROC_DEF,
 
-        RETURN, IF, LOOP, BREAK, CONTINUE, BLOCK, ASSIGN,
+        RETURN, IF, LOOP, BREAK, CONTINUE, BLOCK, ASSIGN, INVOKE,
 	};
 	
 	enum class ast_binary_oper_t
@@ -107,6 +106,7 @@ namespace eokas
 	struct ast_node_continue_t;
 	struct ast_node_block_t;
 	struct ast_node_assign_t;
+	struct ast_node_invoke_t;
 
     struct ast_factory_t;
     struct ast_scope_t;

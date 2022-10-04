@@ -8,20 +8,20 @@
 
 namespace eokas
 {
+	template<typename T>
+	concept ast_concept_node = std::is_base_of<ast_node_t, T>::value;
+	
 	class ast_factory_t
 	{
-		std::vector<ast_node_t*> nodes = {}
+		std::vector<ast_node_t*> nodes = {};
 
 	public:
 		virtual ~ast_factory_t()
 		{
 			_DeleteList(nodes);
 		}
-
-		template<typename T>
-		concept ConceptNode = std::is_base_of<ast_node_t, T>::value;
-
-		template<ConceptNode Node>
+		
+		template<ast_concept_node Node>
 		Node* create(ast_node_t* parent)
 		{
 			auto* node = new Node(parent);

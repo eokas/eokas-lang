@@ -14,47 +14,49 @@ _BeginNamespace(eokas)
 	public:
 		void clear();
 		
-		ast_module_t* parse_module(const char* source);
-		ast_type_t* parse_type(ast_node_t* p);
-		ast_type_ref_t* parse_type_ref(ast_node_t* p);
-		ast_type_array_t* parse_type_array(ast_node_t* p);
-		ast_type_generic_t* parse_type_generic(ast_node_t* p);
-		ast_expr_t* parse_expr(ast_node_t* p);
-		ast_expr_t* parse_expr_trinary(ast_node_t* p);
-		ast_expr_t* parse_expr_binary(ast_node_t* p, int priority = 1);
-		ast_expr_t* parse_expr_unary(ast_node_t* p);
-		ast_expr_t* parse_expr_suffixed(ast_node_t* p);
-		ast_expr_t* parse_expr_primary(ast_node_t* p);
-		ast_expr_t* parse_literal_int(ast_node_t* p);
-		ast_expr_t* parse_literal_float(ast_node_t* p);
-		ast_expr_t* parse_literal_bool(ast_node_t* p);
-		ast_expr_t* parse_literal_string(ast_node_t* p);
-		ast_expr_t* parse_func_def(ast_node_t* p);
-		bool parse_func_params(ast_expr_func_def_t* node);
-		bool parse_func_body(ast_expr_func_def_t* node);
-		ast_expr_t* parse_object_def(ast_node_t* p);
-		ast_expr_t* parse_func_call(ast_node_t* p, ast_expr_t* primary);
-		ast_expr_t* parse_array_def(ast_node_t* p);
-		ast_expr_t* parse_index_ref(ast_node_t* p, ast_expr_t* primary);
-		bool parse_object_field(ast_expr_object_def_t* node);
-		ast_expr_t* parse_object_ref(ast_node_t* p, ast_expr_t* primary);
-		ast_expr_t* parse_module_ref(ast_node_t* p);
-		ast_stmt_t* parse_stmt(ast_node_t* p);
-		ast_stmt_struct_def_t* parse_stmt_struct_def(ast_node_t* p);
-		ast_stmt_struct_member_t* parse_stmt_struct_member(ast_node_t* p);
-		ast_stmt_enum_def_t* parse_stmt_enum_def(ast_node_t* p);
-		ast_stmt_proc_def_t* parse_stmt_proc_def(ast_node_t* p);
-		ast_stmt_symbol_def_t* parse_stmt_symbol_def(ast_node_t* p);
-		ast_stmt_continue_t* parse_stmt_continue(ast_node_t* p);
-		ast_stmt_break_t* parse_stmt_break(ast_node_t* p);
-		ast_stmt_return_t* parse_stmt_return(ast_node_t* p);
-		ast_stmt_if_t* parse_stmt_if(ast_node_t* p);
-		ast_stmt_loop_t* parse_stmt_loop(ast_node_t* p);
-		ast_stmt_t* parse_stmt_loop_init(ast_node_t* p);
-		ast_expr_t* parse_stmt_loop_cond(ast_node_t* p);
-		ast_stmt_t* parse_stmt_loop_step(ast_node_t* p);
-		ast_stmt_block_t* parse_stmt_block(ast_node_t* p);
-		ast_stmt_t* parse_stmt_assign_or_call(ast_node_t* p);
+		ast_node_module_t* parse_module(const char* source);
+		ast_node_import_t* parse_import(ast_node_t* p);
+		ast_node_export_t* parse_export(ast_node_t* p);
+		ast_node_type_t* parse_type(ast_node_t* p);
+		ast_node_type_ref_t* parse_type_ref(ast_node_t* p);
+		ast_node_type_array_t* parse_type_array(ast_node_t* p);
+		ast_node_type_gen_t* parse_type_generic(ast_node_t* p);
+		ast_node_expr_t* parse_expr(ast_node_t* p);
+		ast_node_expr_t* parse_expr_trinary(ast_node_t* p);
+		ast_node_expr_t* parse_expr_binary(ast_node_t* p, int priority = 1);
+		ast_node_expr_t* parse_expr_unary(ast_node_t* p);
+		ast_node_expr_t* parse_expr_suffixed(ast_node_t* p);
+		ast_node_expr_t* parse_expr_primary(ast_node_t* p);
+		ast_node_expr_t* parse_literal_int(ast_node_t* p);
+		ast_node_expr_t* parse_literal_float(ast_node_t* p);
+		ast_node_expr_t* parse_literal_bool(ast_node_t* p);
+		ast_node_expr_t* parse_literal_string(ast_node_t* p);
+		ast_node_expr_t* parse_func_def(ast_node_t* p);
+		bool parse_func_params(ast_node_func_def_t* node);
+		bool parse_func_body(ast_node_func_def_t* node);
+		ast_node_expr_t* parse_object_def(ast_node_t* p);
+		ast_node_expr_t* parse_func_call(ast_node_t* p, ast_node_expr_t* primary);
+		ast_node_expr_t* parse_array_def(ast_node_t* p);
+		ast_node_expr_t* parse_index_ref(ast_node_t* p, ast_node_expr_t* primary);
+		bool parse_object_field(ast_node_object_def_t* node);
+		ast_node_expr_t* parse_object_ref(ast_node_t* p, ast_node_expr_t* primary);
+		ast_node_expr_t* parse_module_ref(ast_node_t* p);
+		ast_node_expr_t* parse_stmt(ast_node_t* p);
+		ast_node_struct_def_t* parse_stmt_struct_def(ast_node_t* p);
+		ast_node_struct_member_t* parse_stmt_struct_member(ast_node_t* p);
+		ast_node_enum_def_t* parse_stmt_enum_def(ast_node_t* p);
+		ast_node_proc_def_t* parse_stmt_proc_def(ast_node_t* p);
+		ast_node_symbol_def_t* parse_stmt_symbol_def(ast_node_t* p);
+		ast_node_continue_t* parse_stmt_continue(ast_node_t* p);
+		ast_node_break_t* parse_stmt_break(ast_node_t* p);
+		ast_node_return_t* parse_stmt_return(ast_node_t* p);
+		ast_node_if_t* parse_stmt_if(ast_node_t* p);
+		ast_node_loop_t* parse_stmt_loop(ast_node_t* p);
+		ast_node_stmt_t* parse_stmt_loop_init(ast_node_t* p);
+		ast_node_expr_t* parse_stmt_loop_cond(ast_node_t* p);
+		ast_node_stmt_t* parse_stmt_loop_step(ast_node_t* p);
+		ast_node_block_t* parse_stmt_block(ast_node_t* p);
+		ast_node_stmt_t* parse_stmt_assign_or_call(ast_node_t* p);
 		
 		void next_token();
 		struct token_t& token();
@@ -92,12 +94,12 @@ _BeginNamespace(eokas)
 		this->scanner->clear();
 	}
 	
-	ast_module_t* parser_impl_t::parse_module(const char* source)
+	ast_node_module_t* parser_impl_t::parse_module(const char* source)
 	{
 		this->clear();
 		this->scanner->ready(source);
 		
-		auto* module = new ast_module_t();
+		auto* module = new ast_node_module_t(nullptr);
 		this->factory = module->get_factory();
 		
 		auto* entry = module->get_func();
@@ -105,7 +107,7 @@ _BeginNamespace(eokas)
 		this->next_token();
 		while (this->token().type != token_t::EOS)
 		{
-			ast_stmt_t* stmt = this->parse_stmt(entry);
+			ast_node_stmt_t* stmt = this->parse_stmt(entry);
 			if(stmt == nullptr)
 				return nullptr;
 			entry->body.push_back(stmt);
@@ -114,7 +116,7 @@ _BeginNamespace(eokas)
 		return module;
 	}
 	
-	ast_type_t* parser_impl_t::parse_type(ast_node_t* p)
+	ast_node_type_t* parser_impl_t::parse_type(ast_node_t* p)
 	{
 		if(this->token().type == token_t::ARRAY)
 		{
@@ -141,13 +143,13 @@ _BeginNamespace(eokas)
 	/**
 	 * type_ref := ID
 	*/
-	ast_type_ref_t* parser_impl_t::parse_type_ref(ast_node_t* p)
+	ast_node_type_ref_t* parser_impl_t::parse_type_ref(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::ID, true, false))
 			return nullptr;
 		
 		String name = this->token().value;
-		auto* node = factory->create_type_ref(p);
+		auto* node = factory->create<ast_node_type_ref_t>(p);
 		node->name = name;
 		
 		this->next_token(); // ignore ID
@@ -181,12 +183,12 @@ _BeginNamespace(eokas)
 	/**
 	 * type_generic := ID '<' type '>'
 	*/
-	ast_type_generic_t* parser_impl_t::parse_type_generic(ast_node_t* p)
+	ast_node_type_gen_t* parser_impl_t::parse_type_generic(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::ID, true, false))
 			return nullptr;
 		
-		auto* node = factory->create_type_generic(p);
+		auto* node = factory->create<ast_node_type_gen_t>(p);
 		node->name = this->token().value;
 		this->next_token(); // ignore ID
 		
@@ -199,7 +201,7 @@ _BeginNamespace(eokas)
 				if(!node->args.empty() && !this->check_token(token_t::COMMA))
 					return nullptr;
 				
-				ast_type_ref_t* arg = this->parse_type_ref(node);
+				auto* arg = this->parse_type_ref(node);
 				if(arg == nullptr)
 					return nullptr;
 				
@@ -216,20 +218,20 @@ _BeginNamespace(eokas)
 		return node;
 	}
 	
-	ast_expr_t* parser_impl_t::parse_expr(ast_node_t* p)
+	ast_node_expr_t* parser_impl_t::parse_expr(ast_node_t* p)
 	{
 		return this->parse_expr_trinary(p);
 	}
 	
-	ast_expr_t* parser_impl_t::parse_expr_trinary(ast_node_t* p)
+	ast_node_expr_trinary_t* parser_impl_t::parse_expr_trinary(ast_node_t* p)
 	{
-		ast_expr_t* binary = this->parse_expr_binary(p, 1);
+		ast_node_expr_t* binary = this->parse_expr_binary(p, 1);
 		if(binary == nullptr)
 			return nullptr;
 		
 		if(this->check_token(token_t::QUESTION, false))
 		{
-			auto* trinary = factory->create_expr_trinary(p);
+			auto* trinary = factory->create<ast_node_expr_trinary_t>(p);
 			trinary->cond = binary;
 			binary->parent = trinary;
 			
