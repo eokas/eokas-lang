@@ -95,39 +95,33 @@ namespace eokas
 		struct arg_t
 		{
 			String name = "";
-			ast_node_type_ref_t* type = nullptr;
+			ast_node_type_t* type = nullptr;
 		};
 
-		ast_node_type_ref_t* rtype = nullptr;
-		std::vector<arg_t*> args = {};
+		ast_node_type_t* rtype = nullptr;
+		std::map<String, arg_t> args = {};
 		std::vector<ast_node_stmt_t*> body = {};
 
 		explicit ast_node_func_def_t(ast_node_t* parent)
 			: ast_node_expr_t(ast_category_t::FUNC_DEF, parent)
 		{}
-
-		~ast_node_func_def_t() override
+		
+		arg_t* addArg(const String& name)
 		{
-			_DeleteList(args);
-			_DeleteList(body);
+			auto iter = this->args.find(name);
+			if(iter != this->args.end())
+				return nullptr;
+			auto& arg = this->args[name];
+			arg.name = name;
+			return &arg;
 		}
-
+		
 		const arg_t* getArg(const String& name) const
 		{
-			for (const auto& arg: args)
-			{
-				if (arg->name == name)
-					return arg;
-			}
-			return nullptr;
-		}
-
-		void addArg(const String& name, ast_type_t* type)
-		{
-			auto* arg = new arg_t();
-			arg->name = name;
-			arg->type = type;
-			this->args.push_back(arg);
+			auto iter = this->args.find(name);
+			if(iter == this->args.end())
+				return nullptr;
+			return &iter->second;
 		}
 	};
 
@@ -280,11 +274,29 @@ namespace eokas
 		};
 
 		String name = "";
-		std::map<String, member_t*> members = {};
+		std::map<String, member_t> members = {};
 
 		explicit ast_node_struct_def_t(ast_node_t* parent)
 			: ast_node_stmt_t(ast_category_t::STRUCT_DEF, parent)
 		{ }
+		
+		member_t* addMember(const String& name)
+		{
+			auto iter = this->members.find(name);
+			if(iter != this->members.end())
+				return nullptr;
+			member_t& m = this->members[name];
+			m.name = name;
+			return &m;
+		}
+		
+		const member_t* getMember(const String& name) const
+		{
+			auto iter = this->members.find(name);
+			if(iter == this->members.end())
+				return nullptr;
+			return &iter->second;
+		}
 	};
 
 	struct ast_node_enum_def_t : public ast_node_stmt_t
