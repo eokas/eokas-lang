@@ -18,6 +18,11 @@ namespace eokas
 	public:
 		virtual ~ast_factory_t()
 		{
+			this->clear();
+		}
+		
+		void clear()
+		{
 			_DeleteList(nodes);
 		}
 		

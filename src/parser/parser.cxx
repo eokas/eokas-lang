@@ -5,27 +5,30 @@
 namespace eokas
 {
 	parser_t::parser_t() 
-		: scanner(new scanner_t()), factory(nullptr), errormsg()
+		: scanner(new scanner_t())
+		, factory(new ast_factory_t())
+		, errormsg()
 	{ }
 	
 	parser_t::~parser_t()
 	{
 		this->clear();
 		_DeletePointer(this->scanner);
+		_DeletePointer(this->factory);
 	}
 	
 	ast_node_module_t* parser_t::parse(const char* source)
 	{
 		this->clear();
 		this->scanner->ready(source);
-		this->factory = nullptr; // TODO
 		return this->parse_module();
 	}
 	
 	void parser_t::clear()
 	{
-		this->errormsg.clear();
 		this->scanner->clear();
+		this->factory->clear();
+		this->errormsg.clear();
 	}
 	
 	ast_node_module_t* parser_t::parse_module()
