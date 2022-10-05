@@ -99,7 +99,7 @@ namespace eokas
 		};
 
 		ast_node_type_t* rtype = nullptr;
-		std::map<String, arg_t> args = {};
+		std::vector<arg_t> args = {};
 		std::vector<ast_node_stmt_t*> body = {};
 
 		explicit ast_node_func_def_t(ast_node_t* parent)
@@ -108,20 +108,21 @@ namespace eokas
 		
 		arg_t* addArg(const String& name)
 		{
-			auto iter = this->args.find(name);
-			if(iter != this->args.end())
+			if(this->getArg(name) != nullptr)
 				return nullptr;
-			auto& arg = this->args[name];
+			auto& arg = this->args.emplace_back();
 			arg.name = name;
 			return &arg;
 		}
 		
 		const arg_t* getArg(const String& name) const
 		{
-			auto iter = this->args.find(name);
-			if(iter == this->args.end())
-				return nullptr;
-			return &iter->second;
+			for(auto& arg : args)
+			{
+				if(arg.name == name)
+					return &arg;
+			}
+			return nullptr;
 		}
 	};
 
@@ -274,7 +275,7 @@ namespace eokas
 		};
 
 		String name = "";
-		std::map<String, member_t> members = {};
+		std::vector<member_t> members = {};
 
 		explicit ast_node_struct_def_t(ast_node_t* parent)
 			: ast_node_stmt_t(ast_category_t::STRUCT_DEF, parent)
@@ -282,20 +283,22 @@ namespace eokas
 		
 		member_t* addMember(const String& name)
 		{
-			auto iter = this->members.find(name);
-			if(iter != this->members.end())
+			if(this->getMember(name) != nullptr)
 				return nullptr;
-			member_t& m = this->members[name];
+			
+			auto& m = this->members.emplace_back();
 			m.name = name;
 			return &m;
 		}
 		
 		const member_t* getMember(const String& name) const
 		{
-			auto iter = this->members.find(name);
-			if(iter == this->members.end())
-				return nullptr;
-			return &iter->second;
+			for(auto& m : members)
+			{
+				if(m.name == name)
+					return &m;
+			}
+			return nullptr;
 		}
 	};
 

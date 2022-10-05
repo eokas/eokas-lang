@@ -59,7 +59,7 @@ namespace eokas
 			this->scope = this->scope->parent;
 		}
 		
-		llvm_module_t* encode(struct ast_module_t* m)
+		llvm_module_t* encode(ast_node_module_t* m)
 		{
 			this->module = new llvm_module_t("eokas", context);
 			this->scope = this->module->root;
@@ -72,7 +72,7 @@ namespace eokas
 			return this->module;
 		}
 		
-		bool encode_module(struct ast_module_t* node)
+		bool encode_module(ast_node_module_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -87,7 +87,7 @@ namespace eokas
 				llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", mainPtr);
 				builder.SetInsertPoint(entry);
 				
-				for (auto& stmt: node->get_func()->body)
+				for (auto& stmt: node->entry->body)
 				{
 					if(!this->encode_stmt(stmt))
 						return false;
@@ -107,17 +107,15 @@ namespace eokas
 			return true;
 		}
 		
-		llvm::Type* encode_type(struct ast_type_t* node)
+		llvm::Type* encode_type(ast_node_type_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
 			
 			switch (node->category)
 			{
-				case ast_node_category_t::type_ref:
-					return this->encode_type_ref(dynamic_cast<ast_type_ref_t*>(node));
-				case ast_node_category_t::type_array:
-					return this->encode_type_array(dynamic_cast<ast_type_array_t*>(node));
+				case ast_category_t::TYPE_REF:
+					return this->encode_type_ref(dynamic_cast<ast_node_type_ref_t*>(node));
 				default:
 					return nullptr;
 			}
@@ -125,7 +123,7 @@ namespace eokas
 			return nullptr;
 		}
 		
-		llvm::Type* encode_type_ref(struct ast_type_ref_t* node)
+		llvm::Type* encode_type_ref(ast_node_type_ref_t* node)
 		{
 			if(node == nullptr)
 			{
@@ -144,7 +142,7 @@ namespace eokas
 			return schema->type;
 		}
 		
-		llvm::Type* encode_type_array(struct ast_type_array_t* node)
+		llvm::Type* encode_type_array(ast_type_array_t* node)
 		{
 			if(node == nullptr)
 			{
@@ -161,48 +159,48 @@ namespace eokas
 			return arrayT->getPointerTo();
 		}
 		
-		llvm::Value* encode_expr(struct ast_expr_t* node)
+		llvm::Value* encode_expr(ast_node_expr_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
 			
 			switch (node->category)
 			{
-				case ast_node_category_t::expr_trinary:
-					return this->encode_expr_trinary(dynamic_cast<ast_expr_trinary_t*>(node));
-				case ast_node_category_t::expr_binary:
-					return this->encode_expr_binary(dynamic_cast<ast_expr_binary_t*>(node));
-				case ast_node_category_t::expr_unary:
-					return this->encode_expr_unary(dynamic_cast<ast_expr_unary_t*>(node));
-				case ast_node_category_t::expr_int:
-					return this->encode_expr_int(dynamic_cast<ast_expr_int_t*>(node));
-				case ast_node_category_t::expr_float:
-					return this->encode_expr_float(dynamic_cast<ast_expr_float_t*>(node));
-				case ast_node_category_t::expr_bool:
-					return this->encode_expr_bool(dynamic_cast<ast_expr_bool_t*>(node));
-				case ast_node_category_t::expr_string:
-					return this->encode_expr_string(dynamic_cast<ast_expr_string_t*>(node));
-				case ast_node_category_t::expr_symbol_ref:
-					return this->encode_expr_symbol_ref(dynamic_cast<ast_expr_symbol_ref_t*>(node));
-				case ast_node_category_t::expr_func_def:
-					return this->encode_expr_func_def(dynamic_cast<ast_expr_func_def_t*>(node));
-				case ast_node_category_t::expr_func_ref:
-					return this->encode_expr_func_ref(dynamic_cast<ast_expr_func_ref_t*>(node));
-				case ast_node_category_t::expr_array_def:
-					return this->encode_expr_array_def(dynamic_cast<ast_expr_array_def_t*>(node));
-				case ast_node_category_t::expr_index_ref:
-					return this->encode_expr_index_ref(dynamic_cast<ast_expr_index_ref_t*>(node));
-				case ast_node_category_t::expr_object_def:
-					return this->encode_expr_object_def(dynamic_cast<ast_expr_object_def_t*>(node));
-				case ast_node_category_t::expr_object_ref:
-					return this->encode_expr_object_ref(dynamic_cast<ast_expr_object_ref_t*>(node));
+				case ast_category_t::EXPR_TRINARY:
+					return this->encode_expr_trinary(dynamic_cast<ast_node_expr_trinary_t*>(node));
+				case ast_category_t::EXPR_BINARY:
+					return this->encode_expr_binary(dynamic_cast<ast_node_expr_binary_t*>(node));
+				case ast_category_t::EXPR_UNARY:
+					return this->encode_expr_unary(dynamic_cast<ast_node_expr_unary_t*>(node));
+				case ast_category_t::LITERAL_INT:
+					return this->encode_expr_int(dynamic_cast<ast_node_literal_int_t*>(node));
+				case ast_category_t::LITERAL_FLOAT:
+					return this->encode_expr_float(dynamic_cast<ast_node_literal_float_t*>(node));
+				case ast_category_t::LITERAL_BOOL:
+					return this->encode_expr_bool(dynamic_cast<ast_node_literal_bool_t*>(node));
+				case ast_category_t::LITERAL_STRING:
+					return this->encode_expr_string(dynamic_cast<ast_node_literal_string_t*>(node));
+				case ast_category_t::SYMBOL_REF:
+					return this->encode_expr_symbol_ref(dynamic_cast<ast_node_symbol_ref_t*>(node));
+				case ast_category_t::FUNC_DEF:
+					return this->encode_expr_func_def(dynamic_cast<ast_node_func_def_t*>(node));
+				case ast_category_t::FUNC_REF:
+					return this->encode_expr_func_ref(dynamic_cast<ast_node_func_ref_t*>(node));
+				case ast_category_t::ARRAY_DEF:
+					return this->encode_expr_array_def(dynamic_cast<ast_node_array_def_t*>(node));
+				case ast_category_t::ARRAY_REF:
+					return this->encode_expr_index_ref(dynamic_cast<ast_node_array_ref_t*>(node));
+				case ast_category_t::OBJECT_DEF:
+					return this->encode_expr_object_def(dynamic_cast<ast_node_object_def_t*>(node));
+				case ast_category_t::OBJECT_REF:
+					return this->encode_expr_object_ref(dynamic_cast<ast_node_object_ref_t*>(node));
 				default:
 					return nullptr;
 			}
 			return nullptr;
 		}
 		
-		llvm::Value* encode_expr_trinary(struct ast_expr_trinary_t* node)
+		llvm::Value* encode_expr_trinary(struct ast_node_expr_trinary_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -253,7 +251,7 @@ namespace eokas
 			return phi;
 		}
 		
-		llvm::Value* encode_expr_binary(struct ast_expr_binary_t* node)
+		llvm::Value* encode_expr_binary(ast_node_expr_binary_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -268,41 +266,41 @@ namespace eokas
 			
 			switch (node->op)
 			{
-				case ast_binary_oper_t::Or:
+				case ast_binary_oper_t::OR:
 					return this->encode_expr_binary_or(lhs, rhs);
-				case ast_binary_oper_t::And:
+				case ast_binary_oper_t::AND:
 					return this->encode_expr_binary_and(lhs, rhs);
-				case ast_binary_oper_t::Equal:
+				case ast_binary_oper_t::EQ:
 					return this->encode_expr_binary_eq(lhs, rhs);
-				case ast_binary_oper_t::NEqual:
+				case ast_binary_oper_t::NE:
 					return this->encode_expr_binary_ne(lhs, rhs);
-				case ast_binary_oper_t::LEqual:
+				case ast_binary_oper_t::LE:
 					return this->encode_expr_binary_le(lhs, rhs);
-				case ast_binary_oper_t::GEqual:
+				case ast_binary_oper_t::GE:
 					return this->encode_expr_binary_ge(lhs, rhs);
-				case ast_binary_oper_t::Less:
+				case ast_binary_oper_t::LT:
 					return this->encode_expr_binary_lt(lhs, rhs);
-				case ast_binary_oper_t::Greater:
+				case ast_binary_oper_t::GT:
 					return this->encode_expr_binary_gt(lhs, rhs);
-				case ast_binary_oper_t::Add:
+				case ast_binary_oper_t::ADD:
 					return this->encode_expr_binary_add(lhs, rhs);
-				case ast_binary_oper_t::Sub:
+				case ast_binary_oper_t::SUB:
 					return this->encode_expr_binary_sub(lhs, rhs);
-				case ast_binary_oper_t::Mul:
+				case ast_binary_oper_t::MUL:
 					return this->encode_expr_binary_mul(lhs, rhs);
-				case ast_binary_oper_t::Div:
+				case ast_binary_oper_t::DIV:
 					return this->encode_expr_binary_div(lhs, rhs);
-				case ast_binary_oper_t::Mod:
+				case ast_binary_oper_t::MOD:
 					return this->encode_expr_binary_mod(lhs, rhs);
-				case ast_binary_oper_t::BitAnd:
+				case ast_binary_oper_t::BIT_AND:
 					return this->encode_expr_binary_bitand(lhs, rhs);
-				case ast_binary_oper_t::BitOr:
+				case ast_binary_oper_t::BIT_OR:
 					return this->encode_expr_binary_bitor(lhs, rhs);
-				case ast_binary_oper_t::BitXor:
+				case ast_binary_oper_t::BIT_XOR:
 					return this->encode_expr_binary_bitxor(lhs, rhs);
-				case ast_binary_oper_t::ShiftL:
+				case ast_binary_oper_t::SHIFT_L:
 					return this->encode_expr_binary_bitshl(lhs, rhs);
-				case ast_binary_oper_t::ShiftR:
+				case ast_binary_oper_t::SHIFT_R:
 					return this->encode_expr_binary_bitshr(lhs, rhs);
 				default:
 					return nullptr;
@@ -707,7 +705,7 @@ namespace eokas
 			return nullptr;
 		}
 		
-		llvm::Value* encode_expr_unary(struct ast_expr_unary_t* node)
+		llvm::Value* encode_expr_unary(ast_node_expr_unary_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -720,13 +718,13 @@ namespace eokas
 			
 			switch (node->op)
 			{
-				case ast_unary_oper_t::Pos:
+				case ast_unary_oper_t::POS:
 					return rhs;
-				case ast_unary_oper_t::Neg:
+				case ast_unary_oper_t::NEG:
 					return this->encode_expr_unary_neg(rhs);
-				case ast_unary_oper_t::Not:
+				case ast_unary_oper_t::NOT:
 					return this->encode_expr_unary_not(rhs);
-				case ast_unary_oper_t::Flip:
+				case ast_unary_oper_t::FLIP:
 					return this->encode_expr_unary_flip(rhs);
 				default:
 					return nullptr;
@@ -770,7 +768,7 @@ namespace eokas
 			return nullptr;
 		}
 		
-		llvm::Value* encode_expr_int(struct ast_expr_int_t* node)
+		llvm::Value* encode_expr_int(ast_node_literal_int_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -781,7 +779,7 @@ namespace eokas
 			return llvm::ConstantInt::get(context, llvm::APInt(bits, node->value));
 		}
 		
-		llvm::Value* encode_expr_float(struct ast_expr_float_t* node)
+		llvm::Value* encode_expr_float(ast_node_literal_float_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -789,14 +787,14 @@ namespace eokas
 			return llvm::ConstantFP::get(context, llvm::APFloat(node->value));
 		}
 		
-		llvm::Value* encode_expr_bool(struct ast_expr_bool_t* node)
+		llvm::Value* encode_expr_bool(ast_node_literal_bool_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
 			return llvm::ConstantInt::getBool(context, node->value);
 		}
 		
-		llvm::Value* encode_expr_string(struct ast_expr_string_t* node)
+		llvm::Value* encode_expr_string(ast_node_literal_string_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -805,7 +803,7 @@ namespace eokas
 			return str;
 		}
 		
-		llvm::Value* encode_expr_symbol_ref(struct ast_expr_symbol_ref_t* node)
+		llvm::Value* encode_expr_symbol_ref(ast_node_symbol_ref_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -849,19 +847,19 @@ namespace eokas
 			return symbol->value;
 		}
 		
-		llvm::Value* encode_expr_func_def(struct ast_expr_func_def_t* node)
+		llvm::Value* encode_expr_func_def(ast_node_func_def_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
 			
-			auto* retType = this->encode_type(node->type);
+			auto* retType = this->encode_type(node->rtype);
 			if(retType == nullptr)
 				return nullptr;
 			
 			std::vector<llvm::Type*> argTypes;
-			for (auto arg: node->args)
+			for (auto& arg: node->args)
 			{
-				auto* argType = this->encode_type(arg->type);
+				auto* argType = this->encode_type(arg.type);
 				if(argType == nullptr)
 					return nullptr;
 				if(argType->isFunctionTy() || argType->isStructTy() || argType->isArrayTy())
@@ -890,7 +888,7 @@ namespace eokas
 				// args
 				for (size_t index = 0; index<node->args.size(); index++)
 				{
-					const char* name = node->args.at(index)->name.cstr();
+					const char* name = node->args.at(index).name.cstr();
 					auto arg = funcPtr->getArg(index + 1);
 					arg->setName(name);
 					
@@ -924,7 +922,7 @@ namespace eokas
 			return funcPtr;
 		}
 		
-		llvm::Value* encode_expr_func_ref(struct ast_expr_func_ref_t* node)
+		llvm::Value* encode_expr_func_ref(ast_node_func_ref_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -986,7 +984,7 @@ namespace eokas
 			return retval;
 		}
 		
-		llvm::Value* encode_expr_array_def(struct ast_expr_array_def_t* node)
+		llvm::Value* encode_expr_array_def(ast_node_array_def_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -1025,7 +1023,7 @@ namespace eokas
 			return arrayP;
 		}
 		
-		llvm::Value* encode_expr_index_ref(struct ast_expr_index_ref_t* node)
+		llvm::Value* encode_expr_index_ref(ast_node_array_ref_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -1071,7 +1069,7 @@ namespace eokas
 			}
 		}
 		
-		llvm::Value* encode_expr_object_def(struct ast_expr_object_def_t* node)
+		llvm::Value* encode_expr_object_def(ast_node_object_def_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -1126,7 +1124,7 @@ namespace eokas
 			return instance;
 		}
 		
-		llvm::Value* encode_expr_object_ref(struct ast_expr_object_ref_t* node)
+		llvm::Value* encode_expr_object_ref(ast_node_object_ref_t* node)
 		{
 			if(node == nullptr)
 				return nullptr;
@@ -1164,37 +1162,37 @@ namespace eokas
 			return value;
 		}
 		
-		bool encode_stmt(struct ast_stmt_t* node)
+		bool encode_stmt(ast_node_stmt_t* node)
 		{
 			if(node == nullptr)
 				return false;
 			
 			switch (node->category)
 			{
-				case ast_node_category_t::stmt_struct_def:
-					return this->encode_stmt_struct_def(dynamic_cast<ast_stmt_struct_def_t*>(node));
-				case ast_node_category_t::stmt_enum_def:
-					return this->encode_stmt_enum_def(dynamic_cast<ast_stmt_enum_def_t*>(node));
-				case ast_node_category_t::stmt_proc_def:
-					return this->encode_stmt_proc_def(dynamic_cast<ast_stmt_proc_def_t*>(node));
-				case ast_node_category_t::stmt_symbol_def:
-					return this->encode_stmt_symbol_def(dynamic_cast<ast_stmt_symbol_def_t*>(node));
-				case ast_node_category_t::stmt_break:
-					return this->encode_stmt_break(dynamic_cast<ast_stmt_break_t*>(node));
-				case ast_node_category_t::stmt_continue:
-					return this->encode_stmt_continue(dynamic_cast<ast_stmt_continue_t*>(node));
-				case ast_node_category_t::stmt_return:
-					return this->encode_stmt_return(dynamic_cast<ast_stmt_return_t*>(node));
-				case ast_node_category_t::stmt_if:
-					return this->encode_stmt_if(dynamic_cast<ast_stmt_if_t*>(node));
-				case ast_node_category_t::stmt_loop:
-					return this->encode_stmt_loop(dynamic_cast<ast_stmt_loop_t*>(node));
-				case ast_node_category_t::stmt_block:
-					return this->encode_stmt_block(dynamic_cast<ast_stmt_block_t*>(node));
-				case ast_node_category_t::stmt_assign:
-					return this->encode_stmt_assign(dynamic_cast<ast_stmt_assign_t*>(node));
-				case ast_node_category_t::stmt_call:
-					return this->encode_stmt_call(dynamic_cast<ast_stmt_call_t*>(node));
+				case ast_category_t::STRUCT_DEF:
+					return this->encode_stmt_struct_def(dynamic_cast<ast_node_struct_def_t*>(node));
+				case ast_category_t::ENUM_DEF:
+					return this->encode_stmt_enum_def(dynamic_cast<ast_node_enum_def_t*>(node));
+				case ast_category_t::PROC_DEF:
+					return this->encode_stmt_proc_def(dynamic_cast<ast_node_proc_def_t*>(node));
+				case ast_category_t::SYMBOL_DEF:
+					return this->encode_stmt_symbol_def(dynamic_cast<ast_node_symbol_def_t*>(node));
+				case ast_category_t::BREAK:
+					return this->encode_stmt_break(dynamic_cast<ast_node_break_t*>(node));
+				case ast_category_t::CONTINUE:
+					return this->encode_stmt_continue(dynamic_cast<ast_node_continue_t*>(node));
+				case ast_category_t::RETURN:
+					return this->encode_stmt_return(dynamic_cast<ast_node_return_t*>(node));
+				case ast_category_t::IF:
+					return this->encode_stmt_if(dynamic_cast<ast_node_if_t*>(node));
+				case ast_category_t::LOOP:
+					return this->encode_stmt_loop(dynamic_cast<ast_node_loop_t*>(node));
+				case ast_category_t::BLOCK:
+					return this->encode_stmt_block(dynamic_cast<ast_node_block_t*>(node));
+				case ast_category_t::ASSIGN:
+					return this->encode_stmt_assign(dynamic_cast<ast_node_assign_t*>(node));
+				case ast_category_t::INVOKE:
+					return this->encode_stmt_invoke(dynamic_cast<ast_node_invoke_t*>(node));
 				default:
 					return false;
 			}
@@ -1202,7 +1200,7 @@ namespace eokas
 			return false;
 		}
 		
-		bool encode_stmt_struct_def(struct ast_stmt_struct_def_t* node)
+		bool encode_stmt_struct_def(ast_node_struct_def_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1211,20 +1209,18 @@ namespace eokas
 			
 			for (const auto& thisMember: node->members)
 			{
-				auto& mem = thisMember.second;
-				
-				const String& memName = mem->name;
+				const String& memName = thisMember.name;
 				if(thisInstanceInfo->get_member(memName) != nullptr)
 				{
 					printf("The member named '%s' is already exists.\n", memName.cstr());
 					return false;
 				}
 				
-				auto memType = this->encode_type(mem->type);
+				auto memType = this->encode_type(thisMember.type);
 				if(memType == nullptr)
 					return false;
 				
-				auto memValue = this->encode_expr(mem->value);
+				auto memValue = this->encode_expr(thisMember.value);
 				if(memValue == nullptr)
 				{
 					memValue = module->get_default_value(memType);
@@ -1243,7 +1239,7 @@ namespace eokas
 			return true;
 		}
 		
-		bool encode_stmt_enum_def(struct ast_stmt_enum_def_t* node)
+		bool encode_stmt_enum_def(struct ast_node_enum_def_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1302,7 +1298,7 @@ namespace eokas
 			return true;
 		}
 		
-		bool encode_stmt_proc_def(struct ast_stmt_proc_def_t* node)
+		bool encode_stmt_proc_def(ast_node_proc_def_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1327,7 +1323,7 @@ namespace eokas
 			return true;
 		}
 		
-		bool encode_stmt_symbol_def(struct ast_stmt_symbol_def_t* node)
+		bool encode_stmt_symbol_def(struct ast_node_symbol_def_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1393,7 +1389,7 @@ namespace eokas
 			return true;
 		}
 		
-		bool encode_stmt_break(struct ast_stmt_break_t* node)
+		bool encode_stmt_break(struct ast_node_break_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1406,7 +1402,7 @@ namespace eokas
 			return true;
 		}
 		
-		bool encode_stmt_continue(struct ast_stmt_continue_t* node)
+		bool encode_stmt_continue(struct ast_node_continue_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1419,7 +1415,7 @@ namespace eokas
 			return true;
 		}
 		
-		bool encode_stmt_return(struct ast_stmt_return_t* node)
+		bool encode_stmt_return(struct ast_node_return_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1457,7 +1453,7 @@ namespace eokas
 			return true;
 		}
 		
-		bool encode_stmt_if(struct ast_stmt_if_t* node)
+		bool encode_stmt_if(struct ast_node_if_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1516,7 +1512,7 @@ namespace eokas
 			return true;
 		}
 		
-		bool encode_stmt_loop(struct ast_stmt_loop_t* node)
+		bool encode_stmt_loop(struct ast_node_loop_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1580,7 +1576,7 @@ namespace eokas
 			return true;
 		}
 		
-		bool encode_stmt_block(struct ast_stmt_block_t* node)
+		bool encode_stmt_block(struct ast_node_block_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1598,7 +1594,7 @@ namespace eokas
 			return true;
 		}
 		
-		bool encode_stmt_assign(struct ast_stmt_assign_t* node)
+		bool encode_stmt_assign(struct ast_node_assign_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1615,7 +1611,7 @@ namespace eokas
 			return true;
 		}
 		
-		bool encode_stmt_call(struct ast_stmt_call_t* node)
+		bool encode_stmt_invoke(struct ast_node_invoke_t* node)
 		{
 			if(node == nullptr)
 				return false;
@@ -1627,7 +1623,7 @@ namespace eokas
 		}
 	};
 	
-	llvm_module_t* llvm_encode(llvm::LLVMContext& context, ast_module_t* module)
+	llvm_module_t* llvm_encode(llvm::LLVMContext& context, ast_node_module_t* module)
 	{
 		llvm_coder_t coder(context);
 		return coder.encode(module);
