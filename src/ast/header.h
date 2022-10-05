@@ -11,7 +11,8 @@ namespace eokas
 
 		MODULE, IMPORT, EXPORT,
 
-		TYPE_REF, TYPE_GEN,
+		TYPE,
+		
         FUNC_DEF, FUNC_REF,
         SYMBOL_DEF, SYMBOL_REF,
 
@@ -71,9 +72,6 @@ namespace eokas
 	struct ast_node_type_t;
 	struct ast_node_expr_t;
 	struct ast_node_stmt_t;
-
-	struct ast_node_type_ref_t;
-	struct ast_node_type_gen_t;
 
     struct ast_node_func_def_t;
     struct ast_node_func_ref_t;

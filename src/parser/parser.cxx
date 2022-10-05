@@ -63,53 +63,18 @@ namespace eokas
 		return nullptr;
 	}
 	
-	ast_node_type_t* parser_t::parse_type(ast_node_t* p)
-	{
-		if(this->token().type == token_t::ID)
-		{
-			if(this->look_ahead_token().type == token_t::LT)
-			{
-				return this->parse_type_generic(p);
-			}
-			else
-			{
-				return this->parse_type_ref(p);
-			}
-		}
-		else
-		{
-			this->error_token_unexpected();
-			return nullptr;
-		}
-	}
-	
 	/**
-	 * type_ref := ID
+	 * type := ID '<' type '>'
 	*/
-	ast_node_type_ref_t* parser_t::parse_type_ref(ast_node_t* p)
+	ast_node_type_t* parser_t::parse_type(ast_node_t* p)
 	{
 		if(!this->check_token(token_t::ID, true, false))
 			return nullptr;
 		
 		String name = this->token().value;
-		auto* node = factory->create<ast_node_type_ref_t>(p);
+		auto* node = factory->create<ast_node_type_t>(p);
 		node->name = name;
 		
-		this->next_token(); // ignore ID
-		
-		return node;
-	}
-	
-	/**
-	 * type_generic := ID '<' type '>'
-	*/
-	ast_node_type_gen_t* parser_t::parse_type_generic(ast_node_t* p)
-	{
-		if(!this->check_token(token_t::ID, true, false))
-			return nullptr;
-		
-		auto* node = factory->create<ast_node_type_gen_t>(p);
-		node->name = this->token().value;
 		this->next_token(); // ignore ID
 		
 		// <
@@ -121,7 +86,7 @@ namespace eokas
 				if(!node->args.empty() && !this->check_token(token_t::COMMA))
 					return nullptr;
 				
-				auto* arg = this->parse_type_ref(node);
+				auto* arg = this->parse_type(node);
 				if(arg == nullptr)
 					return nullptr;
 				
@@ -570,7 +535,7 @@ namespace eokas
 			return nullptr;
 		
 		auto* node = factory->create<ast_node_object_def_t>(p);
-		node->type = this->parse_type_ref(node);
+		node->type = this->parse_type(node);
 		if(node->type == nullptr)
 			return nullptr;
 		

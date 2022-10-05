@@ -52,8 +52,11 @@ namespace eokas
 
 	struct ast_node_type_t : public ast_node_t
 	{
-		explicit ast_node_type_t(ast_category_t category, ast_node_t* parent)
-			: ast_node_t(category, parent)
+		String name = "";
+		std::vector<ast_node_type_t*> args = {};
+		
+		explicit ast_node_type_t(ast_node_t* parent)
+			: ast_node_t(ast_category_t::TYPE, parent)
 		{}
 	};
 
@@ -68,25 +71,6 @@ namespace eokas
 	{
 		explicit ast_node_stmt_t(ast_category_t category, ast_node_t* parent)
 			: ast_node_t(category, parent)
-		{}
-	};
-
-	struct ast_node_type_ref_t : public ast_node_type_t
-	{
-		String name = "";
-
-		explicit ast_node_type_ref_t(ast_node_t* parent)
-			: ast_node_type_t(ast_category_t::TYPE_REF, parent)
-		{}
-	};
-
-	struct ast_node_type_gen_t : public ast_node_type_t
-	{
-		String name = "";
-		std::vector<ast_node_type_t*> args = {};
-
-		explicit ast_node_type_gen_t(ast_node_t* parent)
-			: ast_node_type_t(ast_category_t::TYPE_GEN, parent)
 		{}
 	};
 

@@ -110,22 +110,6 @@ namespace eokas
 		llvm::Type* encode_type(ast_node_type_t* node)
 		{
 			if(node == nullptr)
-				return nullptr;
-			
-			switch (node->category)
-			{
-				case ast_category_t::TYPE_REF:
-					return this->encode_type_ref(dynamic_cast<ast_node_type_ref_t*>(node));
-				default:
-					return nullptr;
-			}
-			
-			return nullptr;
-		}
-		
-		llvm::Type* encode_type_ref(ast_node_type_ref_t* node)
-		{
-			if(node == nullptr)
 			{
 				printf("Type node is null. \n");
 				return nullptr;
@@ -139,24 +123,17 @@ namespace eokas
 				return nullptr;
 			}
 			
-			return schema->type;
-		}
-		
-		llvm::Type* encode_type_array(ast_type_array_t* node)
-		{
-			if(node == nullptr)
+			if(schema->generic != node->args.size())
 			{
-				printf("Type node is null. \n");
+				printf("The generic type defination is not matched with the arguments. \n");
 				return nullptr;
 			}
+			if(schema->generic > 0)
+			{
+				// TODO: llvm::Type* type = schema->resolve(args);
+			}
 			
-			auto* elementT = this->encode_type(node->elementType);
-			if(elementT == nullptr)
-				return nullptr;
-			
-			// TODO: check if the array-type is defined in this scope.
-			auto arrayT = module->define_schema_array(elementT);
-			return arrayT->getPointerTo();
+			return schema->type;
 		}
 		
 		llvm::Value* encode_expr(ast_node_expr_t* node)

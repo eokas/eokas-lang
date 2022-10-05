@@ -21,9 +21,8 @@ namespace eokas
 		ast_node_module_t* parse_module();
 		ast_node_import_t* parse_import(ast_node_t* p);
 		ast_node_export_t* parse_export(ast_node_t* p);
+		
 		ast_node_type_t* parse_type(ast_node_t* p);
-		ast_node_type_ref_t* parse_type_ref(ast_node_t* p);
-		ast_node_type_gen_t* parse_type_generic(ast_node_t* p);
 		
 		ast_node_expr_t* parse_expr(ast_node_t* p);
 		ast_node_expr_t* parse_expr_trinary(ast_node_t* p);

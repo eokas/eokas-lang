@@ -53,6 +53,7 @@ _BeginNamespace(eokas)
 	{
 		struct llvm_scope_t* scope = nullptr;
 		llvm::Type* type = nullptr;
+		size_t generic = 0;
 	};
 	
 	struct llvm_scope_t
