@@ -116,6 +116,19 @@ namespace eokas
 			}
 			
 			const String& name = node->name;
+			
+			// TODO: implements array by Generic-Type
+			if(name == "Array")
+			{
+				auto* elementT = this->encode_type(node->args[0]);
+				if(elementT == nullptr)
+				{
+					printf("Invalid array element type. \n");
+					return nullptr;
+				}
+				return module->define_schema_array(elementT);
+			}
+			
 			auto* schema = this->scope->getSchema(name, true);
 			if(schema == nullptr)
 			{
