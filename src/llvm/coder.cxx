@@ -136,14 +136,26 @@ namespace eokas
 				return nullptr;
 			}
 			
-			if(schema->generic != node->args.size())
+			if(schema->generics.size() != node->args.size())
 			{
 				printf("The generic type defination is not matched with the arguments. \n");
 				return nullptr;
 			}
-			if(schema->generic > 0)
+			if(schema->generics.size() > 0)
 			{
-				// TODO: llvm::Type* type = schema->resolve(args);
+				std::vector<llvm::Type*> typeArgs = {};
+				for(auto& arg : node->args)
+				{
+					auto* ty = this->encode_type(arg);
+					if(ty == nullptr)
+					{
+						printf("Type Args is invalid.");
+						return nullptr;
+					}
+					typeArgs.push_back(ty);
+				}
+				
+				return schema->resolve(typeArgs);
 			}
 			
 			return schema->type;

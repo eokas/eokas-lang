@@ -53,7 +53,29 @@ _BeginNamespace(eokas)
 	{
 		struct llvm_scope_t* scope = nullptr;
 		llvm::Type* type = nullptr;
-		size_t generic = 0;
+		std::vector<llvm::Type*> generics = {};
+		
+		llvm::Type* resolve(const std::vector<llvm::Type*>& args)
+		{
+			for(size_t index = 0; index < this->generics.size(); index++)
+			{
+				auto gen = llvm::cast<llvm::StructType>(this->generics[index]);
+				auto arg = llvm::cast<llvm::StructType>(args[index]);
+				llvm_schema_t::fillOpaqueStructType(gen, arg);
+			}
+			return this->type;
+		}
+		
+		static void fillOpaqueStructType(llvm::StructType* opaqueT, llvm::StructType* structT)
+		{
+			std::vector<llvm::Type*> body;
+			for(uint32_t index = 0; index < structT->getNumElements(); index++)
+			{
+				auto* elementT = structT->getElementType(index);
+				body.push_back(elementT);
+			}
+			opaqueT->setBody(body);
+		}
 	};
 	
 	struct llvm_scope_t
