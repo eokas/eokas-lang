@@ -1,13 +1,18 @@
+module main {
+    import io : eokas.io;
 
-struct A {
-    static var a: i32 = 6;
+    func main(args: array<string>): i32 {
+        struct A {
+            static var a: i32 = 6;
+        }
+
+        struct B : A {
+
+        }
+
+        B.a = 12;
+
+        io.print(A.a);
+        io.print(B.a);
+    }
 }
-
-struct B : A {
-   
-}
-
-B.a = 12;
-
-print(A.a);
-print(B.a);

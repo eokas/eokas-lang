@@ -1,16 +1,21 @@
+module main {
+    import io : eokas.io;
 
-struct Object {
-    var name: string;
+    func main(args: array<string>): i32 {
+        struct Object {
+            var name: string;
+        }
+
+        struct Asset : Object {
+            var path: string;
+        }
+
+        var asset = make Asset{
+            name = "eokas",
+            path = "https://asset.example.com"
+        };
+
+        io.print(asset.name);
+        io.print(asset.path);
+    }
 }
-
-struct Asset : Object {
-    var path: string;
-}
-
-var asset = make Asset{
-    name = "eokas",
-    path = "https://asset.example.com"
-};
-
-print(asset.name);
-print(asset.path);

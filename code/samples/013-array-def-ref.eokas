@@ -1,7 +1,13 @@
 
-var x = 4;
-var a : array<int, 4> = [x, x*x, x*x*x, 1];
+module main {
+    import io : eokas.io;
 
-loop(var i = 0; i < 4; i=i+1) {
-    print(a[i]);
+    func main(args: array<string>): i32 {
+        var x = 4;
+        var a : array<int, 4> = [x, x*x, x*x*x, 1];
+
+        loop(var i = 0; i < 4; i=i+1) {
+            io.print(a[i]);
+        }
+    }
 }
