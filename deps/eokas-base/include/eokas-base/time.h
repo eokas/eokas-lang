@@ -15,11 +15,11 @@ _BeginNamespace(eokas)
 class TimeSpan
 {
 public:
-	static const i64_t kUsecsPerMsec;
-	static const i64_t kUsecsPerSecond;
-	static const i64_t kUsecsPerMinute;
-	static const i64_t kUsecsPerHour;
-	static const i64_t kUsecsPerDay;
+	static const i64_t US_COUNT_PER_MS;
+	static const i64_t US_COUNT_PER_SECOND;
+	static const i64_t US_COUNT_PER_MINUTE;
+	static const i64_t US_COUNT_PER_HOUR;
+	static const i64_t US_COUNT_PER_DAY;
 
 public:
 	static TimeSpan maxValue();
@@ -96,7 +96,7 @@ public:
 	bool operator<=(const TimePoint& other);
 
 public:
-	time_t calendarTime() const;
+	u64_t timestamp() const;
 	i32_t year() const;
 	i32_t month() const;
 	i32_t date() const;
@@ -106,7 +106,7 @@ public:
 	i32_t dayOfWeek() const;
 	i32_t dayofYear() const;
 	bool isLeapYear() const;
-	String toString(const String& fmt = "YYYY-MM-DD hh-mm-ss");
+	String toString(const String& fmt = "YYYY-MM-DD hh:mm:ss");
 	
 private:
 	time_t mTimeStamp;

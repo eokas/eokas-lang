@@ -7,13 +7,16 @@
 == OS
 =================================================================
 */
-#define _EOKAS_OS_WIN32 1
-#define _EOKAS_OS_LINUX 2
-#define _EOKAS_OS_MACOS 3
-#define _EOKAS_OS_IOS 4
-#define _EOKAS_OS_ANDROID 5
+#define _EOKAS_OS_WIN64 1
+#define _EOKAS_OS_WIN32 2
+#define _EOKAS_OS_LINUX 3
+#define _EOKAS_OS_MACOS 4
+#define _EOKAS_OS_IOS 5
+#define _EOKAS_OS_ANDROID 6
 
-#if defined(_WIN32) || defined(__WIN32__) || defined(WINDOWS)
+#if defined(_WIN64) || defined(WIN64)
+    #define _EOKAS_OS _EOKAS_OS_WIN64
+#elif defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
     #define _EOKAS_OS _EOKAS_OS_WIN32
 #elif defined(__APPLE_CC__)
     #if (__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__ >= 30000 || __IPHONE_OS_VERSION_MIN_REQUIRED >= 30000)
@@ -111,7 +114,7 @@
 #define _EOKAS_UCS_2 2
 #define _EOKAS_UCS_4 4
 
-#if(_EOKAS_OS == _EOKAS_OS_WIN32)
+#if(_EOKAS_OS == _EOKAS_OS_WIN64 || _EOKAS_OS == _EOKAS_OS_WIN32)
     #define _EOKAS_UCS _EOKAS_UCS_2
 #elif(_EOKAS_OS == _EOKAS_OS_LINUX)
     #define _EOKAS_UCS _EOKAS_UCS_4

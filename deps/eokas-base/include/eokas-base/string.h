@@ -291,6 +291,8 @@ public:
 
   bool operator==(const StringValue& rhs) const;
   bool operator!=(const StringValue& rhs) const;
+  bool operator==(const String& rhs) const;
+  bool operator!=(const String& rhs) const;
 
 public:
   const String& string() const

@@ -11,8 +11,8 @@ template<typename TObject>
 class Pool
 {
 public:
-	using container = std::list<TObject*>;
-	using iterator = typename container::iterator;
+	using Container = std::list<TObject*>;
+	using Iterator = typename Container::iterator;
 
 public:
 	Pool() :mAlive(), mDeath() { }
@@ -27,11 +27,11 @@ public:
 	{ 
 		return mAlive.size(); 
 	}
-	iterator begin() 
+	Iterator begin()
 	{ 
 		return mAlive.begin(); 
 	}
-	iterator end() 
+	Iterator end()
 	{ 
 		return mAlive.end(); 
 	}

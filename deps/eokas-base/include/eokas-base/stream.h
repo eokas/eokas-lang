@@ -65,44 +65,56 @@ public:
     {}
 
     template<typename T>
-    bool read(T& value)
-    {
-        Stream& base = *this;
-        size_t size = sizeof(T);
-        size_t rlen = base.read((void*)&value, size);
-        return rlen == size;
-    }
+    bool read(T& value);
+
     template<>
-    bool read<String>(String& value)
-    {
-        Stream& base = *this;
-        u16_t size = 0;
-        if (!this->read(size))
-            return false;
-        value = String('\0', (size_t)size);
-        size_t rlen = base.read((void*)value.cstr(), size);
-        return rlen == size;
-    }
+    bool read<String>(String& value);
 
     template <typename T>
-    bool write(const T& value)
-    {
-        Stream& base = *this;
-        size_t size = sizeof(T);
-        size_t wlen = base.write((void*)&value, size);
-        return wlen == size;
-    }
+    bool write(const T& value);
+
     template <>
-    bool write<String>(const String& value)
-    {
-        Stream& base = *this;
-        u16_t size = (u16_t)value.length();
-        if (!this->write(size))
-            return false;
-        size_t wlen = base.write((void*)value.cstr(), size);
-        return wlen == size;
-    }
+    bool write<String>(const String& value);
 };
+
+template<typename T>
+bool BinaryStream::read(T& value)
+{
+    Stream& base = *this;
+    size_t size = sizeof(T);
+    size_t rlen = base.read((void*)&value, size);
+    return rlen == size;
+}
+template<>
+bool BinaryStream::read<String>(String& value)
+{
+    Stream& base = *this;
+    u16_t size = 0;
+    if (!this->read(size))
+        return false;
+    value = String('\0', (size_t)size);
+    size_t rlen = base.read((void*)value.cstr(), size);
+    return rlen == size;
+}
+
+template <typename T>
+bool BinaryStream::write(const T& value)
+{
+    Stream& base = *this;
+    size_t size = sizeof(T);
+    size_t wlen = base.write((void*)&value, size);
+    return wlen == size;
+}
+template <>
+bool BinaryStream::write<String>(const String& value)
+{
+    Stream& base = *this;
+    u16_t size = (u16_t)value.length();
+    if (!this->write(size))
+        return false;
+    size_t wlen = base.write((void*)value.cstr(), size);
+    return wlen == size;
+}
 
 class TextStream :public DataStream
 {

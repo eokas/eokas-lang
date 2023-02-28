@@ -6,7 +6,7 @@
 
 _BeginNamespace(eokas)
 
-struct Json
+struct JSON
 {
     static String stringify(const HomValueRef& json);
 

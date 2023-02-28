@@ -58,7 +58,7 @@ private:
    to open or close the functionality of get and set.
 =================================================================
 */
-template<typename T, bool read=true, bool write=true>
+template<typename T, bool read = true, bool write = true>
 class AccessValue
 {
 public:

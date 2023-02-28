@@ -23,13 +23,12 @@ public:
 	inline ~ThreadPool()
 	{
 		mRunning = false;
-		mCond.notify_all(); // ���������߳�ִ��
+		mCond.notify_all();
 		for (std::thread& thread : mThreads) 
 		{
-			//thread.detach(); // ���̡߳���������
+			//thread.detach();
 			if (thread.joinable())
 			{
-				// �ȴ���������� ǰ�᣺�߳�һ����ִ����
 				thread.join(); 
 			}
 		}
@@ -45,7 +44,6 @@ public:
 			{
 				while (mRunning)
 				{
-					// ��ȡһ����ִ�е� task
 					Task task;
 					{
 						std::unique_lock<std::mutex> lock{ mMutex };
@@ -54,17 +52,15 @@ public:
 							return !mRunning || !mTasks.empty();
 						});
 
-						// wait ֱ���� task
 						if (!mRunning && mTasks.empty())
 							return;
 
-						// ���Ƚ��ȳ��Ӷ���ȡһ�� task
 						task = std::move(mTasks.front());
 						mTasks.pop();
 					}
 
 					mIdleCount--;
-					task(); // ִ������
+					task();
 					mIdleCount++;
 				}
 			});
@@ -73,9 +69,6 @@ public:
 		}
 	}
 
-	// ִ��һ������
-	// ����.get()��ȡ����ֵ��ȴ�����ִ����, ��ȡ����ֵ
-	// �����ַ�������ʵ�ֵ������Ա��
 	// 1, bind: .exec(std::bind(&Dog::sayHello, &dog));
 	// 2, mem_fn: .exec(std::mem_fn(&Dog::sayHello), this)
 	template<typename F, typename... Args>
@@ -86,7 +79,6 @@ public:
 
 		using RetType = decltype(f(args...)); 
 
-		// �Ѻ�����ڼ�����,���(��)
 		auto task = std::make_shared<std::packaged_task<RetType()>>(
 			bind(std::forward<F>(f), std::forward<Args>(args)...)
 		);
@@ -105,19 +97,16 @@ public:
 			this->expand(1);
 		}
 
-		// ����һ���߳�ִ��
 		mCond.notify_one(); 
 
 		return future;
 	}
 
-	//�����߳�����
 	int idle_size() const
 	{ 
 		return mIdleCount; 
 	}
 
-	//�߳�����
 	int size() const
 	{ 
 		return mThreads.size(); 
