@@ -1,7 +1,13 @@
 
-var a = 0;
+module main {
+    import io: eokas.io;
 
-print("for-loop:");
-loop(var i = 0; i < 10; i=i+1) {
-    print(i);
+    func main(args: array<string>): i32 {
+        var a = 0;
+
+        io.print("for-loop:");
+        loop(var i = 0; i < 10; i=i+1) {
+            io.print(i);
+        }
+    }
 }

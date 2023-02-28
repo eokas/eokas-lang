@@ -1,6 +1,12 @@
 
-var a = 4 * 3 + 5 / 2 - 1;
-print(a); // 13
+module main {
+    import io: eokas.io;
 
-var  b = a * a - (a - 1);
-print(b); // 157
+    func main(args: array<string>): i32 {
+        var a = 4 * 3 + 5 / 2 - 1;
+        io.print(a); // 13
+
+        var  b = a * a - (a - 1);
+        io.print(b); // 157
+    }
+}

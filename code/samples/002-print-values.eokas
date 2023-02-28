@@ -1,5 +1,12 @@
-print(12);
-print(12.99);
-print(true);
-print(false);
-print("hello eokas.");
+
+module main {
+    import io : eokas.io;
+
+    func main(args: array<string>): i32 {
+        io.print(12);
+        io.print(12.99);
+        io.print(true);
+        io.print(false);
+        io.print("hello eokas.");
+    }
+}

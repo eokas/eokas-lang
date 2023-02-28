@@ -1,5 +1,5 @@
 
-module system.math {
+module my.math {
     import
 
     export val add = func(a: i32, b: i32): i32 {

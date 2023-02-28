@@ -1,15 +1,21 @@
 
-var x = 12;
-print(x);
+module main {
+    import io: eokas.io;
 
-var y = 12.99;
-print(y);
+    func main(args: array<string>): i32 {
+        var x = 12;
+        io.print(x);
 
-var t = true;
-print(t);
+        var y = 12.99;
+        io.print(y);
 
-var f = false;
-print(f);
+        var t = true;
+        io.print(t);
 
-var s = "hello eokas.";
-print(s);
+        var f = false;
+        io.print(f);
+
+        var s = "hello eokas.";
+        io.print(s);
+    }
+}
