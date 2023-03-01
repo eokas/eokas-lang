@@ -1,0 +1,3 @@
+G:/Projects/eokas-lang/cmake-build-debug/CMakeFiles/eokas.dir
+G:/Projects/eokas-lang/cmake-build-debug/CMakeFiles/edit_cache.dir
+G:/Projects/eokas-lang/cmake-build-debug/CMakeFiles/rebuild_cache.dir

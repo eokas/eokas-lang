@@ -1,16 +1,14 @@
 
-module my.math {
-    import
+using io: "eokas.io";
 
-    export val add = func(a: i32, b: i32): i32 {
-        return a + b;
-    };
+public val add = func(a: i32, b: i32): i32 {
+    return a + b;
+};
 
-    export val sub = func(a: i32, b: i32): i32 {
-        return a - b;
-    };
+public val sub = func(a: i32, b: i32): i32 {
+    return a - b;
+};
 
-    export val mul = func(a: i32, b: i32): i32 {
-        return a * b;
-    };
-}
+public val mul = func(a: i32, b: i32): i32 {
+    return a * b;
+};

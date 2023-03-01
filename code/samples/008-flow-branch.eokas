@@ -1,23 +1,21 @@
 
-module main {
-    import io: eokas.io;
+using io: "eokas.io";
 
-    func main(args: array<string>): i32 {
-        var a = 2;
+func main(args: array<string>): i32 {
+    var a = 2;
 
-        if(a > 5) {
-            io.print("a > 5");
-        }
-        else {
-            io.print("a <= 5");
-        }
+    if(a > 5) {
+        io.print("a > 5");
+    }
+    else {
+        io.print("a <= 5");
+    }
 
-        if(a == 5)
-            io.print("a == 5");
+    if(a == 5)
+        io.print("a == 5");
 
-        if(a < 5)
-        else {
-            io.print("a >= 5");
-        }
+    if(a < 5)
+    else {
+        io.print("a >= 5");
     }
 }

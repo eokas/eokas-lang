@@ -1,13 +1,11 @@
 
-module main {
-    import io: eokas.io;
+using io: "eokas.io";
 
-    func main(args: array<string>): i32 {
-        var a = 0;
+func main(args: array<string>): i32 {
+    var a = 0;
 
-        io.print("for-loop:");
-        loop(var i = 0; i < 10; i=i+1) {
-            io.print(i);
-        }
+    io.print("for-loop:");
+    loop(var i = 0; i < 10; i=i+1) {
+        io.print(i);
     }
 }

@@ -1,23 +1,21 @@
 
-module main {
-    import io : eokas.io;
+using io : "eokas.io";
 
-    func main(args: array<string>): i32 {
-        /*
-            print: 1 2 3 2 1
-        */
+func main(args: array<string>): i32 {
+    /*
+        print: 1 2 3 2 1
+    */
 
-        var a = 1;
+    var a = 1;
+    io.print(a);
+    {
+        var a = 2;
         io.print(a);
         {
-            var a = 2;
-            io.print(a);
-            {
-                var a = 3;
-                io.print(a);
-            }
+            var a = 3;
             io.print(a);
         }
         io.print(a);
     }
+    io.print(a);
 }

@@ -1,14 +1,12 @@
 
-module main {
-    import io : eokas.io;
+using io : "eokas.io";
 
-    func main(args: array<string>): i32 {
-        var f = func(a:i32):i32 {
-            return a + 1;
-        };
+func main(args: array<string>): i32 {
+    var f = func(a:i32):i32 {
+        return a + 1;
+    };
 
-        var i = 4;
-        io.print(f(i));
-    }
+    var i = 4;
+    io.print(f(i));
 }
 

@@ -1,33 +1,31 @@
 
-module main {
-    import io : eokas.io;
+using io : "eokas.io";
 
-    func main(args: array<string>): i32 {
+func main(args: array<string>): i32 {
 
-        var add = func(x: i32, y: i32): i32 {
-            return x + y;
-        };
+    var add = func(x: i32, y: i32): i32 {
+        return x + y;
+    };
 
-        var sub = func(x: i32, y: i32): i32 {
-            return x - y;
-        };
+    var sub = func(x: i32, y: i32): i32 {
+        return x - y;
+    };
 
-        var mul = func(x: i32, y: i32): i32 {
-            return x * y;
-        };
+    var mul = func(x: i32, y: i32): i32 {
+        return x * y;
+    };
 
-        var div = func(x: i32, y: i32): i32 {
-            return x / y;
-        };
+    var div = func(x: i32, y: i32): i32 {
+        return x / y;
+    };
 
-        var mod = func(x: i32, y: i32): i32 {
-            return x % y;
-        };
+    var mod = func(x: i32, y: i32): i32 {
+        return x % y;
+    };
 
-        io.print(add(12, 5)); // 17
-        io.print(sub(12, 5)); // 7
-        io.print(mul(12, 5)); // 60
-        io.print(div(12, 5)); // 2
-        io.print(mod(12, 5)); // 2
-    }
+    io.print(add(12, 5)); // 17
+    io.print(sub(12, 5)); // 7
+    io.print(mul(12, 5)); // 60
+    io.print(div(12, 5)); // 2
+    io.print(mod(12, 5)); // 2
 }

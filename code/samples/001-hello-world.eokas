@@ -1,8 +1,6 @@
 
-module main {
-    import io : eokas.io;
+using io : "eokas.io";
 
-    func main(args: array<string>): i32 {
-        io.print("hello world.");
-    }
+func main(args: array<string>): i32 {
+    io.print("hello world.");
 }
