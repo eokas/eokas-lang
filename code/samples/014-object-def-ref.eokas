@@ -1,15 +1,14 @@
-module main {
-    import io : eokas.io;
 
-    func main(args: array<string>): i32 {
-        struct Object {
-            var name: string;
-        }
+using io : "eokas.io";
 
-        var obj = make Object{
-            name = "eokas"
-        };
-
-        io.print(obj.name);
+func main(args: array<string>): i32 {
+    struct Object {
+        var name: string;
     }
+
+    var obj = make Object{
+        name = "eokas"
+    };
+
+    io.print(obj.name);
 }

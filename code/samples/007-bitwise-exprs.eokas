@@ -1,15 +1,13 @@
 
-module main {
-    import io : eokas.io;
+using io : "eokas.io";
 
-    func main(args: array<string>): i32 {
-        var x = 0x0F0F;
-        var y = 0xF0F0;
+func main(args: array<string>): i32 {
+    var x = 0x0F0F;
+    var y = 0xF0F0;
 
-        io.print((x |< 4)); // 0x0F0F0
-        io.print((y >| 4)); // 0x00F0F
-        io.print((x | y)); // 0xFFFF
-        io.print((x & y)); // 0x0
-        io.print((x ^ y)); // 0xFFFF
-    }
+    io.print((x |< 4)); // 0x0F0F0
+    io.print((y >| 4)); // 0x00F0F
+    io.print((x | y)); // 0xFFFF
+    io.print((x & y)); // 0x0
+    io.print((x ^ y)); // 0xFFFF
 }

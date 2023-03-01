@@ -1,0 +1,16 @@
+{
+  "name": "eokas-samples",
+  "version": "0.0.1",
+  "main": "",
+  "repository": "",
+
+  "lang": "eokas@1.0.0",
+
+  "dependencies": {
+    "eokas-sdk": "1.0.0",
+  },
+
+  "development": {
+
+  }
+}

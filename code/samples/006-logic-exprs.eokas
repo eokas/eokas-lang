@@ -1,17 +1,15 @@
 
-module main {
-    import io: eokas.io;
+using io: "eokas.io";
 
-    func main(args: array<string>): i32 {
-        var a = true;
-        var b = false;
+func main(args: array<string>): i32 {
+    var a = true;
+    var b = false;
 
-        io.print((a && b)); // false
-        io.print((a || b)); // true
-        io.print((!a)); // false
-        io.print((!b)); // true
-        io.print((!a || b && a)); // false
+    io.print((a && b)); // false
+    io.print((a || b)); // true
+    io.print((!a)); // false
+    io.print((!b)); // true
+    io.print((!a || b && a)); // false
 
-        io.print( a || b ? "true" : "false"); // true
-    }
+    io.print( a || b ? "true" : "false"); // true
 }

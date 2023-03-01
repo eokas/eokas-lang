@@ -1,12 +1,10 @@
 
-module main {
-    import io: eokas.io;
+using io: "eokas.io";
 
-    func main(args: array<string>): i32 {
-        var a = 4 * 3 + 5 / 2 - 1;
-        io.print(a); // 13
+func main(args: array<string>): i32 {
+    var a = 4 * 3 + 5 / 2 - 1;
+    io.print(a); // 13
 
-        var  b = a * a - (a - 1);
-        io.print(b); // 157
-    }
+    var  b = a * a - (a - 1);
+    io.print(b); // 157
 }

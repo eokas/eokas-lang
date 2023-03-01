@@ -1,13 +1,11 @@
 
-module main {
-    import io : eokas.io;
+using io : "eokas.io";
 
-    func main(args: array<string>): i32 {
-        var x = 4;
-        var a : array<int, 4> = [x, x*x, x*x*x, 1];
+func main(args: array<string>): i32 {
+    var x = 4;
+    var a : array<int, 4> = [x, x*x, x*x*x, 1];
 
-        loop(var i = 0; i < 4; i=i+1) {
-            io.print(a[i]);
-        }
+    loop(var i = 0; i < 4; i=i+1) {
+        io.print(a[i]);
     }
 }
