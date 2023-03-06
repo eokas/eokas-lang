@@ -1,6 +1,10 @@
 
 using io: "eokas.io";
 
+public struct A {
+    var name: string;
+}
+
 public val add = func(a: i32, b: i32): i32 {
     return a + b;
 };

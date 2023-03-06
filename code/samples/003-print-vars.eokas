@@ -1,7 +1,7 @@
 
 using io: "eokas.io";
 
-func main(args: array<string>): i32 {
+val main = func(args: array<string>): i32 {
     var x = 12;
     io.print(x);
 

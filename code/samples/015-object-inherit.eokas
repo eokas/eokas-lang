@@ -1,19 +1,26 @@
 
 using io : "eokas.io";
 
-func main(args: array<string>): i32 {
-    struct Object {
-        var name: string;
+struct Object {
+    var name: string;
+}
+
+struct Asset : Object {
+    var path: string;
+}
+
+val main = func(args: array<string>): i32 {
+    var obj = make Asset {
+        name = "eokas"
+        path = "https://asset.example.com"
     }
 
-    struct Asset : Object {
-        var path: string;
-    }
+    io.print(obj.name);
 
-    var asset = make Asset{
+    var asset = make Asset {
         name = "eokas",
         path = "https://asset.example.com"
-    };
+    }
 
     io.print(asset.name);
     io.print(asset.path);

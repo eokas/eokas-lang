@@ -1,14 +1,23 @@
 
 using io : "eokas.io";
 
-func main(args: array<string>): i32 {
-    struct Object {
+struct A {
+    var name: string;
+}
+
+val main = func(args: array<string>): i32 {
+    struct B {
         var name: string;
     }
 
-    var obj = make Object{
-        name = "eokas"
-    };
+    var a = make A{
+        name = "A"
+    }
 
-    io.print(obj.name);
+    var b = make B{
+        name = "B"
+    }
+
+    io.print(a.name);
+    io.print(b.name);
 }

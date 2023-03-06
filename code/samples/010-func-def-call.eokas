@@ -1,7 +1,7 @@
 
 using io : "eokas.io";
 
-func main(args: array<string>): i32 {
+val main = func(args: array<string>): i32 {
 
     var add = func(x: i32, y: i32): i32 {
         return x + y;
