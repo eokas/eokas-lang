@@ -141,7 +141,7 @@ namespace eokas
 	{
 		ast_node_expr_t* left = nullptr;
 		
-		if(priority<(int) ast_binary_oper_t::MAX_PRIORITY / 100)
+		if(priority<(int) ast_binary_oper_t::MAX_LEVEL / 100)
 		{
 			left = this->parse_expr_binary(p, priority + 1);
 		}
@@ -162,7 +162,7 @@ namespace eokas
 			
 			
 			ast_node_expr_t* right = nullptr;
-			if(priority<(int) ast_binary_oper_t::MAX_PRIORITY / 100)
+			if(priority<(int) ast_binary_oper_t::MAX_LEVEL / 100)
 			{
 				right = this->parse_expr_binary(p, priority + 1);
 			}

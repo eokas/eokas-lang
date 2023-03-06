@@ -4,6 +4,14 @@
 #include <eokas-base/main.h>
 
 _BeginNamespace(eokas)
+
+#ifdef TRUE
+#undef TRUE
+#endif
+
+#ifdef FALSE
+#undef FALSE
+#endif
 	
 	struct token_t
 	{

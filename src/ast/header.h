@@ -36,7 +36,7 @@ namespace eokas
         ADD = 400, SUB,
         MUL = 500, DIV, MOD,
         BIT_AND = 600, BIT_OR, BIT_XOR, SHIFT_L, SHIFT_R,
-        MAX_PRIORITY = 800,
+        MAX_LEVEL = 800,
         UNKNOWN = 0x7FFFFFFF
 	};
 	
@@ -44,7 +44,7 @@ namespace eokas
 	{
 		POS = 900, NEG, FLIP, SIZE_OF, TYPE_OF,
         NOT = 1000,
-        MAX_PRIORITY = 1100,
+        MAX_LEVEL = 1100,
         UNKNOWN = 0x7FFFFFFF
 	};
 	
