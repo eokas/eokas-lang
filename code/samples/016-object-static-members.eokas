@@ -1,15 +1,15 @@
 
 using io : "eokas.io";
 
-func main(args: array<string>): i32 {
-    struct A {
-        static var a: i32 = 6;
-    }
+struct A {
+    static var a: i32 = 6;
+}
 
-    struct B : A {
+struct B : A {
 
-    }
+}
 
+val main = func(args: array<string>): i32 {
     B.a = 12;
 
     io.print(A.a);

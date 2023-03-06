@@ -27,3 +27,4 @@ _build
 _install
 .idea/
 cmake-build-debug/
+cmake-build-release/

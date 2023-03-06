@@ -1,6 +1,6 @@
 
 using io : "eokas.io";
 
-func main(args: array<string>): i32 {
+public val main = func(args: array<string>): i32 {
     io.print("hello world.");
 }
