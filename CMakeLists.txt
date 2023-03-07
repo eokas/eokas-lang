@@ -1,15 +1,19 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.22)
+
+cmake_host_system_information(RESULT OS_NAME QUERY OS_NAME)
+message("OS_NNAME = " ${OS_NAME})
+
 project(eokas)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
 include_directories(
         deps/eokas-base/include
         $ENV{LLVM_SDK_PATH}/include
 )
 link_directories(
-        deps/eokas-base/lib/${CMAKE_BUILD_TYPE}
+        deps/eokas-base/lib/${OS_NAME}/${CMAKE_BUILD_TYPE}
         $ENV{LLVM_SDK_PATH}/lib
 )
 

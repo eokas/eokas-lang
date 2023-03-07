@@ -42,7 +42,8 @@ struct Command
 	
 	String toString() const;
 	
-	void exec(int argc, char** argv);
+	void exec(size_t argc, char const * const * argv);
+    void exec(const std::vector<const char*>& args);
 };
 
 _EndNamespace(eokas::cli)

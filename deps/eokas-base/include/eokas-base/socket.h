@@ -6,7 +6,7 @@
 
 #if _EOKAS_OS == _EOKAS_OS_WIN64 || _EOKAS_OS == _EOKAS_OS_WIN32
 
-#include <WinSock2.h>
+#include <winsock2.h>
 
 #define _null_socket INVALID_SOCKET
 #define _closesocket closesocket
@@ -77,15 +77,11 @@ class ByteOrder
 public:
 	static u16_t h2nI16(u16_t value);
 	static u32_t h2nI32(u32_t value);
-	static u64_t h2nI64(u64_t value);
 	static u32_t h2nF32(f32_t value);
-	static u64_t h2nF64(f64_t value);
 
 	static u16_t n2hI16(u16_t value);
 	static u32_t n2hI32(u32_t value);
-	static u64_t n2hI64(u64_t value);
 	static f32_t n2hF32(u32_t value);
-	static f64_t n2hF64(u64_t value);
 };
 
 /*
