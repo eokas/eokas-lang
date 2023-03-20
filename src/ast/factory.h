@@ -8,8 +8,13 @@
 
 namespace eokas
 {
+#if __cplusplus >= 202002L
 	template<typename T>
 	concept ast_concept_node = std::is_base_of<ast_node_t, T>::value;
+
+#else
+#define ast_concept_node typename
+#endif
 	
 	class ast_factory_t
 	{
