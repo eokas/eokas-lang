@@ -1,8 +1,0 @@
-
-
-val f = func() :i32 {
-    return 4;
-};
-
-var a = f();
-print(a);
