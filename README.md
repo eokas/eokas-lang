@@ -23,8 +23,21 @@ Eokas is an open source programming language that is similar to C++ but makes it
 ./build.bat
 ```
 
+## CLIs of eokas
+```shell
+# Run eokas source file in JIT engine.
+eokas run --file 000-test.eokas
+
+# Compile eokas source file to object
+eokas compile --file 000-test.eokas
+```
+
 ## License
 MIT license
+
+## Reference
+* [Building LLVM with CMake](https://llvm.org/docs/CMake.html)
+* 
 
 <!--
 
