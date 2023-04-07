@@ -1,0 +1,22 @@
+
+using io : "eokas.io";
+using array : "eokas.array";
+
+val main = func(args: array<string>): i32 {
+    var x = 4;
+    var a : array.Array<i32> = [x, x*x, x*x*x, 1];
+
+    loop(var i = 0; i < array.length(a); i=i+1) {
+        io.print(a[i]);
+    }
+}
+
+/**
+
+using array : "eokas.array";
+
+var a : array.Array<i32> = [x, x*x];
+
+var i = array.length(a);
+
+*/

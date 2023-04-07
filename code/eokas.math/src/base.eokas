@@ -1,0 +1,12 @@
+
+public val EPSILON = 0.00001;
+public val PI = 3.141592653;
+
+public val sqrt : func(x: f32): f32 = internal;
+public val pow : func(x: f32, n: f32): f32 = internal;
+
+public val sin : func(x: f32): f32 = internal;
+
+public val cos : func(x: f32): f32 = internal;
+public val tan : func(x: f32): f32 = internal;
+public val cot : func(x: f32): f32 = internal;

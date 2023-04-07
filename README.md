@@ -26,10 +26,10 @@ Eokas is an open source programming language that is similar to C++ but makes it
 ## CLIs of eokas
 ```shell
 # Run eokas source file in JIT engine.
-eokas run --file 000-test.eokas
+eokas run --file test.eokas
 
 # Compile eokas source file to object
-eokas compile --file 000-test.eokas
+eokas compile --file test.eokas
 ```
 
 ## License

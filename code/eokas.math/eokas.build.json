@@ -1,0 +1,17 @@
+
+{
+  "name": "eokas.math",
+
+  "out": "./lib",
+  "src": [
+    "./src"
+  ],
+
+  "deps": {
+    "eokas.core": "0.0.1"
+  },
+
+  "tools": {
+    "eokas.core": "0.0.1"
+  }
+}

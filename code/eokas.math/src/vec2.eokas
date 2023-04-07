@@ -1,0 +1,44 @@
+
+using base = "./base";
+
+public struct Vector2 {
+    var x: f32 = 0.0;
+    var y: f32 = 0.0;
+};
+
+public sqrMagnitude = func(var a: Vector2): f32 {
+    return a.x * a.x + a.y * a.y;
+};
+
+public magnitude = func(var a: Vector2): f32 {
+    return base.sqrt(sqrMagnitude(a));
+};
+
+public add = func(var a: Vector2, var b: Vector2): Vector2 {
+    var ret = make Vector2{
+        x = a.x + b.x,
+        y = a.y + b.y
+    };
+    return ret;
+};
+
+public sub = func(var a: Vector2, var b: Vector2): Vector2 {
+    var ret = make Vector2{
+        x = a.x - b.x,
+        y = a.y - b.y
+    };
+    return ret;
+};
+
+
+public mul = func(var a: Vector2, var b: Vector2): Vector2 {
+    var ret = make Vector2{
+        x = a.x * b.x,
+        y = a.y * b.y
+    };
+    return ret;
+};
+
+public dot = func(var a: Vector2, var b: Vector2): f32 {
+    return a.x * b.x + a.y * b.y;
+};
