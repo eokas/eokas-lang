@@ -2,8 +2,8 @@
 #ifndef _EOKAS_BASE_STREAM_H_
 #define _EOKAS_BASE_STREAM_H_
 
-#include "header.h"
-#include "string.h"
+#include "./header.h"
+#include "./string.h"
 
 _BeginNamespace(eokas)
 
@@ -66,7 +66,7 @@ public:
 
     template<typename T>
     inline bool read(T& value);
-
+	
     template <typename T>
     inline bool write(const T& value);
 };
@@ -79,7 +79,6 @@ inline bool BinaryStream::read(T& value)
     size_t rlen = base.read((void*)&value, size);
     return rlen == size;
 }
-
 template<>
 inline bool BinaryStream::read<String>(String& value)
 {
@@ -100,7 +99,6 @@ inline bool BinaryStream::write(const T& value)
     size_t wlen = base.write((void*)&value, size);
     return wlen == size;
 }
-
 template <>
 inline bool BinaryStream::write<String>(const String& value)
 {

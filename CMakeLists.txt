@@ -17,6 +17,7 @@ link_directories(
         $ENV{LLVM_SDK_PATH}/lib
 )
 
+message("CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
 message("LLVM_SDK_PATH: " $ENV{LLVM_SDK_PATH})
 
 set(LLVM_DEPS m z curses xml2)
