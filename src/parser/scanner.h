@@ -18,7 +18,7 @@ _BeginNamespace(eokas)
 		enum token_type
 		{
 			VAR, VAL, MAKE,
-            MODULE, IMPORT, EXPORT,
+            MODULE, USING, PUBLIC, PRIVATE,
             FUNC, PROC, STRUCT, ENUM,
 			IF, ELSE, LOOP,  BREAK, CONTINUE, RETURN, TRUE, FALSE,
 			COMMA, SEMICOLON, COLON, QUESTION, AT, POUND, DOLLAR,
@@ -31,7 +31,21 @@ _BeginNamespace(eokas)
 			INT_B, INT_X, INT_D, FLOAT, STRING, ID, EOS, COUNT, UNKNOWN
 		};
 		
-		static const char* const names[COUNT];
+		constexpr static const char* const names[COUNT] =
+		{
+			"var", "val", "make",
+			"module", "using", "public", "private",
+			"func", "proc", "struct", "enum",
+			"if", "else", "loop", "break", "continue", "return", "true", "false",
+			",", ";", ":", "?", "@", "#", "$",
+			"+", "-", "*", "/", "%", "^", "~",
+			"(", ")", "[", "]", "{", "}",
+			"&", "&&", "|", "||",
+			"=", "==", "!", "!=", ">", ">=", "<", "<=",
+			">|", "|<",
+			".", "..", "...",
+			"<b-int>", "<x-int>", "<d-int>", "<float>", "<string>", "<identifier>", "<eos>"
+		};
 		
 		token_type type;
 		String value;

@@ -1,23 +1,6 @@
 #include "scanner.h"
 
 _BeginNamespace(eokas)
-
-	const char* const token_t::names[] =
-	{
-		"var", "val", "make",
-        "module", "import", "export",
-        "func", "proc", "struct", "enum",
-        "if", "else", "loop", "break", "continue", "return", "true", "false",
-		",", ";", ":", "?", "@", "#", "$",
-		"+", "-", "*", "/", "%", "^", "~",
-		"(", ")", "[", "]", "{", "}",
-		"&", "&&", "|", "||",
-		"=", "==", "!", "!=", ">", ">=", "<", "<=",
-		">|", "|<",
-		".", "..", "...",
-		"<b-int>", "<x-int>", "<d-int>", "<float>", "<string>", "<identifier>", "<eos>"
-	};
-	
 	token_t::token_t()
 		: type(UNKNOWN), value()
 	{ }
