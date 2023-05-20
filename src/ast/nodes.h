@@ -21,17 +21,7 @@ namespace eokas
 			this->parent = nullptr;
 		}
 	};
-
-	struct ast_node_program_t : public ast_node_t
-	{
-		std::list<ast_node_module_t*> modules = {};
-		ast_node_module_t* main = nullptr;
-
-		explicit ast_node_program_t(ast_node_t* parent)
-			: ast_node_t(ast_category_t::PROGRAM, parent)
-		{}
-	};
-
+	
 	struct ast_node_module_t : public ast_node_t
 	{
 		String name = "";

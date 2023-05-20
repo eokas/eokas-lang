@@ -9,8 +9,6 @@ namespace eokas
 	{
 		NONE,
 
-		PROGRAM,
-
 		MODULE, IMPORT, EXPORT,
 
 		TYPE,
@@ -66,9 +64,7 @@ namespace eokas
 	};
 	
     struct ast_node_t;
-
-	struct ast_node_program_t;
-
+	
     struct ast_node_module_t;
 	struct ast_node_import_t;
     struct ast_node_export_t;
