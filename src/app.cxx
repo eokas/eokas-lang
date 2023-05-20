@@ -46,7 +46,9 @@ int main(int argc, char** argv)
 			auto file = cmd.fetchValue("--file").string();
 			if(file.isEmpty())
 				throw std::invalid_argument("The argument 'file' is empty.");
-			
+			if(!File::exists(file))
+				throw std::invalid_argument(String::format("The source file '%s' is not found.", file.cstr()).cstr());
+				
 			printf("=> Source file: %s\n", file.cstr());
 			
 			eokas_main(file, llvm_jit);
@@ -59,7 +61,7 @@ int main(int argc, char** argv)
 	}
 	catch(const std::exception& e)
 	{
-		printf("ERROR: %s", e.what());
+		printf("\033[31mERROR: %s\033[0m", e.what());
 		return -1;
 	}
 }
