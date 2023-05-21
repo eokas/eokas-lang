@@ -18,7 +18,7 @@ _BeginNamespace(eokas)
 		enum token_type
 		{
 			VAR, VAL, MAKE,
-            MODULE, USING, PUBLIC, PRIVATE,
+            MODULE, IMPORT, EXPORT, PUBLIC, PRIVATE,
             FUNC, PROC, STRUCT, ENUM,
 			IF, ELSE, LOOP,  BREAK, CONTINUE, RETURN, TRUE, FALSE,
 			COMMA, SEMICOLON, COLON, QUESTION, AT, POUND, DOLLAR,
@@ -34,7 +34,7 @@ _BeginNamespace(eokas)
 		constexpr static const char* const names[COUNT] =
 		{
 			"var", "val", "make",
-			"module", "using", "public", "private",
+			"module", "import", "export", "public", "private",
 			"func", "proc", "struct", "enum",
 			"if", "else", "loop", "break", "continue", "return", "true", "false",
 			",", ";", ":", "?", "@", "#", "$",

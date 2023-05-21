@@ -21,6 +21,7 @@ namespace eokas
 	{
 		this->clear();
 		this->scanner->ready(source);
+		this->next_token();
 		return this->parse_module();
 	}
 	
@@ -33,21 +34,48 @@ namespace eokas
 	
 	ast_node_module_t* parser_t::parse_module()
 	{
-		if(!this->check_token(token_t::MODULE, true))
-			return nullptr;
-		
 		auto* module = factory->create<ast_node_module_t>(nullptr);
 		module->entry = factory->create<ast_node_func_def_t>(module);
-
-		this->next_token();
+		
 		while (this->token().type != token_t::EOS)
 		{
-			// TODO: import
-			// TODO: export
-			ast_node_stmt_t* stmt = this->parse_stmt(module->entry);
-			if(stmt == nullptr)
-				return nullptr;
-			module->entry->body.push_back(stmt);
+			auto& token = this->token();
+			switch(token.type)
+			{
+				case token_t::IMPORT:
+				{
+					ast_node_import_t* _import = this->parse_import(module);
+					if(_import == nullptr)
+						return nullptr;
+					auto iter = module->imports.find(_import->name);
+					if(iter != module->imports.end())
+					{
+						this->error_import_exists(_import->name);
+						return nullptr;
+					}
+					module->imports.insert(std::make_pair(_import->name, _import));
+				} break;
+				case token_t::EXPORT:
+				{
+					ast_node_export_t* _export = this->parse_export(module);
+					if(_export == nullptr)
+						return nullptr;
+					auto iter = module->exports.find(_export->name);
+					if(iter != module->exports.end())
+					{
+						this->error_export_exists(_export->name);
+						return nullptr;
+					}
+					module->exports.insert(std::make_pair(_export->name, _export));
+				} break;
+				default:
+				{
+					ast_node_stmt_t* stmt = this->parse_stmt(module->entry);
+					if(stmt == nullptr)
+						return nullptr;
+					module->entry->body.push_back(stmt);
+				} break;
+			}
 		}
 		
 		return module;
@@ -55,12 +83,48 @@ namespace eokas
 	
 	ast_node_import_t* parser_t::parse_import(ast_node_t* p)
 	{
+		if(p->category != ast_category_t::MODULE)
+			return nullptr;
+		
+		if(!this->check_token(token_t::IMPORT))
+			return nullptr;
+		
+		if(!this->check_token(token_t::ID, true, false))
+			return nullptr;
+		String name = this->token().value;
+		this->next_token();
+		
+		if(!this->check_token(token_t::COLON))
+			return nullptr;
+		
+		auto target = dynamic_cast<ast_node_literal_string_t*>(this->parse_literal_string(p));
+		if(target == nullptr)
+			return nullptr;
+			
+		auto node = factory->create<ast_node_import_t>(p);
+		node->name = name;
+		node->target = target->value;
+		
 		return nullptr;
 	}
 	
 	ast_node_export_t* parser_t::parse_export(ast_node_t* p)
 	{
-		return nullptr;
+		if(p->category != ast_category_t::MODULE)
+			return nullptr;
+		
+		if(!this->check_token(token_t::EXPORT))
+			return nullptr;
+		
+		if(!this->check_token(token_t::ID, true, false))
+			return nullptr;
+		String name = this->token().value;
+		this->next_token();
+		
+		auto node = factory->create<ast_node_export_t>(p);
+		node->name = name;
+		
+		return node;
 	}
 	
 	/**
@@ -1323,13 +1387,19 @@ namespace eokas
 		token_t& token = scanner->token();
 		const char* value = token.value.cstr();
 		if(token.type == token_t::EOS)
-		{
-			this->error("unexpected eos");
-		}
+			this->error("Unexpected eos");
 		else
-		{
-			this->error("unexpected token '%s'", value);
-		}
+			this->error("Unexpected token '%s'", value);
+	}
+	
+	void parser_t::error_import_exists(const String& entry)
+	{
+		this->error("The import entry '%s' is already existed.", entry.cstr());
+	}
+	
+	void parser_t::error_export_exists(const String& entry)
+	{
+		this->error("The export entry '%s' is already existed.", entry.cstr());
 	}
 	
 	const String& parser_t::error() const

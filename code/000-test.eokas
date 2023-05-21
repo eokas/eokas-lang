@@ -1,4 +1,4 @@
-using io: "eokas.io"
+import io: "eokas.io"
 
 val main = func(args: i32): i32 {
 

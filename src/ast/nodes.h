@@ -37,6 +37,7 @@ namespace eokas
 	struct ast_node_import_t : public ast_node_t
 	{
 		String name = "";
+		String target = "";
 
 		explicit ast_node_import_t(ast_node_t* parent)
 			: ast_node_t(ast_category_t::IMPORT, parent)
@@ -45,8 +46,10 @@ namespace eokas
 
 	struct ast_node_export_t : public ast_node_t
 	{
-		explicit ast_node_export_t(ast_category_t category, ast_node_t* parent)
-			: ast_node_t(category, parent)
+		String name = "";
+		
+		explicit ast_node_export_t(ast_node_t* parent)
+			: ast_node_t(ast_category_t::EXPORT, parent)
 		{}
 	};
 

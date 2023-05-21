@@ -70,6 +70,8 @@ namespace eokas
 		
 		void error(const char* fmt, ...);
 		void error_token_unexpected();
+		void error_import_exists(const String& entry);
+		void error_export_exists(const String& entry);
 		
 		const String& error() const;
 	
