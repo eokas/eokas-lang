@@ -1,6 +1,6 @@
 #include "engine.h"
 #include "coder.h"
-#include "models.h"
+#include "scope.h"
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>

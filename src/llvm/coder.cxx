@@ -1,5 +1,6 @@
-#include "coder.h"
-#include "models.h"
+#include "./coder.h"
+#include "./scope.h"
+#include "./builder.h"
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
@@ -26,18 +27,19 @@ namespace eokas
 {
 	struct llvm_coder_t
 	{
+		//llvm_module_t* module;
 		llvm::LLVMContext& context;
-		llvm::IRBuilder<> builder;
-		
-		llvm_module_t* module;
+		llvm_module_builder_t* module;
 		
 		llvm_scope_t* scope;
-		llvm::Function* func;
+		llvm_func_builder_t* func;
 		
 		llvm::BasicBlock* continuePoint;
 		llvm::BasicBlock* breakPoint;
 		
-		explicit llvm_coder_t(llvm::LLVMContext& context) : context(context), builder(context), module(nullptr)
+		explicit llvm_coder_t(llvm::LLVMContext& context)
+			: context(context)
+			, module(new llvm_module_builder_t(context, "eokas"))
 		{
 			this->scope = nullptr;
 			this->func = nullptr;
@@ -49,7 +51,7 @@ namespace eokas
 		{
 		}
 		
-		void pushScope(llvm::Function* f = nullptr)
+		void pushScope(llvm_func_builder_t* f = nullptr)
 		{
 			this->scope = this->scope->addChild(f);
 		}
@@ -59,17 +61,20 @@ namespace eokas
 			this->scope = this->scope->parent;
 		}
 		
-		llvm_module_t* encode(ast_node_module_t* m)
+		llvm_module_builder_t* encode(ast_node_module_t* m)
 		{
-			this->module = new llvm_module_t("eokas", context);
-			this->scope = this->module->root;
+			llvm_scope_t* parent = nullptr;
+			llvm_func_builder_t* func = nullptr;
+			this->scope = new llvm_scope_t(parent, func);
 			
 			if(!this->encode_module(m))
 			{
-				_DeletePointer(this->module);
 				return nullptr;
 			}
-			return this->module;
+			
+			this->module->resolve();
+			
+			return this->module
 		}
 		
 		bool encode_module(ast_node_module_t* node)
@@ -77,15 +82,17 @@ namespace eokas
 			if(node == nullptr)
 				return false;
 			
-			auto* mainRet = module->type_i32;
-			std::vector<llvm::Type*> mainArgs;
-			llvm::Function* mainPtr = llvm_model_t::declare_func(module->module, "main", mainRet, mainArgs, false);
-			this->func = mainPtr;
+			auto* retT = module->type_i32;
+			std::vector<llvm::Type*> argsT;
+			auto* func = module->add_func("main", retT, argsT, false);
+			this->func = func;
 			
-			this->pushScope(mainPtr);
+			llvm::IRBuilder<>& IR = func->IR;
+			
+			this->pushScope(func);
 			{
-				llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", mainPtr);
-				builder.SetInsertPoint(entry);
+				auto entry = func->add_basic_block("entry");
+				IR.SetInsertPoint(entry);
 				
 				for (auto& stmt: node->entry->body)
 				{
@@ -93,14 +100,7 @@ namespace eokas
 						return false;
 				}
 				
-				auto& lastOp = builder.GetInsertBlock()->back();
-				if(!lastOp.isTerminator())
-				{
-					if(mainPtr->getReturnType()->isVoidTy())
-						builder.CreateRetVoid();
-					else
-						builder.CreateRet(module->get_default_value(mainRet));
-				}
+				func->add_tail_ret();
 			}
 			this->popScope();
 			
@@ -207,46 +207,48 @@ namespace eokas
 			if(node == nullptr)
 				return nullptr;
 			
+			llvm_func_builder_t* func = this->func;
+			llvm::IRBuilder<>& IR = this->func->IR;
 			
-			llvm::BasicBlock* trinary_begin = llvm::BasicBlock::Create(context, "trinary.begin", this->scope->func);
-			llvm::BasicBlock* trinary_true = llvm::BasicBlock::Create(context, "trinary.true", this->scope->func);
-			llvm::BasicBlock* trinary_false = llvm::BasicBlock::Create(context, "trinary.false", this->scope->func);
-			llvm::BasicBlock* trinary_end = llvm::BasicBlock::Create(context, "trinary.end", this->scope->func);
+			llvm::BasicBlock* trinary_begin = func->add_basic_block("trinary.begin");
+			llvm::BasicBlock* trinary_true = func->add_basic_block("trinary.true");
+			llvm::BasicBlock* trinary_false = func->add_basic_block("trinary.false");
+			llvm::BasicBlock* trinary_end = func->add_basic_block("trinary.end");
 			
-			builder.CreateBr(trinary_begin);
-			builder.SetInsertPoint(trinary_begin);
+			IR.CreateBr(trinary_begin);
+			IR.SetInsertPoint(trinary_begin);
 			llvm::Value* cond = this->encode_expr(node->cond);
 			if(cond == nullptr)
 				return nullptr;
-			cond = llvm_model_t::get_value(builder, cond);
+			cond = func->get_value(cond);
 			if(!cond->getType()->isIntegerTy(1))
 			{
 				printf("Condition must be a bool value.\n");
 				return nullptr;
 			}
 			
-			builder.CreateCondBr(cond, trinary_true, trinary_false);
+			IR.CreateCondBr(cond, trinary_true, trinary_false);
 			
-			builder.SetInsertPoint(trinary_true);
+			IR.SetInsertPoint(trinary_true);
 			llvm::Value* trueV = this->encode_expr(node->branch_true);
 			if(trueV == nullptr)
 				return nullptr;
-			builder.CreateBr(trinary_end);
+			IR.CreateBr(trinary_end);
 			
-			builder.SetInsertPoint(trinary_false);
+			IR.SetInsertPoint(trinary_false);
 			llvm::Value* falseV = this->encode_expr(node->branch_false);
 			if(falseV == nullptr)
 				return nullptr;
-			builder.CreateBr(trinary_end);
+			IR.CreateBr(trinary_end);
 			
-			builder.SetInsertPoint(trinary_end);
+			IR.SetInsertPoint(trinary_end);
 			if(trueV->getType() != falseV->getType())
 			{
 				printf("Type of true-branch must be the same as false-branch.\n");
 				return nullptr;
 			}
 			
-			llvm::PHINode* phi = builder.CreatePHI(trueV->getType(), 2);
+			llvm::PHINode* phi = IR.CreatePHI(trueV->getType(), 2);
 			phi->addIncoming(trueV, trinary_true);
 			phi->addIncoming(falseV, trinary_false);
 			
@@ -263,8 +265,8 @@ namespace eokas
 			if(left == nullptr || right == nullptr)
 				return nullptr;
 			
-			auto lhs = llvm_model_t::get_value(builder, left);
-			auto rhs = llvm_model_t::get_value(builder, right);
+			auto lhs = this->func->get_value(left);
+			auto rhs = this->func->get_value(right);
 			
 			switch (node->op)
 			{
@@ -320,7 +322,7 @@ namespace eokas
 				return nullptr;
 			}
 			
-			return builder.CreateOr(lhs, rhs);
+			return this->func->IR.CreateOr(lhs, rhs);
 		}
 		
 		llvm::Value* encode_expr_binary_and(llvm::Value* lhs, llvm::Value* rhs)
@@ -334,7 +336,7 @@ namespace eokas
 				return nullptr;
 			}
 			
-			return builder.CreateAnd(lhs, rhs);
+			return this->func->IR.CreateAnd(lhs, rhs);
 		}
 		
 		llvm::Value* encode_expr_binary_eq(llvm::Value* lhs, llvm::Value* rhs)
@@ -343,24 +345,33 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateICmpEQ(lhs, rhs);
+				return this->func->IR.CreateICmpEQ(lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return builder.CreateFCmpOEQ(lhs, rhs);
+				return this->func->IR.CreateFCmpOEQ(lhs, rhs);
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpEQ(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return this->func->IR.CreateICmpEQ(
+					this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
+					this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))
+				);
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFCmpOEQ(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return this->func->IR.CreateFCmpOEQ(
+					this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)),
+					rhs
+				);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFCmpOEQ(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return this->func->IR.CreateFCmpOEQ(
+					lhs,
+					this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))
+				);
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -373,24 +384,33 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateICmpNE(lhs, rhs);
+				return this->func->IR.CreateICmpNE(lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return builder.CreateFCmpONE(lhs, rhs);
+				return this->func->IR.CreateFCmpONE(lhs, rhs);
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpNE(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return this->func->IR.CreateICmpNE(
+					this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
+					this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))
+				);
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFCmpONE(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return this->func->IR.CreateFCmpONE(
+					this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)),
+					rhs
+				);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFCmpONE(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return this->func->IR.CreateFCmpONE(
+					lhs,
+					this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))
+				);
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -403,24 +423,33 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateICmpSLE(lhs, rhs);
+				return this->func->IR.CreateICmpSLE(lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return builder.CreateFCmpOLE(lhs, rhs);
+				return this->func->IR.CreateFCmpOLE(lhs, rhs);
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpULE(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return this->func->IR.CreateICmpULE(
+					this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
+					this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))
+				);
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFCmpOLE(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return this->func->IR.CreateFCmpOLE(
+					this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)),
+					rhs
+				);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFCmpOLE(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return this->func->IR.CreateFCmpOLE(
+					lhs,
+					this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))
+				);
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -433,24 +462,27 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateICmpSGE(lhs, rhs);
+				return this->func->IR.CreateICmpSGE(lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return builder.CreateFCmpOGE(lhs, rhs);
+				return this->func->IR.CreateFCmpOGE(lhs, rhs);
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpUGE(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return this->func->IR.CreateICmpUGE(
+					this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
+					this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))
+				);
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFCmpOGE(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return this->func->IR.CreateFCmpOGE(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFCmpOGE(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return this->func->IR.CreateFCmpOGE(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -463,24 +495,24 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateICmpSLT(lhs, rhs);
+				return this->func->IR.CreateICmpSLT(lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return builder.CreateFCmpOLT(lhs, rhs);
+				return this->func->IR.CreateFCmpOLT(lhs, rhs);
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpULT(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return this->func->IR.CreateICmpULT(this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFCmpOLT(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return this->func->IR.CreateFCmpOLT(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFCmpOLT(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return this->func->IR.CreateFCmpOLT(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -493,24 +525,24 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateICmpSGT(lhs, rhs);
+				return this->func->IR.CreateICmpSGT(lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return builder.CreateFCmpOGT(lhs, rhs);
+				return this->func->IR.CreateFCmpOGT(lhs, rhs);
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return builder.CreateICmpUGT(builder.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), builder.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
+				return this->func->IR.CreateICmpUGT(this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFCmpOGT(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return this->func->IR.CreateFCmpOGT(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFCmpOGT(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return this->func->IR.CreateFCmpOGT(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -523,19 +555,19 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateAdd(lhs, rhs);
+				return this->func->IR.CreateAdd(lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return builder.CreateFAdd(lhs, rhs);
+				return this->func->IR.CreateFAdd(lhs, rhs);
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFAdd(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return this->func->IR.CreateFAdd(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFAdd(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return this->func->IR.CreateFAdd(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -548,19 +580,19 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateSub(lhs, rhs);
+				return this->func->IR.CreateSub(lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return builder.CreateFSub(lhs, rhs);
+				return this->func->IR.CreateFSub(lhs, rhs);
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFSub(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return this->func->IR.CreateFSub(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFSub(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return this->func->IR.CreateFSub(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -573,19 +605,19 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateMul(lhs, rhs);
+				return this->func->IR.CreateMul(lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return builder.CreateFMul(lhs, rhs);
+				return this->func->IR.CreateFMul(lhs, rhs);
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFMul(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return this->func->IR.CreateFMul(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFMul(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return this->func->IR.CreateFMul(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -598,19 +630,19 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateSDiv(lhs, rhs);
+				return this->func->IR.CreateSDiv(lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return builder.CreateFMul(lhs, rhs);
+				return this->func->IR.CreateFMul(lhs, rhs);
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFDiv(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return this->func->IR.CreateFDiv(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFDiv(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return this->func->IR.CreateFDiv(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -623,19 +655,19 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateSRem(lhs, rhs);
+				return this->func->IR.CreateSRem(lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return builder.CreateFRem(lhs, rhs);
+				return this->func->IR.CreateFRem(lhs, rhs);
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return builder.CreateFRem(builder.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
+				return this->func->IR.CreateFRem(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return builder.CreateFRem(lhs, builder.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
+				return this->func->IR.CreateFRem(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -648,7 +680,7 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateAnd(lhs, rhs);
+				return this->func->IR.CreateAnd(lhs, rhs);
 			
 			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
@@ -660,7 +692,7 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateOr(lhs, rhs);
+				return this->func->IR.CreateOr(lhs, rhs);
 			
 			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
@@ -672,7 +704,7 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateXor(lhs, rhs);
+				return this->func->IR.CreateXor(lhs, rhs);
 			
 			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
@@ -684,7 +716,7 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return builder.CreateShl(lhs, rhs);
+				return this->func->IR.CreateShl(lhs, rhs);
 			
 			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
@@ -700,7 +732,7 @@ namespace eokas
 				// 逻辑右移：在左边补 0
 				// 算术右移：在左边补 符号位
 				// 我们采用逻辑右移
-				return builder.CreateLShr(lhs, rhs);
+				return this->func->IR.CreateLShr(lhs, rhs);
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
@@ -716,7 +748,7 @@ namespace eokas
 			if(right == nullptr)
 				return nullptr;
 			
-			auto rhs = llvm_model_t::get_value(builder, right);
+			auto rhs = this->func->get_value( right);
 			
 			switch (node->op)
 			{
@@ -738,10 +770,10 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(rtype->isIntegerTy())
-				return builder.CreateNeg(rhs);
+				return this->func->IR.CreateNeg(rhs);
 			
 			if(rtype->isFloatingPointTy())
-				return builder.CreateFNeg(rhs);
+				return this->func->IR.CreateFNeg(rhs);
 			
 			printf("Type of RHS is invalid.\n");
 			return nullptr;
@@ -752,7 +784,7 @@ namespace eokas
 			auto rtype = rhs->getType();
 			
 			if(rtype->isIntegerTy() && rtype->getIntegerBitWidth() == 1)
-				return builder.CreateNot(rhs);
+				return this->func->IR.CreateNot(rhs);
 			
 			printf("Type of RHS is invalid.\n");
 			return nullptr;
@@ -764,7 +796,7 @@ namespace eokas
 			
 			if(rtype->isIntegerTy())
 			{
-				return builder.CreateXor(rhs, llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF)));
+				return this->func->IR.CreateXor(rhs, llvm::ConstantInt::get(rtype, llvm::APInt(rtype->getIntegerBitWidth(), 0xFFFFFFFF)));
 			}
 			printf("Type of RHS is invalid.\n");
 			return nullptr;
@@ -801,7 +833,7 @@ namespace eokas
 			if(node == nullptr)
 				return nullptr;
 			
-			auto str = module->string_make(this->scope->func, builder, node->value.cstr());
+			auto str = module->string_make(this->scope->func, this->func->IR, node->value.cstr());
 			return str;
 		}
 		
@@ -841,7 +873,7 @@ namespace eokas
 				}
 				
 				auto arg0 = this->func->getArg(0);
-				auto ptr = builder.CreateConstGEP2_32(arg0->getType()->getPointerElementType(), arg0, 0, index);
+				auto ptr = this->func->IR.CreateConstGEP2_32(arg0->getType()->getPointerElementType(), arg0, 0, index);
 				return ptr;
 			}
 			*/
@@ -870,28 +902,27 @@ namespace eokas
 					argTypes.push_back(argType);
 			}
 			
-			llvm::FunctionType* funcType = llvm::FunctionType::get(retType, argTypes, false);
-			llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "", module->module);
+			auto newFunc = this->module->add_func("", retType, argTypes, false);
 			
 			auto oldFunc = this->func;
-			auto oldIB = builder.GetInsertBlock();
+			auto oldIB = this->func->IR.GetInsertBlock();
 			
-			this->func = funcPtr;
+			this->func = newFunc;
 			
-			this->pushScope(funcPtr);
+			this->pushScope(newFunc);
 			{
-				llvm::BasicBlock* entry = llvm::BasicBlock::Create(context, "entry", funcPtr);
-				builder.SetInsertPoint(entry);
+				llvm::BasicBlock* entry = newFunc->add_basic_block("entry");
+				this->func->IR.SetInsertPoint(entry);
 				
 				// self
-				auto self = funcPtr;
+				auto self = newFunc->handle;
 				this->scope->addSymbol("self", self);
 				
 				// args
 				for (size_t index = 0; index<node->args.size(); index++)
 				{
 					const char* name = node->args.at(index).name.cstr();
-					auto arg = funcPtr->getArg(index + 1);
+					auto arg = newFunc->handle->getArg(index + 1);
 					arg->setName(name);
 					
 					if(!this->scope->addSymbol(name, arg))
@@ -907,21 +938,21 @@ namespace eokas
 					if(!this->encode_stmt(stmt))
 						return nullptr;
 				}
-				auto& lastOp = builder.GetInsertBlock()->back();
+				auto& lastOp = this->func->IR.GetInsertBlock()->back();
 				if(!lastOp.isTerminator())
 				{
-					if(funcPtr->getReturnType()->isVoidTy())
-						builder.CreateRetVoid();
+					if(newFunc->handle->getReturnType()->isVoidTy())
+						this->func->IR.CreateRetVoid();
 					else
-						builder.CreateRet(module->get_default_value(retType));
+						this->func->IR.CreateRet(module->get_default_value(retType));
 				}
 			}
 			this->popScope();
 			
 			this->func = oldFunc;
-			builder.SetInsertPoint(oldIB);
+			this->func->IR.SetInsertPoint(oldIB);
 			
-			return funcPtr;
+			return newFunc->handle;
 		}
 		
 		llvm::Value* encode_expr_func_ref(ast_node_func_ref_t* node)
@@ -936,7 +967,7 @@ namespace eokas
 				return nullptr;
 			}
 			
-			auto funcPtr = llvm_model_t::get_value(builder, funcExpr);
+			auto funcPtr = this->func->get_value( funcExpr);
 			llvm::FunctionType* funcType = nullptr;
 			if(funcPtr->getType()->isFunctionTy())
 			{
@@ -960,17 +991,17 @@ namespace eokas
 				if(argV == nullptr)
 					return nullptr;
 				
-				argV = llvm_model_t::get_value(builder, argV);
+				argV = this->func->get_value( argV);
 				
 				if(paramT != argV->getType())
 				{
 					if(paramT == module->type_cstr)
 					{
-						argV = module->cstr_from_value(scope->func, builder, argV);
+						argV = module->cstr_from_value(scope->func, this->func->IR, argV);
 					}
 					if(paramT == module->type_string_ptr)
 					{
-						argV = module->string_from_value(scope->func, builder, argV);
+						argV = module->string_from_value(scope->func, this->func->IR, argV);
 					}
 					else if(!argV->getType()->canLosslesslyBitCastTo(paramT))
 					{
@@ -982,7 +1013,7 @@ namespace eokas
 				args.push_back(argV);
 			}
 			
-			llvm::Value* retval = builder.CreateCall(funcType, funcPtr, args);
+			llvm::Value* retval = this->func->IR.CreateCall(funcType, funcPtr, args);
 			return retval;
 		}
 		
@@ -998,7 +1029,7 @@ namespace eokas
 				auto elementV = this->encode_expr(element);
 				if(elementV == nullptr)
 					return nullptr;
-				elementV = llvm_model_t::get_value(builder, elementV);
+				elementV = this->func->get_value( elementV);
 				
 				auto elementT = elementV->getType();
 				if(arrayElementType == nullptr)
@@ -1019,8 +1050,8 @@ namespace eokas
 				arrayElementType = llvm::Type::getInt32Ty(context);
 			
 			auto arrayT = module->define_schema_array(arrayElementType);
-			auto arrayP = module->make(func, builder, arrayT);
-			module->array_set(scope->func, builder, arrayP, arrayElements);
+			auto arrayP = module->make(func, this->func->IR, arrayT);
+			module->array_set(scope->func, this->func->IR, arrayP, arrayElements);
 			
 			return arrayP;
 		}
@@ -1035,8 +1066,8 @@ namespace eokas
 			if(objV == nullptr || keyV == nullptr)
 				return nullptr;
 			
-			objV = llvm_model_t::get_value(builder, objV);
-			keyV = llvm_model_t::get_value(builder, keyV);
+			objV = this->func->get_value( objV);
+			keyV = this->func->get_value( keyV);
 			auto objT = objV->getType();
 			auto keyT = keyV->getType();
 			
@@ -1044,7 +1075,7 @@ namespace eokas
 			{
 				if(keyT->isIntegerTy())
 				{
-					return module->array_get(scope->func, builder, objV, keyV);
+					return module->array_get(scope->func, this->func->IR, objV, keyV);
 				}
 				else
 				{
@@ -1056,7 +1087,7 @@ namespace eokas
 			{
 				if(keyT->isIntegerTy())
 				{
-					return module->string_get_char(scope->func, builder, objV, keyV);
+					return module->string_get_char(scope->func, this->func->IR, objV, keyV);
 				}
 				else
 				{
@@ -1096,7 +1127,7 @@ namespace eokas
 			}
 			
 			// make object instance
-			llvm::Value* instance = module->make(this->scope->func, builder, structType);
+			llvm::Value* instance = module->make(this->scope->func, this->func->IR, structType);
 			
 			for (u32_t index = 0; index<structInfo->members.size(); index++)
 			{
@@ -1108,7 +1139,7 @@ namespace eokas
 					memV = this->encode_expr(objectMember->second);
 					if(memV == nullptr)
 						return nullptr;
-					memV = llvm_model_t::get_value(builder, memV);
+					memV = this->func->get_value( memV);
 				}
 				else
 				{
@@ -1118,8 +1149,8 @@ namespace eokas
 				if(memV)
 				{
 					String memN = String::format("this.%s", structMember->name.cstr());
-					llvm::Value* memP = builder.CreateStructGEP(structType, instance, index, memN.cstr());
-					builder.CreateStore(memV, memP);
+					llvm::Value* memP = this->func->IR.CreateStructGEP(structType, instance, index, memN.cstr());
+					this->func->IR.CreateStore(memV, memP);
 				}
 			}
 			
@@ -1132,11 +1163,11 @@ namespace eokas
 				return nullptr;
 			
 			auto objV = this->encode_expr(node->obj);
-			auto keyV = builder.CreateGlobalString(node->key.cstr());
+			auto keyV = this->func->IR.CreateGlobalString(node->key.cstr());
 			if(objV == nullptr || keyV == nullptr)
 				return nullptr;
 			
-			objV = llvm_model_t::get_value(builder, objV);
+			objV = this->func->get_value( objV);
 			auto objT = objV->getType();
 			if(!(objT->isPointerTy() && objT->getPointerElementType()->isStructTy()))
 			{
@@ -1160,7 +1191,7 @@ namespace eokas
 			}
 			
 			auto structType = structInfo->type;
-			llvm::Value* value = builder.CreateStructGEP(structType, objV, index);
+			llvm::Value* value = this->func->IR.CreateStructGEP(structType, objV, index);
 			return value;
 		}
 		
@@ -1263,11 +1294,11 @@ namespace eokas
 					return false;
 				}
 				
-				auto v = builder.getInt32(thisMember.second);
-				auto o = builder.CreateAlloca(thisInstanceInfo->type);
+				auto v = this->func->IR.getInt32(thisMember.second);
+				auto o = this->func->IR.CreateAlloca(thisInstanceInfo->type);
 				auto n = String::format("%s.%s", node->name.cstr(), memName.cstr());
-				auto p = builder.CreateStructGEP(o, 0, n.cstr());
-				builder.CreateStore(v, p);
+				auto p = this->func->IR.CreateStructGEP(o, 0, n.cstr());
+				this->func->IR.CreateStore(v, p);
 				auto memValue = o;
 				
 				thisStaticInfo->add_member(memName, thisInstanceInfo->type, memValue);
@@ -1281,15 +1312,15 @@ namespace eokas
 			}
 			
 			// make static object
-			llvm::Value* staticV = module->make(this->scope->func, builder, thisStaticInfo->type);
+			llvm::Value* staticV = module->make(this->scope->func, this->func->IR, thisStaticInfo->type);
 			for (u32_t index = 0; index<thisStaticInfo->members.size(); index++)
 			{
 				auto& mem = thisStaticInfo->members.at(index);
-				auto memV = builder.CreateLoad(mem->value);
+				auto memV = this->func->IR.CreateLoad(mem->value);
 				
 				String memN = String::format("%s.%s", name.cstr(), mem->name.cstr());
-				llvm::Value* memP = builder.CreateStructGEP(thisStaticInfo->type, staticV, index, memN.cstr());
-				builder.CreateStore(memV, memP);
+				llvm::Value* memP = this->func->IR.CreateStructGEP(thisStaticInfo->type, staticV, index, memN.cstr());
+				this->func->IR.CreateStore(memV, memP);
 			}
 			if(!this->scope->addSymbol(name, staticV))
 			{
@@ -1341,7 +1372,7 @@ namespace eokas
 			if(expr == nullptr)
 				return false;
 			
-			auto value = llvm_model_t::get_value(builder, expr);
+			auto value = this->func->get_value( expr);
 			
 			llvm::Type* stype = nullptr;
 			llvm::Type* vtype = value->getType();
@@ -1377,9 +1408,9 @@ namespace eokas
 				return false;
 			}
 			
-			llvm::Value* symbol = builder.CreateAlloca(stype);
-			builder.CreateStore(value, symbol);
-			symbol = llvm_model_t::ref_value(builder, symbol);
+			llvm::Value* symbol = this->func->IR.CreateAlloca(stype);
+			this->func->IR.CreateStore(value, symbol);
+			symbol = this->func->ref_value(symbol);
 			symbol->setName(node->name.cstr());
 			
 			if(!scope->addSymbol(node->name, symbol))
@@ -1399,7 +1430,7 @@ namespace eokas
 			if(this->breakPoint == nullptr)
 				return false;
 			
-			builder.CreateBr(this->breakPoint);
+			this->func->IR.CreateBr(this->breakPoint);
 			
 			return true;
 		}
@@ -1412,7 +1443,7 @@ namespace eokas
 			if(this->continuePoint == nullptr)
 				return false;
 			
-			builder.CreateBr(this->continuePoint);
+			this->func->IR.CreateBr(this->continuePoint);
 			
 			return true;
 		}
@@ -1422,7 +1453,7 @@ namespace eokas
 			if(node == nullptr)
 				return false;
 			
-			auto expectedRetType = this->scope->func->getFunctionType()->getReturnType();
+			auto expectedRetType = this->func->type->getReturnType();
 			
 			if(node->value == nullptr)
 			{
@@ -1432,7 +1463,7 @@ namespace eokas
 					return false;
 				}
 				
-				builder.CreateRetVoid();
+				this->func->IR.CreateRetVoid();
 				return true;
 			}
 			
@@ -1442,7 +1473,7 @@ namespace eokas
 				printf("Invalid ret value.\n");
 				return false;
 			}
-			auto value = llvm_model_t::get_value(builder, expr);
+			auto value = this->func->get_value( expr);
 			auto actureRetType = value->getType();
 			if(actureRetType != expectedRetType && !actureRetType->canLosslesslyBitCastTo(expectedRetType))
 			{
@@ -1450,7 +1481,7 @@ namespace eokas
 				return false;
 			}
 			
-			builder.CreateRet(value);
+			this->func->IR.CreateRet(value);
 			
 			return true;
 		}
@@ -1460,56 +1491,56 @@ namespace eokas
 			if(node == nullptr)
 				return false;
 			
-			llvm::BasicBlock* if_true = llvm::BasicBlock::Create(context, "if.true", this->scope->func);
-			llvm::BasicBlock* if_false = llvm::BasicBlock::Create(context, "if.false", this->scope->func);
-			llvm::BasicBlock* if_end = llvm::BasicBlock::Create(context, "if.end", this->scope->func);
+			llvm::BasicBlock* if_true = this->func->add_basic_block("if.true");
+			llvm::BasicBlock* if_false = this->func->add_basic_block("if.false");
+			llvm::BasicBlock* if_end = this->func->add_basic_block("if.end");
 			
 			auto condV = this->encode_expr(node->cond);
 			if(condV == nullptr)
 				return false;
-			condV = llvm_model_t::get_value(builder, condV);
+			condV = this->func->get_value( condV);
 			if(!condV->getType()->isIntegerTy(1))
 			{
 				printf("The label 'if.cond' need a bool value.\n");
 				return false;
 			}
-			builder.CreateCondBr(condV, if_true, if_false);
+			this->func->IR.CreateCondBr(condV, if_true, if_false);
 			
 			// if-true
-			builder.SetInsertPoint(if_true);
+			this->func->IR.SetInsertPoint(if_true);
 			if(node->branch_true != nullptr)
 			{
 				if(!this->encode_stmt(node->branch_true))
 					return false;
-				auto lastBlock = builder.GetInsertBlock();
+				auto lastBlock = this->func->IR.GetInsertBlock();
 				if(lastBlock != if_true && !lastBlock->back().isTerminator())
 				{
-					builder.CreateBr(if_end);
+					this->func->IR.CreateBr(if_end);
 				}
 			}
 			if(!if_true->back().isTerminator())
 			{
-				builder.CreateBr(if_end);
+				this->func->IR.CreateBr(if_end);
 			}
 			
 			// if-false
-			builder.SetInsertPoint(if_false);
+			this->func->IR.SetInsertPoint(if_false);
 			if(node->branch_false != nullptr)
 			{
 				if(!this->encode_stmt(node->branch_false))
 					return false;
-				auto lastBlock = builder.GetInsertBlock();
+				auto lastBlock = this->func->IR.GetInsertBlock();
 				if(lastBlock != if_false && !lastBlock->back().isTerminator())
 				{
-					builder.CreateBr(if_end);
+					this->func->IR.CreateBr(if_end);
 				}
 			}
 			if(!if_false->back().isTerminator())
 			{
-				builder.CreateBr(if_end);
+				this->func->IR.CreateBr(if_end);
 			}
 			
-			builder.SetInsertPoint(if_end);
+			this->func->IR.SetInsertPoint(if_end);
 			
 			return true;
 		}
@@ -1521,10 +1552,10 @@ namespace eokas
 			
 			this->pushScope();
 			
-			llvm::BasicBlock* loop_cond = llvm::BasicBlock::Create(context, "loop.cond", this->scope->func);
-			llvm::BasicBlock* loop_step = llvm::BasicBlock::Create(context, "loop.step", this->scope->func);
-			llvm::BasicBlock* loop_body = llvm::BasicBlock::Create(context, "loop.body", this->scope->func);
-			llvm::BasicBlock* loop_end = llvm::BasicBlock::Create(context, "loop.end", this->scope->func);
+			llvm::BasicBlock* loop_cond = this->func->add_basic_block("loop.cond");
+			llvm::BasicBlock* loop_step = this->func->add_basic_block("loop.step");
+			llvm::BasicBlock* loop_body = this->func->add_basic_block("loop.body");
+			llvm::BasicBlock* loop_end = this->func->add_basic_block("loop.end");
 			
 			auto oldContinuePoint = this->continuePoint;
 			auto oldBreakPoint = this->breakPoint;
@@ -1533,21 +1564,21 @@ namespace eokas
 			
 			if(!this->encode_stmt(node->init))
 				return false;
-			builder.CreateBr(loop_cond);
+			this->func->IR.CreateBr(loop_cond);
 			
-			builder.SetInsertPoint(loop_cond);
+			this->func->IR.SetInsertPoint(loop_cond);
 			auto condV = this->encode_expr(node->cond);
 			if(condV == nullptr)
 				return false;
-			condV = llvm_model_t::get_value(builder, condV);
+			condV = this->func->get_value( condV);
 			if(!condV->getType()->isIntegerTy(1))
 			{
 				printf("The label 'for.cond' need a bool value.\n");
 				return false;
 			}
-			builder.CreateCondBr(condV, loop_body, loop_end);
+			this->func->IR.CreateCondBr(condV, loop_body, loop_end);
 			
-			builder.SetInsertPoint(loop_body);
+			this->func->IR.SetInsertPoint(loop_body);
 			if(node->body != nullptr)
 			{
 				if(!this->encode_stmt(node->body))
@@ -1555,20 +1586,20 @@ namespace eokas
 				auto& lastOp = loop_body->back();
 				if(!lastOp.isTerminator())
 				{
-					builder.CreateBr(loop_step);
+					this->func->IR.CreateBr(loop_step);
 				}
 			}
 			if(!loop_body->back().isTerminator())
 			{
-				builder.CreateBr(loop_step);
+				this->func->IR.CreateBr(loop_step);
 			}
 			
-			builder.SetInsertPoint(loop_step);
+			this->func->IR.SetInsertPoint(loop_step);
 			if(!this->encode_stmt(node->step))
 				return false;
-			builder.CreateBr(loop_cond);
+			this->func->IR.CreateBr(loop_cond);
 			
-			builder.SetInsertPoint(loop_end);
+			this->func->IR.SetInsertPoint(loop_end);
 			
 			this->continuePoint = oldContinuePoint;
 			this->breakPoint = oldBreakPoint;
@@ -1606,9 +1637,9 @@ namespace eokas
 			if(left == nullptr || right == nullptr)
 				return false;
 			
-			auto ptr = llvm_model_t::ref_value(builder, left);
-			auto val = llvm_model_t::get_value(builder, right);
-			builder.CreateStore(val, ptr);
+			auto ptr = llvm_model_t::ref_value(this->func->IR, left);
+			auto val = this->func->get_value( right);
+			this->func->IR.CreateStore(val, ptr);
 			
 			return true;
 		}
@@ -1625,7 +1656,7 @@ namespace eokas
 		}
 	};
 	
-	llvm_module_t* llvm_encode(llvm::LLVMContext& context, ast_node_module_t* module)
+	llvm_module_builder_t* llvm_encode(llvm::LLVMContext& context, ast_node_module_t* module)
 	{
 		llvm_coder_t coder(context);
 		return coder.encode(module);
