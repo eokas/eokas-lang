@@ -6,7 +6,7 @@
 namespace eokas
 {
 	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent, llvm_func_builder_t* func)
-		: parent(parent), func(func), children(), symbols(), schemas()
+		: parent(parent), func(func), children(), symbols(), types()
 	{ }
 	
 	llvm_scope_t::~llvm_scope_t()
@@ -63,23 +63,19 @@ namespace eokas
 		}
 	}
 	
-	bool llvm_scope_t::addSchema(const String& name, llvm::Type* type)
+	bool llvm_scope_t::addType(const String& name, llvm_type_builder_t* type)
 	{
-		auto* schema = new llvm_schema_t();
-		schema->scope = this;
-		schema->type = type;
-		
-		bool ret = this->schemas.add(name, schema);
+		bool ret = this->types.add(name, type);
 		return ret;
 	}
 	
-	llvm_schema_t* llvm_scope_t::getSchema(const String& name, bool lookup)
+	llvm_type_builder_t* llvm_scope_t::getType(const String& name, bool lookup)
 	{
 		if(lookup)
 		{
 			for (auto scope = this; scope != nullptr; scope = scope->parent)
 			{
-				auto* schema = scope->schemas.get(name);
+				auto* schema = scope->types.get(name);
 				if(schema != nullptr)
 					return schema;
 			}
@@ -87,7 +83,7 @@ namespace eokas
 		}
 		else
 		{
-			return this->schemas.get(name);
+			return this->types.get(name);
 		}
 	}
 }

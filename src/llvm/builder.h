@@ -66,6 +66,7 @@ namespace eokas
 		llvm_module_builder_t& module;
 		String name;
 		llvm::StructType* handle;
+		std::vector<llvm::Type*> generics = {};
 		std::vector<member_t> members;
 		
 		llvm_type_builder_t(llvm_module_builder_t& module, const String& name);;
@@ -81,6 +82,12 @@ namespace eokas
 		member_t* get_member(size_t index);
 		size_t get_member_index(const String& name) const;
 		bool is_final_member(const String& name) const;
+		
+		void resolve_generic_type(const std::vector<llvm::Type*>& args);
+		void resolve_opaque_type(llvm::StructType* opaqueT, llvm::StructType* structT);
+		
+		bool is_value_type() const;
+		bool is_reference_type() const;
 	};
 	
 	struct llvm_func_builder_t : llvm_basic_builder_t

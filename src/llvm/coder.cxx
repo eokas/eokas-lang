@@ -1,6 +1,8 @@
 #include "./coder.h"
 #include "./scope.h"
 #include "./builder.h"
+#include "./x-module-core.h"
+#include "./x-module-cstd.h"
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
@@ -74,7 +76,7 @@ namespace eokas
 			
 			this->module->resolve();
 			
-			return this->module
+			return this->module;
 		}
 		
 		bool encode_module(ast_node_module_t* node)
@@ -107,7 +109,7 @@ namespace eokas
 			return true;
 		}
 		
-		llvm::Type* encode_type(ast_node_type_t* node)
+		llvm_type_builder_t* encode_type(ast_node_type_t* node)
 		{
 			if(node == nullptr)
 			{
@@ -126,24 +128,26 @@ namespace eokas
 					printf("Invalid array element type. \n");
 					return nullptr;
 				}
-				return module->define_schema_array(elementT);
+
+				auto* arrayType = new llvm_type_array_t(*module, elementT);
+				return module->add_type(arrayType->name, arrayType);
 			}
 			
-			auto* schema = this->scope->getSchema(name, true);
-			if(schema == nullptr)
+			auto* type = this->scope->getType(name, true);
+			if(type == nullptr)
 			{
 				printf("The type '%s' is undefined.\n", name.cstr());
 				return nullptr;
 			}
 			
-			if(schema->generics.size() != node->args.size())
+			if(type->generics.size() != node->args.size())
 			{
 				printf("The generic type defination is not matched with the arguments. \n");
 				return nullptr;
 			}
-			if(schema->generics.size() > 0)
+			if(type->generics.size() > 0)
 			{
-				std::vector<llvm::Type*> typeArgs = {};
+				std::vector<llvm_type_builder_t*> typeArgs = {};
 				for(auto& arg : node->args)
 				{
 					auto* ty = this->encode_type(arg);
@@ -155,10 +159,10 @@ namespace eokas
 					typeArgs.push_back(ty);
 				}
 				
-				return schema->resolve(typeArgs);
+				return type->resolve(typeArgs);
 			}
 			
-			return schema->type;
+			return type;
 		}
 		
 		llvm::Value* encode_expr(ast_node_expr_t* node)
@@ -833,7 +837,7 @@ namespace eokas
 			if(node == nullptr)
 				return nullptr;
 			
-			auto str = module->string_make(this->scope->func, this->func->IR, node->value.cstr());
+			auto str = func->string_make(node->value.cstr());
 			return str;
 		}
 		
@@ -896,13 +900,13 @@ namespace eokas
 				auto* argType = this->encode_type(arg.type);
 				if(argType == nullptr)
 					return nullptr;
-				if(argType->isFunctionTy() || argType->isStructTy() || argType->isArrayTy())
-					argTypes.push_back(argType->getPointerTo());
+				if(argType->is_reference_type())
+					argTypes.push_back(argType->handle->getPointerTo());
 				else
-					argTypes.push_back(argType);
+					argTypes.push_back(argType->handle);
 			}
 			
-			auto newFunc = this->module->add_func("", retType, argTypes, false);
+			auto newFunc = this->module->add_func("", retType->handle, argTypes, false);
 			
 			auto oldFunc = this->func;
 			auto oldIB = this->func->IR.GetInsertBlock();
@@ -997,11 +1001,11 @@ namespace eokas
 				{
 					if(paramT == module->type_cstr)
 					{
-						argV = module->cstr_from_value(scope->func, this->func->IR, argV);
+						argV = func->cstr_from_value(argV);
 					}
 					if(paramT == module->type_string_ptr)
 					{
-						argV = module->string_from_value(scope->func, this->func->IR, argV);
+						argV = func->string_from_value(argV);
 					}
 					else if(!argV->getType()->canLosslesslyBitCastTo(paramT))
 					{
@@ -1049,7 +1053,7 @@ namespace eokas
 			if(arrayElements.empty() || arrayElementType == nullptr)
 				arrayElementType = llvm::Type::getInt32Ty(context);
 			
-			auto arrayT = module->define_schema_array(arrayElementType);
+			auto arrayT = new llvm_type_array_t(*module, arrayElementType);
 			auto arrayP = module->make(func, this->func->IR, arrayT);
 			module->array_set(scope->func, this->func->IR, arrayP, arrayElements);
 			

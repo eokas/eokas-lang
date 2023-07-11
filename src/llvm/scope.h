@@ -49,35 +49,6 @@ namespace eokas
 		llvm::Value* value = nullptr;
 	};
 	
-	struct llvm_schema_t
-	{
-		struct llvm_scope_t* scope = nullptr;
-		llvm::Type* type = nullptr;
-		std::vector<llvm::Type*> generics = {};
-		
-		llvm::Type* resolve(const std::vector<llvm::Type*>& args)
-		{
-			for (size_t index = 0; index<this->generics.size(); index++)
-			{
-				auto gen = llvm::cast<llvm::StructType>(this->generics[index]);
-				auto arg = llvm::cast<llvm::StructType>(args[index]);
-				llvm_schema_t::fillOpaqueStructType(gen, arg);
-			}
-			return this->type;
-		}
-		
-		static void fillOpaqueStructType(llvm::StructType* opaqueT, llvm::StructType* structT)
-		{
-			std::vector<llvm::Type*> body;
-			for (uint32_t index = 0; index<structT->getNumElements(); index++)
-			{
-				auto* elementT = structT->getElementType(index);
-				body.push_back(elementT);
-			}
-			opaqueT->setBody(body);
-		}
-	};
-	
 	struct llvm_scope_t
 	{
 		llvm_scope_t* parent;
@@ -85,7 +56,7 @@ namespace eokas
 		std::vector<llvm_scope_t*> children;
 		
 		table_t<llvm_symbol_t> symbols;
-		table_t<llvm_schema_t> schemas;
+		table_t<llvm_type_builder_t> types;
 		
 		llvm_scope_t(llvm_scope_t* parent, llvm_func_builder_t* func);
 		virtual ~llvm_scope_t();
@@ -96,8 +67,8 @@ namespace eokas
 		bool addSymbol(const String& name, llvm::Type* type);
 		llvm_symbol_t* getSymbol(const String& name, bool lookup);
 		
-		bool addSchema(const String& name, llvm::Type* type);
-		llvm_schema_t* getSchema(const String& name, bool lookup);
+		bool addType(const String& name, llvm_type_builder_t* type);
+		llvm_type_builder_t* getType(const String& name, bool lookup);
 	};
 }
 

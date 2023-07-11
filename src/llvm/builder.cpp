@@ -243,6 +243,37 @@ namespace eokas
 		return name == "base";
 	}
 	
+	void llvm_type_builder_t::resolve_generic_type(const std::vector<llvm::Type*>& args)
+	{
+		for (size_t index = 0; index < this->generics.size(); index++)
+		{
+			auto gen = llvm::cast<llvm::StructType>(this->generics[index]);
+			auto arg = llvm::cast<llvm::StructType>(args[index]);
+			this->resolve_opaque_type(gen, arg);
+		}
+	}
+	
+	void llvm_type_builder_t::resolve_opaque_type(llvm::StructType* opaqueT, llvm::StructType* structT)
+	{
+		std::vector<llvm::Type*> body;
+		for (uint32_t index = 0; index<structT->getNumElements(); index++)
+		{
+			auto* elementT = structT->getElementType(index);
+			body.push_back(elementT);
+		}
+		opaqueT->setBody(body);
+	}
+	
+	bool llvm_type_builder_t::is_value_type() const
+	{
+		return handle->isIntegerTy() || handle->isFloatingPointTy() || handle->isPointerTy();
+	}
+	
+	bool llvm_type_builder_t::is_reference_type() const
+	{
+		return handle->isFunctionTy() || handle->isStructTy() || handle->isArrayTy();
+	}
+	
 	llvm_func_builder_t::llvm_func_builder_t(
 		llvm_module_builder_t* module,
 		llvm_type_builder_t* owner,
