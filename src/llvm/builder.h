@@ -29,7 +29,9 @@ namespace eokas
 		llvm_basic_builder_t(llvm::LLVMContext& context);
 		virtual ~llvm_basic_builder_t();
 		
-		virtual void resolve() = 0;
+		virtual void begin() = 0;
+		virtual void body() = 0;
+		virtual void end() = 0;
 		
 		String get_type_name(llvm::Type* type);
 		llvm::Value* get_default_value(llvm::Type* type);
@@ -38,14 +40,16 @@ namespace eokas
 	struct llvm_module_builder_t : llvm_basic_builder_t
 	{
 		llvm::Module module;
-		llvm::IRBuilder<> builder;
+		llvm_scope_t* scope;
 		std::map<String, struct llvm_type_builder_t*> types;
 		std::map<String, struct llvm_func_builder_t*> funcs;
 		
 		llvm_module_builder_t(llvm::LLVMContext& context, const String& name);
 		virtual ~llvm_module_builder_t();
 		
-		virtual void resolve() override;
+		virtual void begin() override;
+		virtual void body() override;
+		virtual void end() override;
 		
 		llvm_type_builder_t* add_type(const String& name, llvm_type_builder_t* type);
 		llvm_type_builder_t* get_type(const String& name);
@@ -71,7 +75,9 @@ namespace eokas
 		
 		llvm_type_builder_t(llvm_module_builder_t& module, const String& name);;
 		
-		virtual void resolve() override;
+		virtual void begin() override;
+		virtual void body() override;
+		virtual void end() override;
 		
 		bool extends(const String& base);
 		bool extends(llvm_type_builder_t* base);
@@ -108,7 +114,9 @@ namespace eokas
 			const std::vector<llvm::Type*> argsT,
 			bool varg);
 		
-		virtual void resolve() override;
+		virtual void begin() override;
+		virtual void body() override;
+		virtual void end() override;
 		
 		/**
 		 * For ref-types: transform multi-level pointer to one-level pointer.

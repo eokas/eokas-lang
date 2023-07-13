@@ -15,12 +15,11 @@ namespace eokas
 			: llvm_type_builder_t(module, "Object")
 		{ }
 		
-		virtual void resolve() override
+		void body() override
 		{
 			this->add_member("typeinfo", nullptr, typeinfo());
 			this->add_member("string", nullptr, string());
 			this->add_member("hash", nullptr, hash());
-			llvm_type_builder_t::resolve();
 		}
 		
 		llvm::Value* typeinfo()
@@ -180,13 +179,13 @@ namespace eokas
 			: llvm_module_builder_t(context, "core")
 		{ }
 		
-		virtual void resolve() override
+		void body() override
 		{
+			llvm_module_builder_t::body();
 			this->add_type("Object", new llvm_type_object_t(*this));
 			this->add_type("TypeInfo", new llvm_type_typeinfo_t(*this));
 			this->add_type("String", new llvm_type_string_t(*this));
 			this->define_func_print();
-			llvm_module_builder_t::resolve();
 		}
 		
 		llvm::Function* define_func_print()

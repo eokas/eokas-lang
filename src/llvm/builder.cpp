@@ -71,7 +71,7 @@ namespace eokas
 	llvm_module_builder_t::llvm_module_builder_t(llvm::LLVMContext& context, const String& name)
 		: llvm_basic_builder_t(context)
 		, module(name.cstr(), context)
-		, builder(context)
+		, scope(new llvm_scope_t(nullptr, nullptr))
 		, types()
 		, funcs()
 	{ }
@@ -79,10 +79,17 @@ namespace eokas
 	llvm_module_builder_t::~llvm_module_builder_t()
 	{
 		_DeleteMap(types);
-		_DeleteList(funcs);
+		_DeleteMap(funcs);
+		_DeletePointer(scope);
 	}
 	
-	void llvm_module_builder_t::resolve()
+	void llvm_module_builder_t::begin()
+	{}
+	
+	void llvm_module_builder_t::body()
+	{}
+	
+	void llvm_module_builder_t::end()
 	{
 		for(auto& type : this->types)
 		{
@@ -155,7 +162,13 @@ namespace eokas
 		this->handle = llvm::StructType::create(context, name.cstr());
 	}
 	
-	void llvm_type_builder_t::resolve()
+	void llvm_type_builder_t::begin()
+	{}
+	
+	void llvm_type_builder_t::body()
+	{}
+	
+	void llvm_type_builder_t::end()
 	{
 		std::vector<llvm::Type*> body;
 		for (auto& member: this->members)
@@ -298,7 +311,13 @@ namespace eokas
 		this->handle->setCallingConv(llvm::CallingConv::C);
 	}
 	
-	void llvm_func_builder_t::resolve()
+	void llvm_func_builder_t::begin()
+	{}
+	
+	void llvm_func_builder_t::body()
+	{}
+	
+	void llvm_func_builder_t::end()
 	{ }
 	
 	/**

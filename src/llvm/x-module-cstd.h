@@ -9,20 +9,30 @@
 
 namespace eokas
 {
-	struct llvm_module_core_t : llvm_module_builder_t
+	struct llvm_module_cstd_t : llvm_module_builder_t
 	{
-		llvm_module_core_t(llvm::LLVMContext& context)
+		llvm_module_cstd_t(llvm::LLVMContext& context)
 			: llvm_module_builder_t(context, "c")
 		{ }
 		
-		virtual void resolve() override
+		virtual void begin() override
 		{
+			llvm_module_builder_t::begin();
+		}
+		
+		virtual void body() override
+		{
+			llvm_module_builder_t::body();
 			this->printf();
 			this->sprintf();
 			this->malloc();
 			this->free();
-			
-			llvm_module_builder_t::resolve();
+			this->strlen();
+		}
+		
+		virtual void end() override
+		{
+			llvm_module_builder_t::end();
 		}
 		
 		llvm::Function* printf()
