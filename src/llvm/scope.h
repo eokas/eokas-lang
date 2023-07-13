@@ -2,8 +2,6 @@
 #define _EOKAS_LLVM_SCOPE_H_
 
 #include "./header.h"
-#include "./builder.h"
-#include <llvm/IR/IRBuilder.h>
 
 namespace eokas
 {
@@ -42,33 +40,25 @@ namespace eokas
 		}
 	};
 	
-	struct llvm_symbol_t
-	{
-		struct llvm_scope_t* scope = nullptr;
-		llvm::Type* type = nullptr;
-		llvm::Value* value = nullptr;
-	};
-	
 	struct llvm_scope_t
 	{
 		llvm_scope_t* parent;
-		llvm_func_builder_t* func;
+		llvm_function_t* func;
 		std::vector<llvm_scope_t*> children;
 		
-		table_t<llvm_symbol_t> symbols;
-		table_t<llvm_type_builder_t> types;
+		table_t<llvm_type_t> types;
+		table_t<llvm_value_t> values;
 		
-		llvm_scope_t(llvm_scope_t* parent, llvm_func_builder_t* func);
+		llvm_scope_t(llvm_scope_t* parent, llvm_function_t* func);
 		virtual ~llvm_scope_t();
 		
-		llvm_scope_t* addChild(llvm_func_builder_t* f = nullptr);
+		llvm_scope_t* add_child(llvm_function_t* f = nullptr);
 		
-		bool addSymbol(const String& name, llvm::Value* expr);
-		bool addSymbol(const String& name, llvm::Type* type);
-		llvm_symbol_t* getSymbol(const String& name, bool lookup);
+		bool add_type(const String& name, llvm_type_t* type);
+		llvm_type_t* get_type(const String& name, bool lookup);
 		
-		bool addType(const String& name, llvm_type_builder_t* type);
-		llvm_type_builder_t* getType(const String& name, bool lookup);
+		bool add_value(const String& name, llvm_value_t* value);
+		llvm_value_t* get_value(const String& name, bool lookup);
 	};
 }
 

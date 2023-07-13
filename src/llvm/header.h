@@ -13,9 +13,13 @@ namespace llvm
 	class BasicBlock;
 }
 
-_BeginNamespace(eokas)
-	
+namespace eokas
+{
 	struct llvm_module_t;
-_EndNamespace(eokas)
+	struct llvm_type_t;
+	struct llvm_value_t;
+	struct llvm_function_t;
+	struct llvm_scope_t;
+}
 
 #endif//_EOKAS_LLVM_HEADER_H_

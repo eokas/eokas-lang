@@ -29,5 +29,5 @@ aux_source_directory(src/parser SRC_PARSER)
 aux_source_directory(src/ast SRC_AST)
 aux_source_directory(src/llvm SRC_LLVM)
 
-add_executable(${PROJECT_NAME} ${SRC} ${SRC_PARSER} ${SRC_AST} ${SRC_LLVM} src/llvm/typedef.h src/llvm/typedef.cpp)
+add_executable(${PROJECT_NAME} ${SRC} ${SRC_PARSER} ${SRC_AST} ${SRC_LLVM})
 target_link_libraries(${PROJECT_NAME} ${LIBS})

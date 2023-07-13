@@ -1,6 +1,6 @@
 #include "./coder.h"
 #include "./scope.h"
-#include "./builder.h"
+#include "./models.h"
 #include "./x-module-core.h"
 #include "./x-module-cstd.h"
 
@@ -27,23 +27,15 @@
 
 namespace eokas
 {
-	struct llvm_coder_t
+	struct llvm_coder_t : llvm_module_t
 	{
-		//llvm_module_t* module;
-		llvm::LLVMContext& context;
-		llvm_module_builder_t* module;
-		
-		llvm_scope_t* scope;
-		llvm_func_builder_t* func;
-		
+		llvm_function_t* func;
 		llvm::BasicBlock* continuePoint;
 		llvm::BasicBlock* breakPoint;
 		
-		explicit llvm_coder_t(llvm::LLVMContext& context)
-			: context(context)
-			, module(new llvm_module_builder_t(context, "eokas"))
+		explicit llvm_coder_t(llvm::LLVMContext& context, const String& name)
+			: llvm_module_t(context, name)
 		{
-			this->scope = nullptr;
 			this->func = nullptr;
 			this->continuePoint = nullptr;
 			this->breakPoint = nullptr;
@@ -53,9 +45,9 @@ namespace eokas
 		{
 		}
 		
-		void pushScope(llvm_func_builder_t* f = nullptr)
+		void pushScope(llvm_function_t* f = nullptr)
 		{
-			this->scope = this->scope->addChild(f);
+			this->scope = this->scope->add_child(f);
 		}
 		
 		void popScope()
@@ -63,30 +55,17 @@ namespace eokas
 			this->scope = this->scope->parent;
 		}
 		
-		llvm_module_builder_t* encode(ast_node_module_t* m)
-		{
-			llvm_scope_t* parent = nullptr;
-			llvm_func_builder_t* func = nullptr;
-			this->scope = new llvm_scope_t(parent, func);
-			
-			if(!this->encode_module(m))
-			{
-				return nullptr;
-			}
-			
-			this->module->resolve();
-			
-			return this->module;
-		}
-		
 		bool encode_module(ast_node_module_t* node)
 		{
 			if(node == nullptr)
 				return false;
 			
-			auto* retT = module->type_i32;
+			auto* retT = type_i32;
 			std::vector<llvm::Type*> argsT;
-			auto* func = module->add_func("main", retT, argsT, false);
+			
+			auto* func = new llvm_function_t(*this, "main", retT, argsT, false);
+			this->add_value("$main", func);
+			
 			this->func = func;
 			
 			llvm::IRBuilder<>& IR = func->IR;
@@ -109,7 +88,7 @@ namespace eokas
 			return true;
 		}
 		
-		llvm_type_builder_t* encode_type(ast_node_type_t* node)
+		llvm_type_t* encode_type(ast_node_type_t* node)
 		{
 			if(node == nullptr)
 			{
@@ -129,11 +108,17 @@ namespace eokas
 					return nullptr;
 				}
 
-				auto* arrayType = new llvm_type_array_t(*module, elementT);
-				return module->add_type(arrayType->name, arrayType);
+				llvm_type_t* arrayType = new llvm_type_array_t(this, elementT);
+				if(!this->add_type(arrayType->name, arrayType))
+				{
+					delete arrayType;
+					return nullptr;
+				}
+				
+				return arrayType;
 			}
 			
-			auto* type = this->scope->getType(name, true);
+			auto* type = this->scope->get_type(name, true);
 			if(type == nullptr)
 			{
 				printf("The type '%s' is undefined.\n", name.cstr());
@@ -147,7 +132,7 @@ namespace eokas
 			}
 			if(type->generics.size() > 0)
 			{
-				std::vector<llvm_type_builder_t*> typeArgs = {};
+				std::vector<llvm_type_t*> typeArgs = {};
 				for(auto& arg : node->args)
 				{
 					auto* ty = this->encode_type(arg);
@@ -211,7 +196,7 @@ namespace eokas
 			if(node == nullptr)
 				return nullptr;
 			
-			llvm_func_builder_t* func = this->func;
+			llvm_function_t* func = this->func;
 			llvm::IRBuilder<>& IR = this->func->IR;
 			
 			llvm::BasicBlock* trinary_begin = func->add_basic_block("trinary.begin");
@@ -1660,9 +1645,13 @@ namespace eokas
 		}
 	};
 	
-	llvm_module_builder_t* llvm_encode(llvm::LLVMContext& context, ast_node_module_t* module)
+	llvm_module_t* llvm_encode(llvm::LLVMContext& context, ast_node_module_t* module)
 	{
-		llvm_coder_t coder(context);
-		return coder.encode(module);
+		auto* coder = new llvm_coder_t(context, module->name);
+		if(!coder->encode_module(module))
+		{
+			return nullptr;
+		}
+		return coder;
 	}
 }

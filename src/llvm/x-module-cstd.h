@@ -2,37 +2,25 @@
 #ifndef _EOKAS_LLVM_MODULE_C_H_
 #define _EOKAS_LLVM_MODULE_C_H_
 
-#include <llvm/IR/IRBuilder.h>
+#include "./models.h"
 
-#include "./header.h"
-#include "./builder.h"
+#include <llvm/IR/IRBuilder.h>
 
 namespace eokas
 {
-	struct llvm_module_cstd_t : llvm_module_builder_t
+	struct llvm_module_cstd_t : llvm_module_t
 	{
 		llvm_module_cstd_t(llvm::LLVMContext& context)
-			: llvm_module_builder_t(context, "c")
+			: llvm_module_t(context, "c")
 		{ }
-		
-		virtual void begin() override
-		{
-			llvm_module_builder_t::begin();
-		}
 		
 		virtual void body() override
 		{
-			llvm_module_builder_t::body();
 			this->printf();
 			this->sprintf();
 			this->malloc();
 			this->free();
 			this->strlen();
-		}
-		
-		virtual void end() override
-		{
-			llvm_module_builder_t::end();
 		}
 		
 		llvm::Function* printf()
@@ -42,8 +30,10 @@ namespace eokas
 			std::vector<llvm::Type*> args = {type_cstr};
 			bool varg = true;
 			
-			auto func = this->add_func(name, ret, args, varg);
-			return func->handle;
+			auto func = new llvm_function_t(this, name, ret, args, varg);
+			this->add_value(name, func);
+			
+			return func->func;
 		}
 		
 		llvm::Function* sprintf()
@@ -53,8 +43,10 @@ namespace eokas
 			std::vector<llvm::Type*> args = {type_cstr, type_cstr};
 			bool varg = true;
 			
-			auto func = this->add_func(name, ret, args, varg);
-			return func->handle;
+			auto func = new llvm_function_t(this, name, ret, args, varg);
+			this->add_value(name, func);
+			
+			return func->func;
 		}
 		
 		llvm::Function* malloc()
@@ -64,8 +56,10 @@ namespace eokas
 			std::vector<llvm::Type*> args = {type_i64};
 			bool varg = false;
 			
-			auto func = this->add_func(name, ret, args, varg);
-			return func->handle;
+			auto func = new llvm_function_t(this, name, ret, args, varg);
+			this->add_value(name, func);
+			
+			return func->func;
 		}
 		
 		llvm::Function* free()
@@ -75,8 +69,10 @@ namespace eokas
 			std::vector<llvm::Type*> args = {type_cstr};
 			bool varg = false;
 			
-			auto func = this->add_func(name, ret, args, varg);
-			return func->handle;
+			auto func = new llvm_function_t(this, name, ret, args, varg);
+			this->add_value(name, func);
+			
+			return func->func;
 		}
 		
 		llvm::Function* strlen()
@@ -86,8 +82,10 @@ namespace eokas
 			std::vector<llvm::Type*> args = {type_cstr};
 			bool varg = true;
 			
-			auto func = this->add_func(name, ret, args, varg);
-			return func->handle;
+			auto func = new llvm_function_t(this, name, ret, args, varg);
+			this->add_value(name, func);
+			
+			return func->func;
 		}
 	};
 }

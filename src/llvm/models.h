@@ -1,15 +1,20 @@
 
-#ifndef _EOKAS_LLVM_BUILDER_H_
-#define _EOKAS_LLVM_BUILDER_H_
+#ifndef _EOKAS_LLVM_MODELS_H_
+#define _EOKAS_LLVM_MODELS_H_
 
 #include "./header.h"
 #include "./scope.h"
 
+#include <llvm/IR/IRBuilder.h>
+
 namespace eokas
 {
-	struct llvm_basic_builder_t
+	struct llvm_module_t
 	{
 		llvm::LLVMContext& context;
+		llvm::Module module;
+		llvm_scope_t* scope;
+		std::vector<llvm_module_t*> usings;
 		
 		llvm::Type* type_void;
 		llvm::Type* type_i8;
@@ -26,39 +31,26 @@ namespace eokas
 		llvm::Type* type_cstr;
 		llvm::Type* type_void_ptr;
 		
-		llvm_basic_builder_t(llvm::LLVMContext& context);
-		virtual ~llvm_basic_builder_t();
+		llvm_module_t(llvm::LLVMContext& context, const String& name);
+		virtual ~llvm_module_t();
 		
-		virtual void begin() = 0;
-		virtual void body() = 0;
-		virtual void end() = 0;
+		virtual void begin();
+		virtual void body();
+		virtual void end();
+		
+		void useing_module(llvm_module_t* other);
+		
+		bool add_type(const String& name, struct llvm_type_t* type);
+		llvm_type_t* get_type(const String& name);
+		
+		bool add_value(const String& name, struct llvm_value_t* value);
+		llvm_value_t* get_value(const String& name);
 		
 		String get_type_name(llvm::Type* type);
 		llvm::Value* get_default_value(llvm::Type* type);
 	};
 	
-	struct llvm_module_builder_t : llvm_basic_builder_t
-	{
-		llvm::Module module;
-		llvm_scope_t* scope;
-		std::map<String, struct llvm_type_builder_t*> types;
-		std::map<String, struct llvm_func_builder_t*> funcs;
-		
-		llvm_module_builder_t(llvm::LLVMContext& context, const String& name);
-		virtual ~llvm_module_builder_t();
-		
-		virtual void begin() override;
-		virtual void body() override;
-		virtual void end() override;
-		
-		llvm_type_builder_t* add_type(const String& name, llvm_type_builder_t* type);
-		llvm_type_builder_t* get_type(const String& name);
-		
-		llvm_func_builder_t* add_func(const String& name, llvm::Type* ret, const std::vector<llvm::Type*>& args, bool varg);
-		llvm_func_builder_t* get_func(const String& name);
-	};
-	
-	struct llvm_type_builder_t : llvm_basic_builder_t
+	struct llvm_type_t
 	{
 		struct member_t
 		{
@@ -67,20 +59,20 @@ namespace eokas
 			llvm::Value* value;
 		};
 		
-		llvm_module_builder_t& module;
+		llvm_module_t* module;
 		String name;
 		llvm::StructType* handle;
 		std::vector<llvm::Type*> generics = {};
 		std::vector<member_t> members;
 		
-		llvm_type_builder_t(llvm_module_builder_t& module, const String& name);;
+		llvm_type_t(llvm_module_t* module, const String& name);
 		
-		virtual void begin() override;
-		virtual void body() override;
-		virtual void end() override;
+		virtual void begin();
+		virtual void body();
+		virtual void end();
 		
 		bool extends(const String& base);
-		bool extends(llvm_type_builder_t* base);
+		bool extends(llvm_type_t* base);
 		
 		member_t* add_member(const String& name, llvm::Type* type, llvm::Value* value = nullptr);
 		member_t* add_member(const member_t* other);
@@ -96,27 +88,31 @@ namespace eokas
 		bool is_reference_type() const;
 	};
 	
-	struct llvm_func_builder_t : llvm_basic_builder_t
+	struct llvm_value_t
 	{
-		llvm_module_builder_t* module;
-		llvm_type_builder_t* owner;
+		llvm_module_t* module;
+		llvm::Value* value;
 		
+		llvm_value_t(llvm_module_t* module);
+	};
+	
+	struct llvm_function_t : llvm_value_t
+	{
 		llvm::FunctionType* type;
-		llvm::Function* handle;
+		llvm::Function* func;
 		
 		llvm::IRBuilder<> IR;
 		
-		llvm_func_builder_t(
-			llvm_module_builder_t* module,
-			llvm_type_builder_t* owner,
+		llvm_function_t(
+			llvm_module_t* module,
 			const String& name,
 			llvm::Type* retT,
 			const std::vector<llvm::Type*> argsT,
 			bool varg);
 		
-		virtual void begin() override;
-		virtual void body() override;
-		virtual void end() override;
+		virtual void begin();
+		virtual void body();
+		virtual void end();
 		
 		/**
 		 * For ref-types: transform multi-level pointer to one-level pointer.
@@ -136,7 +132,7 @@ namespace eokas
 		
 		llvm::Value* make(llvm::Type* type);
 		llvm::Value* make(llvm::Type* type, llvm::Value* count);
-		llvm::Value* make(llvm_type_builder_t* type);
+		llvm::Value* make(llvm_type_t* type);
 		void free(llvm::Value* ptr);
 		
 		llvm::Value* array_set(llvm::Value* array, const llvm::ArrayRef<llvm::Value*>& elements);
@@ -158,4 +154,4 @@ namespace eokas
 	};
 }
 
-#endif //_EOKAS_LLVM_BUILDER_H_
+#endif //_EOKAS_LLVM_MODELS_H_
