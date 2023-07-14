@@ -31,6 +31,7 @@ namespace eokas
 		llvm::Type* type_cstr;
 		llvm::Type* type_void_ptr;
 		
+		// TODO: it must be import from module-core.
 		llvm::Type* type_string;
 		llvm::Type* type_string_ptr;
 		
