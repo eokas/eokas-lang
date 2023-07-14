@@ -31,7 +31,9 @@ namespace eokas
 	}
 	
 	void llvm_module_t::begin()
-	{ }
+	{
+
+	}
 	
 	void llvm_module_t::body()
 	{ }
@@ -39,7 +41,7 @@ namespace eokas
 	void llvm_module_t::end()
 	{ }
 	
-	void llvm_module_t::useing_module(llvm_module_t* other)
+	void llvm_module_t::using_module(llvm_module_t* other)
 	{
 		if(other == this)
 			return;
@@ -97,12 +99,34 @@ namespace eokas
 		if(type == type_bool) return "bool";
 		if(type == type_cstr) return "cstr";
 		
-		if(type->isStructTy()) return type->getStructName().data();
-		if(type->isFunctionTy()) return "func";
+		if(type->isStructTy())
+			return type->getStructName().data();
+		
+		if(type->isArrayTy())
+			return String::format("Array<%s>", this->get_type_name(type->getArrayElementType()).cstr());
 		
 		if(type->isPointerTy())
+			return String::format("Ptr<%s>", this->get_type_name(type->getPointerElementType()).cstr());
+		
+		if(type->isFunctionTy())
 		{
-			return String::format("Ref<%s>", this->get_type_name(type->getPointerElementType()).cstr());
+			auto* funcType = llvm::cast<llvm::FunctionType>(type);
+			
+			String params = "";
+			uint32_t count = funcType->getFunctionNumParams();
+			for(uint32_t index = 0; index < count; index++)
+			{
+				if(index == 0)
+				{
+					params += ",";
+				}
+				auto ptype = funcType->getFunctionParamType(index);
+				params += this->get_type_name(ptype);
+			}
+			
+			String ret = this->get_type_name(funcType->getReturnType());
+			
+			return String::format("func(%s):%s", params.cstr(), ret.cstr());
 		}
 		
 		return "";

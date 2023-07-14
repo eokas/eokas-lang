@@ -31,6 +31,9 @@ namespace eokas
 		llvm::Type* type_cstr;
 		llvm::Type* type_void_ptr;
 		
+		llvm::Type* type_string;
+		llvm::Type* type_string_ptr;
+		
 		llvm_module_t(llvm::LLVMContext& context, const String& name);
 		virtual ~llvm_module_t();
 		
@@ -38,7 +41,7 @@ namespace eokas
 		virtual void body();
 		virtual void end();
 		
-		void useing_module(llvm_module_t* other);
+		void using_module(llvm_module_t* other);
 		
 		bool add_type(const String& name, struct llvm_type_t* type);
 		llvm_type_t* get_type(const String& name);
