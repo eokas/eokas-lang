@@ -63,8 +63,8 @@ namespace eokas
 			auto* retT = type_i32;
 			std::vector<llvm::Type*> argsT;
 			
-			auto* func = new llvm_function_t(*this, "main", retT, argsT, false);
-			this->add_value("$main", func);
+			auto* func = new llvm_function_t(this, "main", retT, argsT, false);
+			this->scope->add_value("$main", func);
 			
 			this->func = func;
 			
@@ -109,7 +109,7 @@ namespace eokas
 				}
 
 				llvm_type_t* arrayType = new llvm_type_array_t(this, elementT);
-				if(!this->add_type(arrayType->name, arrayType))
+				if(!this->scope->add_type(arrayType->name, arrayType))
 				{
 					delete arrayType;
 					return nullptr;
@@ -260,468 +260,186 @@ namespace eokas
 			switch (node->op)
 			{
 				case ast_binary_oper_t::OR:
-					return this->encode_expr_binary_or(lhs, rhs);
 				case ast_binary_oper_t::AND:
-					return this->encode_expr_binary_and(lhs, rhs);
+					return this->encode_expr_binary_logic(node->op, lhs, rhs);
 				case ast_binary_oper_t::EQ:
-					return this->encode_expr_binary_eq(lhs, rhs);
 				case ast_binary_oper_t::NE:
-					return this->encode_expr_binary_ne(lhs, rhs);
 				case ast_binary_oper_t::LE:
-					return this->encode_expr_binary_le(lhs, rhs);
 				case ast_binary_oper_t::GE:
-					return this->encode_expr_binary_ge(lhs, rhs);
 				case ast_binary_oper_t::LT:
-					return this->encode_expr_binary_lt(lhs, rhs);
 				case ast_binary_oper_t::GT:
-					return this->encode_expr_binary_gt(lhs, rhs);
+					return this->encode_expr_binary_cmp(node->op, lhs, rhs);
 				case ast_binary_oper_t::ADD:
-					return this->encode_expr_binary_add(lhs, rhs);
 				case ast_binary_oper_t::SUB:
-					return this->encode_expr_binary_sub(lhs, rhs);
 				case ast_binary_oper_t::MUL:
-					return this->encode_expr_binary_mul(lhs, rhs);
 				case ast_binary_oper_t::DIV:
-					return this->encode_expr_binary_div(lhs, rhs);
 				case ast_binary_oper_t::MOD:
-					return this->encode_expr_binary_mod(lhs, rhs);
+					return this->encode_expr_binary_arith(node->op, lhs, rhs);
 				case ast_binary_oper_t::BIT_AND:
-					return this->encode_expr_binary_bitand(lhs, rhs);
 				case ast_binary_oper_t::BIT_OR:
-					return this->encode_expr_binary_bitor(lhs, rhs);
 				case ast_binary_oper_t::BIT_XOR:
-					return this->encode_expr_binary_bitxor(lhs, rhs);
 				case ast_binary_oper_t::SHIFT_L:
-					return this->encode_expr_binary_bitshl(lhs, rhs);
 				case ast_binary_oper_t::SHIFT_R:
-					return this->encode_expr_binary_bitshr(lhs, rhs);
+					return this->encode_expr_binary_bits(node->op, lhs, rhs);
 				default:
 					return nullptr;
 			}
 		}
 		
-		llvm::Value* encode_expr_binary_or(llvm::Value* lhs, llvm::Value* rhs)
+		llvm::Value* encode_expr_binary_logic(ast_binary_oper_t op, llvm::Value* lhs, llvm::Value* rhs)
 		{
+			using ins_type_t = std::function<llvm::Value*(llvm::IRBuilder<>& IR, llvm::Value* LHS, llvm::Value* RHS, const llvm::Twine& Name)>;
+			using func_type_t = llvm::Value*(llvm::IRBuilder<>::*)(llvm::Value* LHS, llvm::Value* RHS, const llvm::Twine& Name);
+
+			static std::map<ast_binary_oper_t, ins_type_t> ins =
+			{
+				{ ast_binary_oper_t::AND, (func_type_t)&llvm::IRBuilder<>::CreateAnd},
+				{ast_binary_oper_t::OR, (func_type_t)&llvm::IRBuilder<>::CreateOr},
+			};
+			
+			auto& IR = this->func->IR;
+			
 			auto ltype = lhs->getType();
 			auto rtype = rhs->getType();
 			
-			if((!ltype->isIntegerTy(1)) || (!rtype->isIntegerTy(1)))
+			if(ltype->isIntegerTy(1) && rtype->isIntegerTy(1))
 			{
-				printf("LHS or RHS is not bool value. \n");
-				return nullptr;
+				return ins[op](IR, lhs, rhs, "");
 			}
 			
-			return this->func->IR.CreateOr(lhs, rhs);
+			printf("LHS or RHS is not bool value. \n");
+			return nullptr;
 		}
 		
-		llvm::Value* encode_expr_binary_and(llvm::Value* lhs, llvm::Value* rhs)
+		llvm::Value* encode_expr_binary_cmp(ast_binary_oper_t op, llvm::Value* lhs, llvm::Value* rhs)
 		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
+			using ins_type_t = std::function<
+				llvm::Value*(llvm::IRBuilder<>& IR,
+				llvm::CmpInst::Predicate Predicate,
+				llvm::Value* LHS,
+				llvm::Value* RHS,
+				const llvm::Twine& Name,
+				llvm::MDNode* FPMathTag)>;
 			
-			if((!ltype->isIntegerTy(1)) || (!rtype->isIntegerTy(1)))
+			static ins_type_t ins = &llvm::IRBuilder<>::CreateCmp;
+			
+			static std::map<ast_binary_oper_t, llvm::CmpInst::Predicate> op_i =
 			{
-				printf("LHS or RHS is not bool value. \n");
-				return nullptr;
-			}
+				{ast_binary_oper_t::EQ, llvm::CmpInst::ICMP_EQ},
+				{ast_binary_oper_t::NE, llvm::CmpInst::ICMP_NE},
+				{ast_binary_oper_t::LE, llvm::CmpInst::ICMP_SLE},
+				{ast_binary_oper_t::GE, llvm::CmpInst::ICMP_SGE},
+				{ast_binary_oper_t::LT, llvm::CmpInst::ICMP_SLT},
+				{ast_binary_oper_t::GT, llvm::CmpInst::ICMP_SGT},
+			};
 			
-			return this->func->IR.CreateAnd(lhs, rhs);
-		}
-		
-		llvm::Value* encode_expr_binary_eq(llvm::Value* lhs, llvm::Value* rhs)
-		{
+			static std::map<ast_binary_oper_t, llvm::CmpInst::Predicate> op_f =
+			{
+				{ast_binary_oper_t::EQ, llvm::CmpInst::FCMP_OEQ},
+				{ast_binary_oper_t::NE, llvm::CmpInst::FCMP_ONE},
+				{ast_binary_oper_t::LE, llvm::CmpInst::FCMP_OLE},
+				{ast_binary_oper_t::GE, llvm::CmpInst::FCMP_OGE},
+				{ast_binary_oper_t::LT, llvm::CmpInst::FCMP_OLT},
+				{ast_binary_oper_t::GT, llvm::CmpInst::FCMP_OGT},
+			};
+			
+			auto& IR = this->func->IR;
 			auto ltype = lhs->getType();
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateICmpEQ(lhs, rhs);
+				return ins(IR, op_i[op], lhs, rhs, "", nullptr);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->func->IR.CreateFCmpOEQ(lhs, rhs);
+				return ins(IR, op_f[op], lhs, rhs, "", nullptr);
 			
 			if(ltype->isPointerTy() && rtype->isPointerTy())
 			{
-				return this->func->IR.CreateICmpEQ(
-					this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
-					this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))
-				);
+				lhs = IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context));
+				rhs = IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context));
+				return ins(IR, op_i[op], lhs, rhs, "", nullptr);
 			}
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->func->IR.CreateFCmpOEQ(
-					this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)),
-					rhs
-				);
+				lhs = IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context));
+				return ins(IR, op_f[op], lhs, rhs, "", nullptr);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->func->IR.CreateFCmpOEQ(
-					lhs,
-					this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))
-				);
+				rhs = IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context));
+				return ins(IR, op_f[op], lhs, rhs, "", nullptr);
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
-		llvm::Value* encode_expr_binary_ne(llvm::Value* lhs, llvm::Value* rhs)
+		llvm::Value* encode_expr_binary_arith(ast_binary_oper_t op, llvm::Value* lhs, llvm::Value* rhs)
 		{
+			using ins_type_t = std::function<llvm::Value*(llvm::IRBuilder<>& IR, llvm::Value* LHS, llvm::Value* RHS)>;
+			using func_type_t = llvm::Value*(llvm::IRBuilder<>::*)(llvm::Value* LHS, llvm::Value* RHS);
+			
+			static std::map<ast_binary_oper_t, ins_type_t> ins_i = {
+				{ast_binary_oper_t::ADD, (func_type_t)&llvm::IRBuilder<>::CreateAdd },
+				{ast_binary_oper_t::SUB, (func_type_t)&llvm::IRBuilder<>::CreateSub },
+				{ast_binary_oper_t::MUL, (func_type_t)&llvm::IRBuilder<>::CreateMul },
+				{ast_binary_oper_t::DIV, (func_type_t)&llvm::IRBuilder<>::CreateSDiv },
+				{ast_binary_oper_t::MOD, (func_type_t)&llvm::IRBuilder<>::CreateSRem },
+			};
+			
+			static std::map<ast_binary_oper_t, ins_type_t> ins_f = {
+				{ast_binary_oper_t::ADD, (func_type_t)&llvm::IRBuilder<>::CreateFAdd },
+				{ast_binary_oper_t::SUB, (func_type_t)&llvm::IRBuilder<>::CreateFSub },
+				{ast_binary_oper_t::MUL, (func_type_t)&llvm::IRBuilder<>::CreateFMul },
+				{ast_binary_oper_t::DIV, (func_type_t)&llvm::IRBuilder<>::CreateFDiv },
+				{ast_binary_oper_t::MOD, (func_type_t)&llvm::IRBuilder<>::CreateFRem },
+			};
+			
+			auto& IR = this->func->IR;
 			auto ltype = lhs->getType();
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateICmpNE(lhs, rhs);
+				return ins_i[op](IR, lhs, rhs);
 			
 			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->func->IR.CreateFCmpONE(lhs, rhs);
-			
-			if(ltype->isPointerTy() && rtype->isPointerTy())
-			{
-				return this->func->IR.CreateICmpNE(
-					this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
-					this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))
-				);
-			}
+				return ins_f[op](IR, lhs, rhs);
 			
 			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
 			{
-				return this->func->IR.CreateFCmpONE(
-					this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)),
-					rhs
-				);
+				lhs = IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context));
+				return ins_f[op](IR, lhs, rhs);
 			}
 			
 			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
 			{
-				return this->func->IR.CreateFCmpONE(
-					lhs,
-					this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))
-				);
+				rhs = IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context));
+				return ins_f[op](IR, lhs, rhs);
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
 			return nullptr;
 		}
 		
-		llvm::Value* encode_expr_binary_le(llvm::Value* lhs, llvm::Value* rhs)
+		llvm::Value* encode_expr_binary_bits(ast_binary_oper_t op, llvm::Value* lhs, llvm::Value* rhs)
 		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateICmpSLE(lhs, rhs);
-			
-			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->func->IR.CreateFCmpOLE(lhs, rhs);
-			
-			if(ltype->isPointerTy() && rtype->isPointerTy())
-			{
-				return this->func->IR.CreateICmpULE(
-					this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
-					this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))
-				);
-			}
-			
-			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
-			{
-				return this->func->IR.CreateFCmpOLE(
-					this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)),
-					rhs
-				);
-			}
-			
-			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
-			{
-				return this->func->IR.CreateFCmpOLE(
-					lhs,
-					this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context))
-				);
-			}
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_ge(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateICmpSGE(lhs, rhs);
-			
-			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->func->IR.CreateFCmpOGE(lhs, rhs);
-			
-			if(ltype->isPointerTy() && rtype->isPointerTy())
-			{
-				return this->func->IR.CreateICmpUGE(
-					this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)),
-					this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context))
-				);
-			}
-			
-			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
-			{
-				return this->func->IR.CreateFCmpOGE(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
-			}
-			
-			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
-			{
-				return this->func->IR.CreateFCmpOGE(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
-			}
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_lt(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateICmpSLT(lhs, rhs);
-			
-			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->func->IR.CreateFCmpOLT(lhs, rhs);
-			
-			if(ltype->isPointerTy() && rtype->isPointerTy())
-			{
-				return this->func->IR.CreateICmpULT(this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
-			}
-			
-			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
-			{
-				return this->func->IR.CreateFCmpOLT(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
-			}
-			
-			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
-			{
-				return this->func->IR.CreateFCmpOLT(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
-			}
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_gt(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateICmpSGT(lhs, rhs);
-			
-			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->func->IR.CreateFCmpOGT(lhs, rhs);
-			
-			if(ltype->isPointerTy() && rtype->isPointerTy())
-			{
-				return this->func->IR.CreateICmpUGT(this->func->IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context)), this->func->IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context)));
-			}
-			
-			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
-			{
-				return this->func->IR.CreateFCmpOGT(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
-			}
-			
-			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
-			{
-				return this->func->IR.CreateFCmpOGT(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
-			}
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_add(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateAdd(lhs, rhs);
-			
-			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->func->IR.CreateFAdd(lhs, rhs);
-			
-			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
-			{
-				return this->func->IR.CreateFAdd(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
-			}
-			
-			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
-			{
-				return this->func->IR.CreateFAdd(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
-			}
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_sub(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateSub(lhs, rhs);
-			
-			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->func->IR.CreateFSub(lhs, rhs);
-			
-			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
-			{
-				return this->func->IR.CreateFSub(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
-			}
-			
-			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
-			{
-				return this->func->IR.CreateFSub(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
-			}
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_mul(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateMul(lhs, rhs);
-			
-			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->func->IR.CreateFMul(lhs, rhs);
-			
-			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
-			{
-				return this->func->IR.CreateFMul(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
-			}
-			
-			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
-			{
-				return this->func->IR.CreateFMul(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
-			}
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_div(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateSDiv(lhs, rhs);
-			
-			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->func->IR.CreateFMul(lhs, rhs);
-			
-			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
-			{
-				return this->func->IR.CreateFDiv(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
-			}
-			
-			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
-			{
-				return this->func->IR.CreateFDiv(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
-			}
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_mod(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateSRem(lhs, rhs);
-			
-			if(ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
-				return this->func->IR.CreateFRem(lhs, rhs);
-			
-			if(ltype->isIntegerTy() && rtype->isFloatingPointTy())
-			{
-				return this->func->IR.CreateFRem(this->func->IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context)), rhs);
-			}
-			
-			if(ltype->isFloatingPointTy() && rtype->isIntegerTy())
-			{
-				return this->func->IR.CreateFRem(lhs, this->func->IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context)));
-			}
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_bitand(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateAnd(lhs, rhs);
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_bitor(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateOr(lhs, rhs);
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_bitxor(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateXor(lhs, rhs);
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_bitshl(llvm::Value* lhs, llvm::Value* rhs)
-		{
-			auto ltype = lhs->getType();
-			auto rtype = rhs->getType();
-			
-			if(ltype->isIntegerTy() && rtype->isIntegerTy())
-				return this->func->IR.CreateShl(lhs, rhs);
-			
-			printf("Type of LHS or RHS is invalid.\n");
-			return nullptr;
-		}
-		
-		llvm::Value* encode_expr_binary_bitshr(llvm::Value* lhs, llvm::Value* rhs)
-		{
+			auto& IR = this->func->IR;
 			auto ltype = lhs->getType();
 			auto rtype = rhs->getType();
 			
 			if(ltype->isIntegerTy() && rtype->isIntegerTy())
 			{
-				// 逻辑右移：在左边补 0
-				// 算术右移：在左边补 符号位
+				if(op == ast_binary_oper_t::BIT_AND) return IR.CreateAnd(lhs, rhs);
+				if(op == ast_binary_oper_t::BIT_OR) return IR.CreateOr(lhs, rhs);
+				if(op == ast_binary_oper_t::BIT_XOR) return IR.CreateXor(lhs, rhs);
+				if(op == ast_binary_oper_t::SHIFT_L) return IR.CreateShl(lhs, rhs);
+				
+				// CreateLShr: 逻辑右移：在左边补 0
+				// CreateShr: 算术右移：在左边补 符号位
 				// 我们采用逻辑右移
-				return this->func->IR.CreateLShr(lhs, rhs);
+				if(op == ast_binary_oper_t::SHIFT_R) return IR.CreateLShr(lhs, rhs);
 			}
 			
 			printf("Type of LHS or RHS is invalid.\n");
