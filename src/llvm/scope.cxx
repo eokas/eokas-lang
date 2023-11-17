@@ -3,7 +3,7 @@
 namespace eokas
 {
 	llvm_scope_t::llvm_scope_t(llvm_scope_t* parent, llvm_function_t* func)
-		: parent(parent), func(func), children(), symbols(), types()
+		: parent(parent), func(func), children(), types(), values()
 	{ }
 	
 	llvm_scope_t::~llvm_scope_t()

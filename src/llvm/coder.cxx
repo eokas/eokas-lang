@@ -45,12 +45,12 @@ namespace eokas
 		{
 		}
 		
-		void pushScope(llvm_function_t* f = nullptr)
+		void push_scope(llvm_function_t* f = nullptr)
 		{
 			this->scope = this->scope->add_child(f);
 		}
 		
-		void popScope()
+		void pop_scope()
 		{
 			this->scope = this->scope->parent;
 		}
@@ -69,8 +69,8 @@ namespace eokas
 			this->func = func;
 			
 			llvm::IRBuilder<>& IR = func->IR;
-			
-			this->pushScope(func);
+
+            this->push_scope(func);
 			{
 				auto entry = func->add_basic_block("entry");
 				IR.SetInsertPoint(entry);
@@ -83,7 +83,7 @@ namespace eokas
 				
 				func->add_tail_ret();
 			}
-			this->popScope();
+            this->pop_scope();
 			
 			return true;
 		}
@@ -615,8 +615,8 @@ namespace eokas
 			auto oldIB = this->func->IR.GetInsertBlock();
 			
 			this->func = newFunc;
-			
-			this->pushScope(newFunc);
+
+            this->push_scope(newFunc);
 			{
 				llvm::BasicBlock* entry = newFunc->add_basic_block("entry");
 				this->func->IR.SetInsertPoint(entry);
@@ -654,7 +654,7 @@ namespace eokas
 						this->func->IR.CreateRet(module->get_default_value(retType));
 				}
 			}
-			this->popScope();
+            this->pop_scope();
 			
 			this->func = oldFunc;
 			this->func->IR.SetInsertPoint(oldIB);
@@ -1256,8 +1256,8 @@ namespace eokas
 		{
 			if(node == nullptr)
 				return false;
-			
-			this->pushScope();
+
+            this->push_scope();
 			
 			llvm::BasicBlock* loop_cond = this->func->add_basic_block("loop.cond");
 			llvm::BasicBlock* loop_step = this->func->add_basic_block("loop.step");
@@ -1310,8 +1310,8 @@ namespace eokas
 			
 			this->continuePoint = oldContinuePoint;
 			this->breakPoint = oldBreakPoint;
-			
-			this->popScope();
+
+            this->pop_scope();
 			
 			return true;
 		}
@@ -1320,16 +1320,16 @@ namespace eokas
 		{
 			if(node == nullptr)
 				return false;
-			
-			this->pushScope();
+
+            this->push_scope();
 			
 			for (auto& stmt: node->stmts)
 			{
 				if(!this->encode_stmt(stmt))
 					return false;
 			}
-			
-			this->popScope();
+
+            this->pop_scope();
 			
 			return true;
 		}

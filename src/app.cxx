@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 			printf("=> Source file: %s\n", file.cstr());
 			
 			eokas_main(file, llvm_jit);
-		});l.0p;/'[=]'
+		});
 		
 	try
 	{
