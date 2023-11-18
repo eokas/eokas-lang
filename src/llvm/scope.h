@@ -39,6 +39,19 @@ namespace eokas
 			return iter->second;
 		}
 	};
+
+    struct llvm_value_symbol_t
+    {
+        String name = "";
+        llvm_value_t* value = nullptr;
+        llvm_scope_t* scope = nullptr;
+    };
+
+    struct llvm_type_symbol_t
+    {
+        String name = "";
+        llvm_type_t* type = nullptr;
+    };
 	
 	struct llvm_scope_t
 	{
@@ -46,8 +59,8 @@ namespace eokas
 		llvm_function_t* func;
 		std::vector<llvm_scope_t*> children;
 		
-		table_t<llvm_type_t> types;
-		table_t<llvm_value_t> values;
+		table_t<llvm_type_symbol_t> types;
+		table_t<llvm_value_symbol_t> values;
 		
 		llvm_scope_t(llvm_scope_t* parent, llvm_function_t* func);
 		virtual ~llvm_scope_t();
@@ -55,10 +68,10 @@ namespace eokas
 		llvm_scope_t* add_child(llvm_function_t* f = nullptr);
 		
 		bool add_type(const String& name, llvm_type_t* type);
-		llvm_type_t* get_type(const String& name, bool lookup);
+		llvm_type_symbol_t* get_type(const String& name, bool lookup);
 		
 		bool add_value(const String& name, llvm_value_t* value);
-		llvm_value_t* get_value(const String& name, bool lookup);
+		llvm_value_symbol_t* get_value(const String& name, bool lookup);
 	};
 }
 

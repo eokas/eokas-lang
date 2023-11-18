@@ -9,51 +9,6 @@
 
 namespace eokas
 {
-	struct llvm_module_t
-	{
-		llvm::LLVMContext& context;
-		llvm::Module module;
-		llvm_scope_t* scope;
-		std::vector<llvm_module_t*> usings;
-		
-		llvm::Type* type_void;
-		llvm::Type* type_i8;
-		llvm::Type* type_i16;
-		llvm::Type* type_i32;
-		llvm::Type* type_i64;
-		llvm::Type* type_u8;
-		llvm::Type* type_u16;
-		llvm::Type* type_u32;
-		llvm::Type* type_u64;
-		llvm::Type* type_f32;
-		llvm::Type* type_f64;
-		llvm::Type* type_bool;
-		llvm::Type* type_cstr;
-		llvm::Type* type_void_ptr;
-		
-		// TODO: it must be import from module-core.
-		llvm::Type* type_string;
-		llvm::Type* type_string_ptr;
-		
-		llvm_module_t(llvm::LLVMContext& context, const String& name);
-		virtual ~llvm_module_t();
-		
-		virtual void begin();
-		virtual void body();
-		virtual void end();
-		
-		void using_module(llvm_module_t* other);
-		
-		bool add_type(const String& name, struct llvm_type_t* type);
-		llvm_type_t* get_type(const String& name);
-		
-		bool add_value(const String& name, struct llvm_value_t* value);
-		llvm_value_t* get_value(const String& name);
-		
-		String get_type_name(llvm::Type* type);
-		llvm::Value* get_default_value(llvm::Type* type);
-	};
-	
 	struct llvm_type_t
 	{
 		struct member_t
@@ -64,12 +19,11 @@ namespace eokas
 		};
 		
 		llvm_module_t* module;
-		String name;
 		llvm::StructType* handle;
 		std::vector<llvm::Type*> generics = {};
 		std::vector<member_t> members;
 		
-		llvm_type_t(llvm_module_t* module, const String& name);
+		llvm_type_t(llvm_module_t* module);
 		
 		virtual void begin();
 		virtual void body();
@@ -97,13 +51,13 @@ namespace eokas
 		llvm_module_t* module;
 		llvm::Value* value;
 		
-		llvm_value_t(llvm_module_t* module);
+		llvm_value_t(llvm_module_t* module, llvm::Value* value = nullptr);
 	};
-	
+
 	struct llvm_function_t : llvm_value_t
 	{
 		llvm::FunctionType* type;
-		llvm::Function* func;
+		llvm::Function* handle;
 		
 		llvm::IRBuilder<> IR;
 		
@@ -156,6 +110,51 @@ namespace eokas
 		
 		llvm::Value* print(const std::vector<llvm::Value*>& args);
 	};
+
+    struct llvm_module_t
+    {
+        llvm::LLVMContext& context;
+        llvm::Module module;
+        llvm_scope_t* scope;
+        std::vector<llvm_module_t*> usings;
+
+        llvm::Type* type_void;
+        llvm::Type* type_i8;
+        llvm::Type* type_i16;
+        llvm::Type* type_i32;
+        llvm::Type* type_i64;
+        llvm::Type* type_u8;
+        llvm::Type* type_u16;
+        llvm::Type* type_u32;
+        llvm::Type* type_u64;
+        llvm::Type* type_f32;
+        llvm::Type* type_f64;
+        llvm::Type* type_bool;
+        llvm::Type* type_cstr;
+        llvm::Type* type_void_ptr;
+
+        // TODO: it must be import from module-core.
+        llvm::Type* type_string;
+        llvm::Type* type_string_ptr;
+
+        llvm_module_t(llvm::LLVMContext& context, const String& name);
+        virtual ~llvm_module_t();
+
+        virtual void begin();
+        virtual void body();
+        virtual void end();
+
+        void using_module(llvm_module_t* other);
+
+        bool add_type_symbol(const String& name, struct llvm_type_t *type);
+        llvm_type_symbol_t* get_type_symbol(const String& name);
+
+        bool add_value_symbol(const String& name, struct llvm_value_t *value);
+        llvm_value_symbol_t* get_value_symbol(const String& name);
+
+        String get_type_name(llvm::Type* type);
+        llvm::Value* get_default_value(llvm::Type* type);
+    };
 }
 
 #endif //_EOKAS_LLVM_MODELS_H_

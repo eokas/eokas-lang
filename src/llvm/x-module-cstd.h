@@ -31,9 +31,9 @@ namespace eokas
 			bool varg = true;
 			
 			auto func = new llvm_function_t(this, name, ret, args, varg);
-			this->add_value(name, func);
+            this->add_value_symbol(name, func);
 			
-			return func->func;
+			return func->handle;
 		}
 		
 		llvm::Function* sprintf()
@@ -44,9 +44,9 @@ namespace eokas
 			bool varg = true;
 			
 			auto func = new llvm_function_t(this, name, ret, args, varg);
-			this->add_value(name, func);
+            this->add_value_symbol(name, func);
 			
-			return func->func;
+			return func->handle;
 		}
 		
 		llvm::Function* malloc()
@@ -57,9 +57,9 @@ namespace eokas
 			bool varg = false;
 			
 			auto func = new llvm_function_t(this, name, ret, args, varg);
-			this->add_value(name, func);
+            this->add_value_symbol(name, func);
 			
-			return func->func;
+			return func->handle;
 		}
 		
 		llvm::Function* free()
@@ -70,9 +70,9 @@ namespace eokas
 			bool varg = false;
 			
 			auto func = new llvm_function_t(this, name, ret, args, varg);
-			this->add_value(name, func);
+            this->add_value_symbol(name, func);
 			
-			return func->func;
+			return func->handle;
 		}
 		
 		llvm::Function* strlen()
@@ -83,9 +83,9 @@ namespace eokas
 			bool varg = true;
 			
 			auto func = new llvm_function_t(this, name, ret, args, varg);
-			this->add_value(name, func);
+            this->add_value_symbol(name, func);
 			
-			return func->func;
+			return func->handle;
 		}
 	};
 }
