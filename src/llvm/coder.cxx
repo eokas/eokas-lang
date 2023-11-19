@@ -57,7 +57,7 @@ namespace eokas {
             std::vector<llvm::Type *> argsT;
 
             auto *func = new llvm_function_t(this, "main", retT, argsT, false);
-            this->scope->add_value("$main", func);
+            this->scope->add_value_symbol("$main", func);
 
             this->func = func;
 
@@ -97,7 +97,7 @@ namespace eokas {
                 }
 
                 llvm_type_t *arrayType = new llvm_type_array_t(this, elementT);
-                if (!this->scope->add_type(arrayType->name, arrayType)) {
+                if (!this->scope->add_type_symbol(arrayType->name, arrayType)) {
                     delete arrayType;
                     return nullptr;
                 }
@@ -105,7 +105,7 @@ namespace eokas {
                 return arrayType;
             }
 
-            auto *type = this->scope->get_type(name, true);
+            auto *type = this->scope->get_type_symbol(name, true);
             if (type == nullptr) {
                 printf("The type '%s' is undefined.\n", name.cstr());
                 return nullptr;
@@ -510,7 +510,7 @@ namespace eokas {
             if (node == nullptr)
                 return nullptr;
 
-            auto *symbol = this->scope->get_value(node->name, true);
+            auto *symbol = this->scope->get_value_symbol(node->name, true);
             if (symbol == nullptr) {
                 printf("Symbol '%s' is undefined.\n", node->name.cstr());
                 return nullptr;
@@ -580,7 +580,7 @@ namespace eokas {
 
                 // self
                 auto self = newFunc;
-                this->scope->add_value("self", self);
+                this->scope->add_value_symbol("self", self);
 
                 // args
                 for (size_t index = 0; index < node->args.size(); index++) {
@@ -588,7 +588,7 @@ namespace eokas {
                     auto arg = newFunc->handle->getArg(index + 1);
                     arg->setName(name);
 
-                    if (!this->scope->add_value(name, new llvm_value_t(this, arg))) {
+                    if (!this->scope->add_value_symbol(name, new llvm_value_t(this, arg))) {
                         printf("The symbol name '%s' is already existed.\n", name);
                         return nullptr;
                     }
@@ -879,7 +879,7 @@ namespace eokas {
             }
 
             thisInstanceInfo->resolve();
-            if (!this->scope->add_type(thisInstanceInfo->name, thisInstanceInfo->type)) {
+            if (!this->scope->add_type_symbol(thisInstanceInfo->name, thisInstanceInfo->type)) {
                 printf("There is a same schema named %s in this scope.\n", thisInstanceInfo->name.cstr());
                 return false;
             }
@@ -917,8 +917,8 @@ namespace eokas {
             }
             thisStaticInfo->resolve();
 
-            if (!this->scope->add_type(thisStaticInfo->name, thisStaticInfo->type) ||
-                !this->scope->add_type(thisInstanceInfo->name, thisInstanceInfo->type)) {
+            if (!this->scope->add_type_symbol(thisStaticInfo->name, thisStaticInfo->type) ||
+                !this->scope->add_type_symbol(thisInstanceInfo->name, thisInstanceInfo->type)) {
                 printf("There is a same schema named %s in this scope.\n", thisInstanceInfo->name.cstr());
                 return false;
             }
@@ -933,7 +933,7 @@ namespace eokas {
                 llvm::Value *memP = this->func->IR.CreateStructGEP(thisStaticInfo->type, staticV, index, memN.cstr());
                 this->func->IR.CreateStore(memV, memP);
             }
-            if (!this->scope->add_value(name, staticV)) {
+            if (!this->scope->add_value_symbol(name, staticV)) {
                 printf("There is a same symbol named %s in this scope.\n", name.cstr());
                 return false;
             }
@@ -945,7 +945,7 @@ namespace eokas {
             if (node == nullptr)
                 return false;
 
-            if (this->scope->get_type(node->name, false) != nullptr)
+            if (this->scope->get_type_symbol(node->name, false) != nullptr)
                 return false;
 
             auto *retType = this->encode_type_ref(node->type);
@@ -959,7 +959,7 @@ namespace eokas {
             }
 
             llvm::FunctionType *procType = llvm::FunctionType::get(retType, argTypes, false);
-            this->scope->add_type(node->name, procType->getPointerTo());
+            this->scope->add_type_symbol(node->name, procType->getPointerTo());
 
             return true;
         }
@@ -968,7 +968,7 @@ namespace eokas {
             if (node == nullptr)
                 return false;
 
-            if (this->scope->get_value(node->name, false) != nullptr) {
+            if (this->scope->get_value_symbol(node->name, false) != nullptr) {
                 printf("The symbol '%s' is undefined.", node->name.cstr());
                 return false;
             }
@@ -1013,7 +1013,7 @@ namespace eokas {
             symbol = this->func->ref_value(symbol);
             symbol->setName(node->name.cstr());
 
-            if (!scope->add_value(node->name, symbol)) {
+            if (!scope->add_value_symbol(node->name, symbol)) {
                 printf("There is a symbol named %s in this scope.\n", node->name.cstr());
                 return false;
             }

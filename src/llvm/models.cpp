@@ -2,31 +2,61 @@
 #include "./models.h"
 
 namespace eokas {
-    llvm_type_t::llvm_type_t(llvm_module_t* module)
-            : module(module), handle(nullptr), members() {
-        this->handle = llvm::StructType::create(module->context);
+    llvm_type_t::llvm_type_t(llvm_module_t *module)
+            : module(module), handle(nullptr) {
     }
 
-    void llvm_type_t::begin() {}
+    llvm_type_t::~llvm_type_t() {
 
-    void llvm_type_t::body() {}
+    }
 
-    void llvm_type_t::end() {
-        std::vector<llvm::Type*> body;
+    bool llvm_type_t::is_struct_type() const {
+        if(handle == nullptr)
+            return false;
+        return handle->isStructTy();
+    }
+
+    bool llvm_type_t::is_value_type() const {
+        if(handle == nullptr)
+            return false;
+        return handle->isIntegerTy() || handle->isFloatingPointTy() || handle->isPointerTy();
+    }
+
+    bool llvm_type_t::is_reference_type() const {
+        if(handle == nullptr)
+            return false;
+        return handle->isFunctionTy() || handle->isStructTy() || handle->isArrayTy();
+    }
+
+    llvm_type_struct_t::llvm_type_struct_t(llvm_module_t* module)
+            : llvm_type_t(module), generics(), members() {
+        this->handle = this->structHandle = llvm::StructType::create(module->context);
+    }
+
+    void llvm_type_struct_t::begin() {}
+
+    void llvm_type_struct_t::body() {}
+
+    void llvm_type_struct_t::end() {
+        std::vector<llvm::Type*> structBody;
         for (auto& member: this->members) {
-            body.push_back(member.type);
+            structBody.push_back(member.type->handle);
         }
-        this->handle->setBody(body);
+        this->structHandle->setBody(structBody);
     }
 
-    bool llvm_type_t::extends(const String& base) {
-        return this->extends(module->get_type_symbol(base)->type);
+    bool llvm_type_struct_t::extends(const String& base) {
+        auto type = module->get_type_symbol(base)->type;
+        auto baseStruct = dynamic_cast<llvm_type_struct_t*>(type);
+        if(baseStruct == nullptr)
+            return false;
+        return this->extends(baseStruct);
     }
 
-    bool llvm_type_t::extends(llvm_type_t* base) {
+    bool llvm_type_struct_t::extends(llvm_type_struct_t* base) {
         if (base == nullptr)
             return false;
-        this->add_member("base", base->handle);
+        this->add_member("base", base);
         for (auto& m: base->members) {
             if (this->is_final_member(m.name))
                 continue;
@@ -36,7 +66,7 @@ namespace eokas {
         return true;
     }
 
-    llvm_type_t::member_t* llvm_type_t::add_member(const String& name, llvm::Type* type, llvm::Value* value) {
+    llvm_type_struct_t::member_t* llvm_type_struct_t::add_member(const String& name, llvm_type_t* type, llvm_value_t* value) {
         if (this->get_member(name) != nullptr)
             return nullptr;
         if (type == nullptr && value == nullptr)
@@ -48,17 +78,21 @@ namespace eokas {
         m.value = value;
 
         if (type == nullptr) {
-            m.type = value->getType();
+            m.type = value->get_type();
         }
 
         return &m;
     }
 
-    llvm_type_t::member_t* llvm_type_t::add_member(const member_t* other) {
+    llvm_type_struct_t::member_t* llvm_type_struct_t::add_member(const String &name, llvm_value_t *value) {
+        return this->add_member(name, nullptr, value);
+    }
+
+    llvm_type_struct_t::member_t* llvm_type_struct_t::add_member(const member_t* other) {
         return this->add_member(other->name, other->type, other->value);
     }
 
-    llvm_type_t::member_t* llvm_type_t::get_member(const String& name) {
+    llvm_type_struct_t::member_t* llvm_type_struct_t::get_member(const String& name) {
         for (auto& m: this->members) {
             if (m.name == name)
                 return &m;
@@ -66,14 +100,14 @@ namespace eokas {
         return nullptr;
     }
 
-    llvm_type_t::member_t* llvm_type_t::get_member(size_t index) {
+    llvm_type_struct_t::member_t* llvm_type_struct_t::get_member(size_t index) {
         if (index >= this->members.size())
             return nullptr;
         member_t& m = this->members.at(index);
         return &m;
     }
 
-    size_t llvm_type_t::get_member_index(const String& name) const {
+    size_t llvm_type_struct_t::get_member_index(const String& name) const {
         for (size_t index = 0; index < this->members.size(); index++) {
             if (this->members.at(index).name == name)
                 return index;
@@ -81,11 +115,11 @@ namespace eokas {
         return -1;
     }
 
-    bool llvm_type_t::is_final_member(const String& name) const {
+    bool llvm_type_struct_t::is_final_member(const String& name) const {
         return name == "base";
     }
 
-    void llvm_type_t::resolve_generic_type(const std::vector<llvm::Type*>& args) {
+    void llvm_type_struct_t::resolve_generic_type(const std::vector<llvm::Type*>& args) {
         for (size_t index = 0; index < this->generics.size(); index++) {
             auto gen = llvm::cast<llvm::StructType>(this->generics[index]);
             auto arg = llvm::cast<llvm::StructType>(args[index]);
@@ -93,7 +127,7 @@ namespace eokas {
         }
     }
 
-    void llvm_type_t::resolve_opaque_type(llvm::StructType* opaqueT, llvm::StructType* structT) {
+    void llvm_type_struct_t::resolve_opaque_type(llvm::StructType* opaqueT, llvm::StructType* structT) {
         std::vector<llvm::Type*> body;
         for (uint32_t index = 0; index < structT->getNumElements(); index++) {
             auto* elementT = structT->getElementType(index);
@@ -102,16 +136,18 @@ namespace eokas {
         opaqueT->setBody(body);
     }
 
-    bool llvm_type_t::is_value_type() const {
-        return handle->isIntegerTy() || handle->isFloatingPointTy() || handle->isPointerTy();
-    }
-
-    bool llvm_type_t::is_reference_type() const {
-        return handle->isFunctionTy() || handle->isStructTy() || handle->isArrayTy();
-    }
-
     llvm_value_t::llvm_value_t(llvm_module_t* module, llvm::Value* value)
-            : module(module), value(value) {}
+            : module(module), value(value) {
+
+    }
+
+    llvm_type_t* llvm_value_t::get_type() {
+        if(this->value == nullptr) {
+            return nullptr;
+        }
+        llvm::Type* handle = this->value->getType();
+        return this->module->get_type_symbol(handle)->type;
+    }
 
     llvm_function_t::llvm_function_t(
             llvm_module_t* module,
@@ -227,11 +263,14 @@ namespace eokas {
 
     llvm::Value* llvm_function_t::make(llvm_type_t* type) {
         auto ptr = this->make(type->handle);
-        for (size_t i = 0; i < type->members.size(); i++) {
-            auto mem = type->get_member(i);
-            auto p = IR.CreateStructGEP(ptr, i);
-            auto v = mem->value;
-            IR.CreateStore(v, p);
+        if(type->is_struct_type()) {
+            auto struct_type = dynamic_cast<llvm_type_struct_t*>(type);
+            for (size_t i = 0; i < struct_type->members.size(); i++) {
+                auto mem = struct_type->get_member(i);
+                auto p = IR.CreateStructGEP(ptr, i);
+                auto v = mem->value->value;
+                IR.CreateStore(v, p);
+            }
         }
         return ptr;
     }
@@ -444,27 +483,31 @@ namespace eokas {
     }
 
     bool llvm_module_t::add_type_symbol(const String& name, struct llvm_type_t* type) {
-        if (type == nullptr || &type->module != this)
+        if (type == nullptr || type->module != this)
             return false;
-        if (!this->scope->add_type(name, type))
+        if (!this->scope->add_type_symbol(name, type))
             return false;
         return type;
     }
 
     llvm_type_symbol_t* llvm_module_t::get_type_symbol(const String& name) {
-        return this->scope->get_type(name, false);
+        return this->scope->get_type_symbol(name, true);
+    }
+
+    llvm_type_symbol_t* llvm_module_t::get_type_symbol(llvm::Type *handle) {
+        return this->scope->get_type_symbol(handle, true);
     }
 
     bool llvm_module_t::add_value_symbol(const String& name, struct llvm_value_t* value) {
         if (value == nullptr)
             return false;
-        if (!this->scope->add_value(name, value))
+        if (!this->scope->add_value_symbol(name, value))
             return false;
         return true;
     }
 
     llvm_value_symbol_t* llvm_module_t::get_value_symbol(const String& name) {
-        return this->scope->get_value(name, true);
+        return this->scope->get_value_symbol(name, true);
     }
 
     String llvm_module_t::get_type_name(llvm::Type* type) {

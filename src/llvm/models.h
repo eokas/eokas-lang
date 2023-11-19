@@ -9,30 +9,43 @@
 
 namespace eokas
 {
-	struct llvm_type_t
+    struct llvm_type_t
+    {
+        llvm_module_t* module;
+        llvm::Type* handle;
+
+        llvm_type_t(llvm_module_t* module);
+        virtual ~llvm_type_t();
+
+        bool is_struct_type() const;
+        bool is_value_type() const;
+        bool is_reference_type() const;
+    };
+
+	struct llvm_type_struct_t : llvm_type_t
 	{
 		struct member_t
 		{
 			String name;
-			llvm::Type* type;
-			llvm::Value* value;
+			llvm_type_t* type;
+			llvm_value_t* value;
 		};
-		
-		llvm_module_t* module;
-		llvm::StructType* handle;
-		std::vector<llvm::Type*> generics = {};
+
+		llvm::StructType* structHandle;
+		std::vector<llvm::Type*> generics;
 		std::vector<member_t> members;
-		
-		llvm_type_t(llvm_module_t* module);
+
+        llvm_type_struct_t(llvm_module_t* module);
 		
 		virtual void begin();
 		virtual void body();
 		virtual void end();
 		
 		bool extends(const String& base);
-		bool extends(llvm_type_t* base);
+		bool extends(llvm_type_struct_t* base);
 		
-		member_t* add_member(const String& name, llvm::Type* type, llvm::Value* value = nullptr);
+		member_t* add_member(const String& name, llvm_type_t* type, llvm_value_t* value = nullptr);
+        member_t* add_member(const String& name, llvm_value_t* value);
 		member_t* add_member(const member_t* other);
 		member_t* get_member(const String& name);
 		member_t* get_member(size_t index);
@@ -41,9 +54,6 @@ namespace eokas
 		
 		void resolve_generic_type(const std::vector<llvm::Type*>& args);
 		void resolve_opaque_type(llvm::StructType* opaqueT, llvm::StructType* structT);
-		
-		bool is_value_type() const;
-		bool is_reference_type() const;
 	};
 	
 	struct llvm_value_t
@@ -52,10 +62,16 @@ namespace eokas
 		llvm::Value* value;
 		
 		llvm_value_t(llvm_module_t* module, llvm::Value* value = nullptr);
+        llvm_type_t* get_type();
 	};
 
 	struct llvm_function_t : llvm_value_t
 	{
+        /**
+         * Fuunction name is a friendly identifier for human reading.
+         * In C-API, the function name is the symbol-name in C library.
+         * */
+        String name;
 		llvm::FunctionType* type;
 		llvm::Function* handle;
 		
@@ -63,7 +79,7 @@ namespace eokas
 		
 		llvm_function_t(
 			llvm_module_t* module,
-			const String& name,
+            const String& name,
 			llvm::Type* retT,
 			const std::vector<llvm::Type*> argsT,
 			bool varg);
@@ -148,6 +164,7 @@ namespace eokas
 
         bool add_type_symbol(const String& name, struct llvm_type_t *type);
         llvm_type_symbol_t* get_type_symbol(const String& name);
+        llvm_type_symbol_t* get_type_symbol(llvm::Type* handle);
 
         bool add_value_symbol(const String& name, struct llvm_value_t *value);
         llvm_value_symbol_t* get_value_symbol(const String& name);
