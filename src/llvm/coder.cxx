@@ -984,16 +984,19 @@ namespace eokas {
             auto value = this->func->get_value(expr);
 
             llvm::Type *stype = nullptr;
+            llvm::Type* dtype = type != nullptr ? type->handle : nullptr;
             llvm::Type *vtype = value->getType();
-            if (type != nullptr) {
-                stype = type;
+            if (dtype != nullptr) {
+                stype = dtype;
+
+                // Check type compatibilities.
                 do {
                     if (stype == vtype)
                         break;
                     if (vtype->canLosslesslyBitCastTo(stype))
                         break;
                     if (vtype->isPointerTy() && vtype->getPointerElementType() == stype) {
-                        stype = type = vtype;
+                        stype = dtype = vtype;
                         break;
                     }
 
@@ -1001,8 +1004,10 @@ namespace eokas {
 
                     printf("Type of value can not cast to the type of symbol.\n");
                     return false;
-                } while (false);
-            } else {
+                }
+                while (false);
+            }
+            else {
                 stype = vtype;
             }
 
