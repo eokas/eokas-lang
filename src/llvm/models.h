@@ -189,6 +189,7 @@ namespace eokas
         bool add_value_symbol(const String& name, struct llvm_value_t *value);
         llvm_value_symbol_t* get_value_symbol(const String& name);
 
+        bool type_equals(llvm::Type* lt, llvm::Type* rt);
         String get_type_name(llvm::Type* type);
         llvm::Value* get_default_value(llvm::Type* type);
     };

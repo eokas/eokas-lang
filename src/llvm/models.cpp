@@ -557,6 +557,51 @@ namespace eokas {
         return this->scope->get_value_symbol(name, true);
     }
 
+    bool llvm_module_t::type_equals(llvm::Type* lt, llvm::Type* rt) {
+        if(lt == rt)
+            return true;
+        if(lt->isIntegerTy() && rt->isIntegerTy() && lt->getIntegerBitWidth() == rt->getIntegerBitWidth())
+            return true;
+        if(lt->isFloatTy() && rt->isFloatTy())
+            return true;
+        if(lt->isDoubleTy() && rt->isDoubleTy())
+            return true;
+        if(lt->isPointerTy() && rt->isPointerTy())
+            return this->type_equals(lt->getPointerElementType(), rt->getPointerElementType());
+        if(lt->isArrayTy() && rt->isArrayTy())
+            return this->type_equals(lt->getArrayElementType(), rt->getArrayElementType());
+        if(lt->isFunctionTy() && rt->isFunctionTy())
+        {
+            auto* lft = llvm::cast<llvm::FunctionType>(lt);
+            auto* rft = llvm::cast<llvm::FunctionType>(rt);
+            if(lft->getNumParams() != rft->getNumParams())
+                return false;
+            if(lft->isVarArg() != rft->isVarArg())
+                return false;
+            if(!this->type_equals(lft->getReturnType(), rft->getReturnType()))
+                return false;
+            for(uint32_t i = 0; i < lft->getNumParams(); i++) {
+                auto* lpt = lft->getParamType(i);
+                auto* rpt = rft->getParamType(i);
+                if(!this->type_equals(lpt, rpt))
+                    return false;
+            }
+            return true;
+        }
+        if(lt->isStructTy() && rt->isStructTy()) {
+            if(lt->getStructNumElements() != rt->getStructNumElements())
+               return false;
+            for(uint32_t i = 0; i < lt->getStructNumElements(); i++) {
+                auto* let = lt->getStructElementType(i);
+                auto* ret = rt->getStructElementType(i);
+                if(!this->type_equals(let, ret))
+                    return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
     String llvm_module_t::get_type_name(llvm::Type* type) {
         if (type == type_i8) return "i8";
         if (type == type_i16) return "i16";
