@@ -23,56 +23,48 @@ namespace eokas
 			this->strlen();
 		}
 		
-		llvm::Function* printf()
+		void printf()
 		{
 			String name = "printf";
 			llvm::Type* ret = type_i32;
 			std::vector<llvm::Type*> args = {type_cstr};
 			bool varg = true;
 			
-			auto func = new llvm_function_t(this, name, ret, args, varg);
+			auto func = this->create_function(name, ret, args, varg);
             this->add_value_symbol(name, func);
-			
-			return func->handle;
 		}
 		
-		llvm::Function* sprintf()
+		void sprintf()
 		{
 			String name = "sprintf";
 			llvm::Type* ret = type_i32;
 			std::vector<llvm::Type*> args = {type_cstr, type_cstr};
 			bool varg = true;
 			
-			auto func = new llvm_function_t(this, name, ret, args, varg);
+			auto func = this->create_function(name, ret, args, varg);
             this->add_value_symbol(name, func);
-			
-			return func->handle;
 		}
 		
-		llvm::Function* malloc()
+		void malloc()
 		{
 			String name = "malloc";
 			llvm::Type* ret = type_cstr;
 			std::vector<llvm::Type*> args = {type_i64};
 			bool varg = false;
 			
-			auto func = new llvm_function_t(this, name, ret, args, varg);
+			auto func = this->create_function(name, ret, args, varg);
             this->add_value_symbol(name, func);
-			
-			return func->handle;
 		}
 		
-		llvm::Function* free()
+		void free()
 		{
 			String name = "free";
 			llvm::Type* ret = type_void;
 			std::vector<llvm::Type*> args = {type_cstr};
 			bool varg = false;
 			
-			auto func = new llvm_function_t(this, name, ret, args, varg);
+			auto func = this->create_function(name, ret, args, varg);
             this->add_value_symbol(name, func);
-			
-			return func->handle;
 		}
 		
 		llvm::Function* strlen()
@@ -82,10 +74,8 @@ namespace eokas
 			std::vector<llvm::Type*> args = {type_cstr};
 			bool varg = true;
 			
-			auto func = new llvm_function_t(this, name, ret, args, varg);
+			auto func = this->create_function(name, ret, args, varg);
             this->add_value_symbol(name, func);
-			
-			return func->handle;
 		}
 	};
 }

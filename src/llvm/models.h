@@ -14,7 +14,7 @@ namespace eokas
         llvm_module_t* module;
         llvm::Type* handle;
 
-        llvm_type_t(llvm_module_t* module);
+        llvm_type_t(llvm_module_t* module, llvm::Type* handle = nullptr);
         virtual ~llvm_type_t();
 
         bool is_struct_type() const;
@@ -103,6 +103,8 @@ namespace eokas
 		void add_tail_ret();
 		
 		bool is_array_type(llvm::Type* type);
+
+        llvm::Value* define_local_var(const String& name, llvm::Type* type, llvm::Value* value);
 		
 		llvm::Value* make(llvm::Type* type);
 		llvm::Value* make(llvm::Type* type, llvm::Value* count);
@@ -134,6 +136,9 @@ namespace eokas
         llvm_scope_t* scope;
         std::vector<llvm_module_t*> usings;
 
+        std::map<llvm::Type*, llvm_type_t*> types = {};
+        std::vector<llvm_value_t*> values = {};
+
         llvm::Type* type_void;
         llvm::Type* type_i8;
         llvm::Type* type_i16;
@@ -161,6 +166,21 @@ namespace eokas
         virtual void end();
 
         void using_module(llvm_module_t* other);
+
+        llvm_type_t* create_type(llvm::Type* handle);
+
+        template<typename T>
+        T* create_type() {
+            T* type = new T(this);
+            types[type->handle] = type;
+            return type;
+        }
+
+        llvm_value_t* create_value(llvm::Value* handle);
+        llvm_function_t* create_function(const String& name,
+                                         llvm::Type* retT,
+                                         const std::vector<llvm::Type*> argsT,
+                                         bool varg);
 
         bool add_type_symbol(const String& name, struct llvm_type_t *type);
         llvm_type_symbol_t* get_type_symbol(const String& name);

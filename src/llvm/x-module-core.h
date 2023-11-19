@@ -7,20 +7,6 @@
 #include <llvm/IR/IRBuilder.h>
 
 namespace eokas {
-    struct llvm_type_c_str_t : llvm_type_t {
-        llvm_type_c_str_t(llvm_module_t* module)
-                : llvm_type_t(module) {
-            handle = module->type_cstr;
-        }
-    };
-
-    struct llvm_type_c_array_t : llvm_type_t {
-        llvm_type_c_array_t(llvm_module_t* module, llvm_type_t* element_type)
-                : llvm_type_t(module) {
-            handle = llvm::ArrayType::get(element_type->handle, 0)->getPointerTo();
-        }
-    };
-
     struct llvm_type_object_t : llvm_type_struct_t {
         llvm_type_object_t(llvm_module_t* module)
                 : llvm_type_struct_t(module) {}
@@ -36,8 +22,7 @@ namespace eokas {
             llvm::Type* ret = module->get_type_symbol("TypeInfo")->type->handle;
             std::vector<llvm::Type*> args = {};
 
-            auto func = new llvm_function_t(module, name, ret, args, false);
-
+            auto func = module->create_function(name, ret, args, false);
             return func;
         }
 
@@ -46,8 +31,7 @@ namespace eokas {
             llvm::Type* ret = module->get_type_symbol("String")->type->handle;
             std::vector<llvm::Type*> args = {};
 
-            auto func = new llvm_function_t(module, name, ret, args, false);
-
+            auto func = module->create_function(name, ret, args, false);
             return func;
         }
 
@@ -56,8 +40,7 @@ namespace eokas {
             llvm::Type* ret = module->type_i64;
             std::vector<llvm::Type*> args = {};
 
-            auto func = new llvm_function_t(module, name, ret, args, false);
-
+            auto func = module->create_function(name, ret, args, false);
             return func;
         }
     };
@@ -81,8 +64,7 @@ namespace eokas {
             llvm::Type* ret = module->type_i64;
             std::vector<llvm::Type*> args = {};
 
-            auto func = new llvm_function_t(module, name, ret, args, false);
-
+            auto func = module->create_function(name, ret, args, false);
             return func;
         }
 
@@ -91,8 +73,7 @@ namespace eokas {
             llvm::Type* ret = module->get_type_symbol("string")->type->handle;
             std::vector<llvm::Type*> args = {};
 
-            auto func = new llvm_function_t(module, name, ret, args, false);
-
+            auto func = module->create_function(name, ret, args, false);
             return func;
         }
 
@@ -101,8 +82,7 @@ namespace eokas {
             llvm::Type* ret = module->get_type_symbol("string")->type->handle;
             std::vector<llvm::Type*> args = {};
 
-            auto func = new llvm_function_t(module, name, ret, args, false);
-
+            auto func = module->create_function(name, ret, args, false);
             return func;
         }
 
@@ -111,8 +91,7 @@ namespace eokas {
             llvm::Type* ret = module->get_type_symbol("string")->type->handle;
             std::vector<llvm::Type*> args = {};
 
-            auto func = new llvm_function_t(module, name, ret, args, false);
-
+            auto func = module->create_function(name, ret, args, false);
             return func;
         }
 
@@ -121,8 +100,7 @@ namespace eokas {
             llvm::Type* ret = module->get_type_symbol("string")->type->handle;
             std::vector<llvm::Type*> args = {};
 
-            auto func = new llvm_function_t(module, name, ret, args, false);
-
+            auto func = module->create_function(name, ret, args, false);
             return func;
         }
     };
@@ -201,8 +179,7 @@ namespace eokas {
             llvm::Type* ret = module->type_i64;
             std::vector<llvm::Type*> args = {};
 
-            auto func = new llvm_function_t(module, name, ret, args, false);
-
+            auto func = module->create_function(name, ret, args, false);
             return func;
         }
 
@@ -211,7 +188,7 @@ namespace eokas {
             llvm::Type* ret = module->get_type_symbol("string")->type->handle;
             std::vector<llvm::Type*> args = {};
 
-            auto func = new llvm_function_t(module, name, ret, args, false);
+            auto func = module->create_function(name, ret, args, false);
 
             return func;
         }
@@ -221,17 +198,21 @@ namespace eokas {
             llvm::Type* ret = module->get_type_symbol("string")->type->handle;
             std::vector<llvm::Type*> args = {};
 
-            auto func = new llvm_function_t(module, name, ret, args, false);
+            auto func = module->create_function(name, ret, args, false);
 
             return func;
         }
     };
 
     struct llvm_type_array_t : llvm_type_object_t {
-        llvm_type_t* element_type;
+        llvm_type_t* element_type = nullptr;
 
-        llvm_type_array_t(llvm_module_t* module, llvm_type_t* element_type)
-                : llvm_type_object_t(module), element_type(element_type) {}
+        llvm_type_array_t(llvm_module_t* module)
+                : llvm_type_object_t(module) {}
+
+        void set_element_type(llvm_type_t* ele_type) {
+            this->element_type = ele_type;
+        }
 
         virtual void body() override {
             llvm_type_object_t::body();
@@ -240,7 +221,7 @@ namespace eokas {
             auto dataT = llvm::ArrayType::get(eleT, 0)->getPointerTo();
 
             this->extends("Object");
-            this->add_member("data", dataT);
+            this->add_member("data", module->create_type(dataT));
             this->add_member("len", module->get_type_symbol("u64")->type);
         }
     };
@@ -250,22 +231,20 @@ namespace eokas {
                 : llvm_module_t(context, "core") {}
 
         void body() override {
-            this->add_type_symbol("$cstr", new llvm_type_c_str_t(this));
-
-            this->add_type_symbol("Object", new llvm_type_object_t(this));
-            this->add_type_symbol("TypeInfo", new llvm_type_typeinfo_t(this));
-            this->add_type_symbol("i8", new llvm_type_i8_t(this));
-            this->add_type_symbol("i16", new llvm_type_i16_t(this));
-            this->add_type_symbol("i32", new llvm_type_i32_t(this));
-            this->add_type_symbol("i64", new llvm_type_i64_t(this));
-            this->add_type_symbol("u8", new llvm_type_u8_t(this));
-            this->add_type_symbol("u16", new llvm_type_u16_t(this));
-            this->add_type_symbol("u32", new llvm_type_u32_t(this));
-            this->add_type_symbol("u64", new llvm_type_u64_t(this));
-            this->add_type_symbol("f32", new llvm_type_f32_t(this));
-            this->add_type_symbol("f64", new llvm_type_f64_t(this));
-            this->add_type_symbol("bool", new llvm_type_bool_t(this));
-            this->add_type_symbol("String", new llvm_type_string_t(this));
+            this->add_type_symbol("Object", this->create_type<llvm_type_object_t>());
+            this->add_type_symbol("TypeInfo", this->create_type<llvm_type_typeinfo_t>());
+            this->add_type_symbol("i8", this->create_type< llvm_type_i8_t>());
+            this->add_type_symbol("i16", this->create_type< llvm_type_i16_t>());
+            this->add_type_symbol("i32", this->create_type< llvm_type_i32_t>());
+            this->add_type_symbol("i64", this->create_type< llvm_type_i64_t>());
+            this->add_type_symbol("u8", this->create_type< llvm_type_u8_t>());
+            this->add_type_symbol("u16", this->create_type< llvm_type_u16_t>());
+            this->add_type_symbol("u32", this->create_type< llvm_type_u32_t>());
+            this->add_type_symbol("u64", this->create_type< llvm_type_u64_t>());
+            this->add_type_symbol("f32", this->create_type< llvm_type_f32_t>());
+            this->add_type_symbol("f64", this->create_type< llvm_type_f64_t>());
+            this->add_type_symbol("bool", this->create_type< llvm_type_bool_t>());
+            this->add_type_symbol("String", this->create_type< llvm_type_string_t>());
 
             this->add_value_symbol("print", this->define_func_print());
         }
@@ -277,7 +256,7 @@ namespace eokas {
             llvm::Type* type_string_ptr = this->get_type_symbol("String")->type->handle;
             std::vector<llvm::Type*> args = {type_string_ptr};
 
-            auto func = new llvm_function_t(this, name, ret, args, false);
+            auto func = this->create_function(name, ret, args, false);
 
             auto& IR = func->IR;
             {

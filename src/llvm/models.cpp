@@ -2,8 +2,8 @@
 #include "./models.h"
 
 namespace eokas {
-    llvm_type_t::llvm_type_t(llvm_module_t *module)
-            : module(module), handle(nullptr) {
+    llvm_type_t::llvm_type_t(llvm_module_t *module, llvm::Type* handle)
+            : module(module), handle(handle) {
     }
 
     llvm_type_t::~llvm_type_t() {
@@ -244,6 +244,14 @@ namespace eokas {
                && countT->isIntegerTy(64);
     }
 
+    llvm::Value* llvm_function_t::define_local_var(const String& name, llvm::Type *type, llvm::Value *value) {
+        llvm::Value *symbol = IR.CreateAlloca(type);
+        IR.CreateStore(value, symbol);
+        symbol = this->ref_value(symbol);
+        symbol->setName(name.cstr());
+        return symbol;
+    }
+
     llvm::Value* llvm_function_t::make(llvm::Type* type) {
         auto mallocF = module->module.getFunction("malloc");
         llvm::Constant* len = llvm::ConstantExpr::getSizeOf(type);
@@ -458,10 +466,27 @@ namespace eokas {
         type_bool = llvm::Type::getInt1Ty(context);
         type_cstr = type_i8->getPointerTo();
         type_void_ptr = type_void->getPointerTo();
+
+        this->create_type(type_void);
+        this->create_type(type_i8);
+        this->create_type(type_i16);
+        this->create_type(type_i32);
+        this->create_type(type_i64);
+        this->create_type(type_u8);
+        this->create_type(type_u16);
+        this->create_type(type_u32);
+        this->create_type(type_u64);
+        this->create_type(type_f32);
+        this->create_type(type_f64);
+        this->create_type(type_bool);
+        this->create_type(type_cstr);
+        this->create_type(type_void_ptr);
     }
 
     llvm_module_t::~llvm_module_t() {
         _DeletePointer(scope);
+        _DeleteMap(types);
+        _DeleteList(values);
     }
 
     void llvm_module_t::begin() {
@@ -480,6 +505,28 @@ namespace eokas {
                 return;
         }
         this->usings.push_back(other);
+    }
+
+    llvm_type_t* llvm_module_t::create_type(llvm::Type *handle) {
+        auto iter = this->types.find(handle);
+        if(iter != this->types.end())
+            return iter->second;
+        auto type = new llvm_type_t(this, handle);
+        this->types[handle] = type;
+        return type;
+    }
+
+    llvm_value_t* llvm_module_t::create_value(llvm::Value *handle) {
+        auto value = new llvm_value_t(this, handle);
+        this->values.push_back(value);
+        return value;
+    }
+
+    llvm_function_t* llvm_module_t::create_function(const eokas::String &name, llvm::Type *retT,
+                                                    const std::vector<llvm::Type *> argsT, bool varg) {
+        auto value = new llvm_function_t(this, name, retT, argsT, varg);
+        this->values.push_back(value);
+        return value;
     }
 
     bool llvm_module_t::add_type_symbol(const String& name, struct llvm_type_t* type) {

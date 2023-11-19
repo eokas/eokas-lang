@@ -56,16 +56,16 @@ namespace eokas {
             auto *retT = type_i32;
             std::vector<llvm::Type *> argsT;
 
-            auto *func = new llvm_function_t(this, "main", retT, argsT, false);
-            this->scope->add_value_symbol("$main", func);
+           auto mainFunc = this->create_function("$main", retT, argsT, false);
+            this->scope->add_value_symbol("$main", mainFunc);
 
-            this->func = func;
+            this->func = mainFunc;
 
-            llvm::IRBuilder<> &IR = func->IR;
+            llvm::IRBuilder<> &IR = mainFunc->IR;
 
-            this->push_scope(func);
+            this->push_scope(mainFunc);
             {
-                auto entry = func->add_basic_block("entry");
+                auto entry = mainFunc->add_basic_block("entry");
                 IR.SetInsertPoint(entry);
 
                 for (auto &stmt: node->entry->body) {
@@ -73,7 +73,7 @@ namespace eokas {
                         return false;
                 }
 
-                func->add_tail_ret();
+                mainFunc->add_tail_ret();
             }
             this->pop_scope();
 
@@ -96,27 +96,24 @@ namespace eokas {
                     return nullptr;
                 }
 
-                llvm_type_t *arrayType = new llvm_type_array_t(this, elementT);
-                if (!this->scope->add_type_symbol(arrayType->name, arrayType)) {
-                    delete arrayType;
-                    return nullptr;
-                }
+                auto* arrayType = this->create_type<llvm_type_array_t>();
+                arrayType->set_element_type(elementT);
 
                 return arrayType;
             }
 
-            auto *type = this->scope->get_type_symbol(name, true);
-            if (type == nullptr) {
+            auto *symbol = this->scope->get_type_symbol(name, true);
+            if (symbol == nullptr) {
                 printf("The type '%s' is undefined.\n", name.cstr());
                 return nullptr;
             }
 
+            /* TODO: Support Generic Types
             if (type->generics.size() != node->args.size()) {
                 printf("The generic type defination is not matched with the arguments. \n");
                 return nullptr;
             }
             if (type->generics.size() > 0) {
-                /* TODO: Support generic types
 				std::vector<llvm_type_t*> typeArgs = {};
 				for(auto& arg : node->args)
 				{
@@ -130,10 +127,10 @@ namespace eokas {
 				}
 				
 				return type->resolve(typeArgs);
-                */
             }
+            */
 
-            return type;
+            return symbol->type;
         }
 
         llvm::Value *encode_expr(ast_node_expr_t *node) {
@@ -566,7 +563,7 @@ namespace eokas {
                     argTypes.push_back(argType->handle);
             }
 
-            auto newFunc = new llvm_function_t(this, "", retType->handle, argTypes, false);
+            auto newFunc = this->create_function("", retType->handle, argTypes, false);
 
             auto oldFunc = this->func;
             auto oldIB = this->func->IR.GetInsertBlock();
@@ -691,12 +688,11 @@ namespace eokas {
             if (arrayElements.empty() || arrayElementType == nullptr)
                 arrayElementType = llvm::Type::getInt32Ty(context);
 
-            auto array_element_type = new llvm_type_t(this, "");
-            array_element_type->handle = arrayElementType;
+            auto arrayT = this->create_type<llvm_type_array_t>();
+            arrayT->set_element_type(this->get_type_symbol(arrayElementType)->type);
 
-            auto arrayT = new llvm_type_array_t(this, new llvm_type_t(this, arrayElementType));
-            auto arrayP = this->make(func, this->func->IR, arrayT);
-            this->array_set(scope->func, this->func->IR, arrayP, arrayElements);
+            auto arrayP = this->func->make(arrayT);
+            this->func->array_set(arrayP, arrayElements);
 
             return arrayP;
         }
@@ -715,16 +711,16 @@ namespace eokas {
             auto objT = objV->getType();
             auto keyT = keyV->getType();
 
-            if (module->is_schema_array(objT)) {
+            if (module->is_array(objT)) {
                 if (keyT->isIntegerTy()) {
-                    return module->array_get(scope->func, this->func->IR, objV, keyV);
+                    return this->func->array_get(objV, keyV);
                 } else {
                     printf("The type of index is invalid.\n");
                     return nullptr;
                 }
             } else if (objT == module->type_string_ptr) {
                 if (keyT->isIntegerTy()) {
-                    return module->string_get_char(scope->func, this->func->IR, objV, keyV);
+                    return this->func->string_get_char(objV, keyV);
                 } else {
                     printf("The type of index is invalid.\n");
                     return nullptr;
@@ -757,7 +753,7 @@ namespace eokas {
             }
 
             // make object instance
-            llvm::Value *instance = this->func->make(this->scope->func, this->func->IR, structType);
+            llvm::Value *instance = this->func->make(structType);
 
             for (u32_t index = 0; index < structInfo->members.size(); index++) {
                 auto &structMember = structInfo->members.at(index);
@@ -950,7 +946,7 @@ namespace eokas {
 
             auto *retType = this->encode_type_ref(node->type);
 
-            std::vector<llvm::Type *> argTypes;
+            std::vector<llvm_type_t*> argTypes;
             for (auto arg: node->args) {
                 auto *argType = this->encode_type_ref(arg.second);
                 if (argType == nullptr)
@@ -958,8 +954,15 @@ namespace eokas {
                 argTypes.push_back(argType);
             }
 
-            llvm::FunctionType *procType = llvm::FunctionType::get(retType, argTypes, false);
-            this->scope->add_type_symbol(node->name, procType->getPointerTo());
+            auto retT = retType->handle;
+            std::vector<llvm::Type*> argsT = {};
+            for(auto& t : argTypes) {
+                argsT.push_back(t->handle);
+            }
+
+            llvm::FunctionType *procT = llvm::FunctionType::get(retT, argsT, false);
+            auto proc_type = this->create_type(procT->getPointerTo());
+            this->scope->add_type_symbol(node->name, proc_type);
 
             return true;
         }
@@ -1008,12 +1011,10 @@ namespace eokas {
                 return false;
             }
 
-            llvm::Value *symbol = this->func->IR.CreateAlloca(stype);
-            this->func->IR.CreateStore(value, symbol);
-            symbol = this->func->ref_value(symbol);
-            symbol->setName(node->name.cstr());
+            llvm::Value* symbol = this->func->define_local_var(node->name, stype, value);
+            auto value_symbol = this->create_value(symbol);
 
-            if (!scope->add_value_symbol(node->name, symbol)) {
+            if (!scope->add_value_symbol(node->name, value_symbol)) {
                 printf("There is a symbol named %s in this scope.\n", node->name.cstr());
                 return false;
             }
@@ -1213,7 +1214,7 @@ namespace eokas {
             if (left == nullptr || right == nullptr)
                 return false;
 
-            auto ptr = this->func->ref_value(this->func->IR, left);
+            auto ptr = this->func->ref_value(left);
             auto val = this->func->get_value(right);
             this->func->IR.CreateStore(val, ptr);
 
