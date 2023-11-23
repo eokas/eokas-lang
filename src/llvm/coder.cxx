@@ -572,7 +572,7 @@ namespace eokas {
 
             this->push_scope(newFunc);
             {
-                llvm::BasicBlock *entry = newFunc->add_basic_block("entry");
+                llvm::BasicBlock *entry = newFunc->add_ba®sic_block("entry");
                 this->func->IR.SetInsertPoint(entry);
 
                 // self

@@ -19,22 +19,22 @@ namespace eokas {
         virtual omis_handle_t type_f32() = 0;
         virtual omis_handle_t type_f64() = 0;
         virtual omis_handle_t type_bool() = 0;
-        virtual omis_handle_t type_cstr() = 0;
+        virtual omis_handle_t type_bytes() = 0;
 
         virtual omis_handle_t constant_integer(uint64_t val, uint32_t bits) = 0;
         virtual omis_handle_t constant_float(double val) = 0;
         virtual omis_handle_t constant_bool(bool val) = 0;
-        virtual omis_handle_t constant_cstr(const char* val) = 0;
-        virtual omis_handle_t create_array(omis_handle_t element_type) = 0;
-        virtual omis_handle_t create_func(const String& name, omis_handle_t ret_type, const std::vector<omis_handle_t>& args_types) = 0;
 
-        virtual omis_handle_t create_block(const String& name) = 0;
+        // virtual omis_handle_t create_array(omis_handle_t element_type) = 0;
+        // virtual omis_handle_t create_func(const String& name, omis_handle_t ret_type, const std::vector<omis_handle_t>& args_types) = 0;
+
+        virtual omis_handle_t create_block(omis_handle_t func, const String& name) = 0;
         virtual void activate_block(omis_handle_t block) = 0;
 
-        virtual omis_handle_t new_value(omis_handle_t type) = 0;
+        virtual omis_handle_t alloc(omis_handle_t type) = 0;
         virtual omis_handle_t load(omis_handle_t ptr) = 0;
-        virtual void store(omis_handle_t ptr, omis_handle_t val) = 0;
-        virtual omis_handle_t gep(omis_handle_t ptr, size_t index, size_t offset) = 0;
+        virtual omis_handle_t store(omis_handle_t ptr, omis_handle_t val) = 0;
+        virtual omis_handle_t gep(omis_handle_t type, omis_handle_t ptr, omis_handle_t index) = 0;
 
         virtual omis_handle_t neg(omis_handle_t a) = 0;
         virtual omis_handle_t add(omis_handle_t a, omis_handle_t b) = 0;
