@@ -269,10 +269,10 @@ namespace eokas {
                                                                     const llvm::Twine &Name);
 
             static std::map<ast_binary_oper_t, ins_type_t> ins =
-                    {
-                            {ast_binary_oper_t::AND, (func_type_t) &llvm::IRBuilder<>::CreateAnd},
-                            {ast_binary_oper_t::OR,  (func_type_t) &llvm::IRBuilder<>::CreateOr},
-                    };
+            {
+                {ast_binary_oper_t::AND, (func_type_t) &llvm::IRBuilder<>::CreateAnd},
+                {ast_binary_oper_t::OR,  (func_type_t) &llvm::IRBuilder<>::CreateOr},
+            };
 
             auto &IR = this->func->IR;
 

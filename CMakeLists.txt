@@ -25,7 +25,7 @@ set(LLVM_LIBS LLVMWindowsManifest LLVMXRay LLVMLibDriver LLVMDlltoolDriver LLVMC
 set(LIBS eokas-base ${LLVM_DEPS} ${LLVM_LIBS})
 
 aux_source_directory(src SRC)
-aux_source_directory(src/parser SRC_PARSER)
+aux_source_directory(src/app SRC_PARSER)
 aux_source_directory(src/ast SRC_AST)
 aux_source_directory(src/llvm SRC_LLVM)
 aux_source_directory(src/omis SRC_OMIS)
