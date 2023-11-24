@@ -30,6 +30,7 @@ namespace eokas
 
     struct llvm_bridge_t :public omis_bridge_t {
         llvm::LLVMContext& context;
+        llvm::Module module;
         llvm::IRBuilder<> IR;
 
         llvm::Type* ty_void;
@@ -47,8 +48,8 @@ namespace eokas
         llvm::Type* ty_bytes;
         llvm::Type* ty_void_ptr;
 
-        llvm_bridge_t(llvm::LLVMContext& context)
-                : omis_bridge_t(), context(context), IR(context) {
+        llvm_bridge_t(const String& name, llvm::LLVMContext& context)
+                : omis_bridge_t(), context(context), module(name.cstr(), context), IR(context) {
             ty_void = llvm::Type::getVoidTy(context);
             ty_i8 = llvm::Type::getInt8Ty(context);
             ty_i16 = llvm::Type::getInt16Ty(context);
@@ -63,12 +64,6 @@ namespace eokas
             ty_bool = llvm::Type::getInt1Ty(context);
             ty_bytes = llvm::Type::getInt8PtrTy(context);
             ty_void_ptr = ty_void->getPointerTo();
-        }
-
-        virtual bool can_losslessly_cast(omis_handle_t a, omis_handle_t b) override {
-            auto* aT = (llvm::Type*)a;
-            auto* bT = (llvm::Type*)b;
-            return aT->canLosslesslyBitCastTo(bT);
         }
 
         virtual omis_handle_t type_void() override {
@@ -123,13 +118,29 @@ namespace eokas
             return ty_bytes;
         }
 
-        virtual omis_handle_t constant_integer(uint64_t val, uint32_t bits) override {
+        virtual omis_handle_t type_func(omis_handle_t ret, const std::vector<omis_handle_t>& args) override {
+            llvm::Type* ret_type = _Ty(ret);
+            std::vector<llvm::Type*> args_type;
+            for(auto& arg : args) {
+                args_type.push_back(_Ty(arg));
+            }
+            llvm::FunctionType* funcType = llvm::FunctionType::get(ret_type, args_type, false);
+            return funcType;
+        }
+
+        virtual bool can_losslessly_cast(omis_handle_t a, omis_handle_t b) override {
+            auto* aT = (llvm::Type*)a;
+            auto* bT = (llvm::Type*)b;
+            return aT->canLosslesslyBitCastTo(bT);
+        }
+
+        virtual omis_handle_t value_integer(uint64_t val, uint32_t bits) override {
             auto* type = ty_i64;
             if(bits == 32) type = ty_i32;
             return llvm::Constant::getIntegerValue(type, llvm::APInt(bits, val, true));
         }
 
-        virtual omis_handle_t constant_float(double val) override {
+        virtual omis_handle_t value_float(double val) override {
             return llvm::ConstantFP::get(context, llvm::APFloat(val));
         }
 
@@ -137,8 +148,18 @@ namespace eokas
             return llvm::Constant::getIntegerValue(ty_bool, llvm::APInt(1, val ? 1 : 0, true));
         }
 
+        virtual omis_handle_t create_func(const String& name, omis_handle_t type) override {
+            llvm::FunctionType* funcType = (llvm::FunctionType*)type;
+            llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name.cstr(), module);
+
+            llvm::AttributeList attrs;
+            funcPtr->setAttributes(attrs);
+            funcPtr->setCallingConv(llvm::CallingConv::C);
+
+            return funcPtr;
+        }
+
         // virtual omis_handle_t create_array(omis_handle_t element_type) = 0;
-        // virtual omis_handle_t create_func(const String& name, omis_handle_t ret_type, const std::vector<omis_handle_t>& args_types) = 0;
 
         virtual omis_handle_t create_block(omis_handle_t func, const String& name) override {
             return llvm::BasicBlock::Create(context, name.cstr(), _Func(func));

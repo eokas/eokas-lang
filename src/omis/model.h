@@ -89,7 +89,6 @@ namespace eokas {
         omis_value_t* mul(omis_value_t* a, omis_value_t* b);
         omis_value_t* div(omis_value_t* a, omis_value_t* b);
         omis_value_t* mod(omis_value_t* a, omis_value_t* b);
-        omis_value_t* cmp(omis_value_t* a, omis_value_t* b);
         omis_value_t* eq(omis_value_t* a, omis_value_t* b);
         omis_value_t* ne(omis_value_t* a, omis_value_t* b);
         omis_value_t* gt(omis_value_t* a, omis_value_t* b);
@@ -128,9 +127,7 @@ namespace eokas {
 
         bool using_module(omis_module_t* other);
 
-        omis_type_t* create_type(omis_handle_t handle);
-        bool equals_type(omis_type_t* a, omis_type_t* b);
-        bool can_losslessly_bitcast(omis_type_t* a, omis_type_t* b);
+        omis_type_t* type(omis_handle_t handle);
         omis_type_t* type_void();
         omis_type_t* type_i8();
         omis_type_t* type_i16();
@@ -139,14 +136,16 @@ namespace eokas {
         omis_type_t* type_i64();
         omis_type_t* type_f64();
         omis_type_t* type_bool();
+        omis_type_t* type_func(omis_type_t* ret, const std::vector<omis_type_t*>& args);
+        bool equals_type(omis_type_t* a, omis_type_t* b);
+        bool can_losslessly_bitcast(omis_type_t* a, omis_type_t* b);
 
-
-        omis_value_t* create_value(omis_type_t* type, omis_handle_t handle);
-        omis_func_t* create_func(const String& name, omis_type_t* ret, const std::vector<omis_type_t*>& args);
-        omis_value_t* constant_integer(u64_t val, u32_t bits);
-        omis_value_t* constant_float(f64_t val);
-        omis_value_t* constant_bool(bool val);
-        omis_value_t* constant_string(const String& val);
+        omis_value_t* value(omis_type_t* type, omis_handle_t handle);
+        omis_value_t* value_integer(u64_t val, u32_t bits);
+        omis_value_t* value_float(f64_t val);
+        omis_value_t* value_bool(bool val);
+        omis_value_t* value_string(const String& val);
+        omis_func_t* value_func(const String& name, omis_type_t* ret, const std::vector<omis_type_t*>& args);
 
     protected:
         String name;
