@@ -205,8 +205,33 @@ namespace eokas
             return nullptr;
         }
 
-        virtual omis_handle_t l_and(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t l_or(omis_handle_t a, omis_handle_t b) = 0;
+        virtual omis_handle_t l_and(omis_handle_t a, omis_handle_t b) override {
+            auto lhs = _Val(a);
+            auto rhs = _Val(b);
+            auto ltype = lhs->getType();
+            auto rtype = rhs->getType();
+
+            if (ltype->isIntegerTy(1) && rtype->isIntegerTy(1)) {
+                return IR.CreateAnd(lhs, rhs);
+            }
+
+            printf("LHS or RHS is not bool value. \n");
+            return nullptr;
+        }
+
+        virtual omis_handle_t l_or(omis_handle_t a, omis_handle_t b) override {
+            auto lhs = _Val(a);
+            auto rhs = _Val(b);
+            auto ltype = lhs->getType();
+            auto rtype = rhs->getType();
+
+            if (ltype->isIntegerTy(1) && rtype->isIntegerTy(1)) {
+                return IR.CreateOr(lhs, rhs);
+            }
+
+            printf("LHS or RHS is not bool value. \n");
+            return nullptr;
+        }
 
         virtual omis_handle_t b_flip(omis_handle_t a) override {
             auto rhs _Val(a);
