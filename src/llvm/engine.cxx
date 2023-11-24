@@ -164,8 +164,24 @@ namespace eokas
             return IR.CreateGEP(_Ty(type), _Val(ptr), _Val(index));
         }
 
-        virtual omis_handle_t neg(omis_handle_t a) = 0;
-        virtual omis_handle_t add(omis_handle_t a, omis_handle_t b) = 0;
+        virtual omis_handle_t neg(omis_handle_t a) override {
+            auto rhs = _Val(a);
+            auto rtype = rhs->getType();
+
+            if (rtype->isIntegerTy())
+                return IR.CreateNeg(rhs);
+
+            if (rtype->isFloatingPointTy())
+                return IR.CreateFNeg(rhs);
+
+            printf("Type of RHS is invalid.\n");
+            return nullptr;
+        }
+
+        virtual omis_handle_t add(omis_handle_t a, omis_handle_t b) override {
+
+        }
+
         virtual omis_handle_t sub(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t mul(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t div(omis_handle_t a, omis_handle_t b) = 0;
@@ -177,15 +193,107 @@ namespace eokas
         virtual omis_handle_t ge(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t lt(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t le(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t l_not(omis_handle_t a) = 0;
+
+        virtual omis_handle_t l_not(omis_handle_t a) override {
+            auto rhs = _Val(a);
+            auto rtype = rhs->getType();
+
+            if (rtype->isIntegerTy() && rtype->getIntegerBitWidth() == 1)
+                return IR.CreateNot(rhs);
+
+            printf("Type of RHS is invalid.\n");
+            return nullptr;
+        }
+
         virtual omis_handle_t l_and(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t l_or(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t b_flip(omis_handle_t a) = 0;
-        virtual omis_handle_t b_and(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t b_or(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t b_xor(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t b_shl(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t b_shr(omis_handle_t a, omis_handle_t b) = 0;
+
+        virtual omis_handle_t b_flip(omis_handle_t a) override {
+            auto rhs _Val(a);
+            auto rtype = rhs->getType();
+
+            if (rtype->isIntegerTy()) {
+                auto bits = rtype->getIntegerBitWidth();
+                auto mask = llvm::ConstantInt::get(rtype, llvm::APInt(bits, 0xFFFFFFFF));
+                return IR.CreateXor(rhs, mask);
+            }
+
+            printf("Type of RHS is invalid.\n");
+            return nullptr;
+        }
+
+        virtual omis_handle_t b_and(omis_handle_t a, omis_handle_t b) override {
+            auto lhs = _Val(a);
+            auto rhs = _Val(b);
+            auto ltype = lhs->getType();
+            auto rtype = rhs->getType();
+
+            if (ltype->isIntegerTy() && rtype->isIntegerTy()) {
+                return IR.CreateAnd(lhs, rhs);
+            }
+
+            printf("Type of LHS or RHS is invalid.\n");
+            return nullptr;
+        }
+
+        virtual omis_handle_t b_or(omis_handle_t a, omis_handle_t b) override {
+            auto lhs = _Val(a);
+            auto rhs = _Val(b);
+            auto ltype = lhs->getType();
+            auto rtype = rhs->getType();
+
+            if (ltype->isIntegerTy() && rtype->isIntegerTy()) {
+                return IR.CreateOr(lhs, rhs);
+            }
+
+            printf("Type of LHS or RHS is invalid.\n");
+            return nullptr;
+        }
+
+        virtual omis_handle_t b_xor(omis_handle_t a, omis_handle_t b) override {
+            auto lhs = _Val(a);
+            auto rhs = _Val(b);
+            auto ltype = lhs->getType();
+            auto rtype = rhs->getType();
+
+            if (ltype->isIntegerTy() && rtype->isIntegerTy()) {
+                return IR.CreateXor(lhs, rhs);
+            }
+
+            printf("Type of LHS or RHS is invalid.\n");
+            return nullptr;
+        }
+
+        virtual omis_handle_t b_shl(omis_handle_t a, omis_handle_t b) override {
+            auto lhs = _Val(a);
+            auto rhs = _Val(b);
+            auto ltype = lhs->getType();
+            auto rtype = rhs->getType();
+
+            if (ltype->isIntegerTy() && rtype->isIntegerTy()) {
+                return IR.CreateShl(lhs, rhs);
+            }
+
+            printf("Type of LHS or RHS is invalid.\n");
+            return nullptr;
+        }
+
+        virtual omis_handle_t b_shr(omis_handle_t a, omis_handle_t b) override {
+            auto lhs = _Val(a);
+            auto rhs = _Val(b);
+            auto ltype = lhs->getType();
+            auto rtype = rhs->getType();
+
+            if (ltype->isIntegerTy() && rtype->isIntegerTy()) {
+                // CreateLShr: 逻辑右移：在左边补 0
+                // CreateShr: 算术右移：在左边补 符号位
+                // 我们采用逻辑右移
+                return IR.CreateLShr(lhs, rhs);
+            }
+
+            printf("Type of LHS or RHS is invalid.\n");
+            return nullptr;
+        }
 
         virtual omis_handle_t jump(omis_handle_t pos) = 0;
         virtual omis_handle_t jump_cond(omis_handle_t cond, omis_handle_t branch_true, omis_handle_t branch_false) = 0;
