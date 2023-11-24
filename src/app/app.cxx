@@ -1,5 +1,5 @@
 #include "app.h"
-#include "parser/parser.h"
+#include "./parser.h"
 #include "../llvm/engine.h"
 
 using namespace eokas;

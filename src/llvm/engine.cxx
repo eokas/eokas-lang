@@ -2,6 +2,7 @@
 #include "coder.h"
 #include "scope.h"
 #include "../omis/bridge.h"
+#include "../omis/model.h"
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
@@ -144,11 +145,11 @@ namespace eokas
             return llvm::ConstantFP::get(context, llvm::APFloat(val));
         }
 
-        virtual omis_handle_t constant_bool(bool val) override {
+        virtual omis_handle_t value_bool(bool val) override {
             return llvm::Constant::getIntegerValue(ty_bool, llvm::APInt(1, val ? 1 : 0, true));
         }
 
-        virtual omis_handle_t create_func(const String& name, omis_handle_t type) override {
+        virtual omis_handle_t value_func(const String& name, omis_handle_t type) override {
             llvm::FunctionType* funcType = (llvm::FunctionType*)type;
             llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name.cstr(), module);
 
@@ -497,7 +498,6 @@ namespace eokas
         // virtual void drop(omis_handle_t ptr) = 0;
     };
 
-
 	bool llvm_jit(ast_node_module_t* m)
 	{
 		llvm::InitializeNativeTarget();
@@ -505,7 +505,11 @@ namespace eokas
 		llvm::InitializeNativeTargetAsmParser();
 		
 		llvm::LLVMContext context;
-		
+        llvm_bridge_t bridge(m->name, context);
+        omis_module_t module(m->name, &bridge);
+
+        module
+
 		llvm_module_t* module = llvm_encode(context, m);
 		if(module == nullptr)
 			return false;
