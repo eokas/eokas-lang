@@ -306,18 +306,19 @@ namespace eokas {
         return module->create_value(ret);
     }
 
-    omis_value_t* omis_func_t::phi(omis_type_t *type, const std::map<omis_value_t *, omis_value_t *> incommings) {
+    omis_value_t* omis_func_t::phi(omis_type_t *type, const std::map<omis_value_t *, omis_value_t *>& incomings) {
         auto bridge = module->get_bridge();
-        auto phi = bridge->phi(type->get_handle(), incommings.size());
-        for(auto& pair : incommings) {
-            bridge->phi_set_incomming(phi,pair.first, pair.second);
+        std::map<omis_handle_t, omis_handle_t> incomings_handles;
+        for(auto& pair : incomings) {
+            incomings_handles.insert(std::make_pair(pair.first->get_handle(), pair.second->get_handle()));
         }
+        auto phi = bridge->phi(type->get_handle(), incomings_handles);
         return module->create_value(phi);
     }
 
     omis_value_t* omis_func_t::create_local_symbol(const String &name, omis_type_t *type, omis_value_t *value) {
         auto bridge = module->get_bridge();
-        auto symbol = bridge->new_value(type->get_handle());
+        auto symbol = bridge->alloc(type->get_handle());
         bridge->store(symbol, value->get_handle());
         return module->create_value(symbol);
     }

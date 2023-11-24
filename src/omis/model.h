@@ -107,7 +107,7 @@ namespace eokas {
         omis_value_t* b_shr(omis_value_t* a, omis_value_t* b);
         omis_value_t* jump(omis_value_t* pos);
         omis_value_t* jump_cond(omis_value_t* cond, omis_value_t* branch_true, omis_value_t* branch_false);
-        omis_value_t* phi(omis_type_t* type, const std::map<omis_value_t*, omis_value_t*> incommings);
+        omis_value_t* phi(omis_type_t* type, const std::map<omis_value_t*, omis_value_t*>& incomings);
 
         omis_value_t* create_local_symbol(const String& name, omis_type_t* type, omis_value_t* value);
         void ensure_tail_ret();

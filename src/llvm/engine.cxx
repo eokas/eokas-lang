@@ -178,21 +178,146 @@ namespace eokas
             return nullptr;
         }
 
-        virtual omis_handle_t add(omis_handle_t a, omis_handle_t b) override {
+        enum class ArithOp {ADD, SUB, MUL, DIV, MOD};
+        omis_handle_t arith(ArithOp op, omis_handle_t a, omis_handle_t b) {
+            using ins_type_t = std::function<llvm::Value *(llvm::IRBuilder<> &IR, llvm::Value *LHS, llvm::Value *RHS)>;
+            using func_type_t = llvm::Value *(llvm::IRBuilder<>::*)(llvm::Value *LHS, llvm::Value *RHS);
 
+            static std::map<ArithOp, ins_type_t> ins_i = {
+                {ArithOp::ADD, (func_type_t) &llvm::IRBuilder<>::CreateAdd},
+                {ArithOp::SUB, (func_type_t) &llvm::IRBuilder<>::CreateSub},
+                {ArithOp::MUL, (func_type_t) &llvm::IRBuilder<>::CreateMul},
+                {ArithOp::DIV, (func_type_t) &llvm::IRBuilder<>::CreateSDiv},
+                {ArithOp::MOD, (func_type_t) &llvm::IRBuilder<>::CreateSRem},
+            };
+
+            static std::map<ArithOp, ins_type_t> ins_f = {
+                {ArithOp::ADD, (func_type_t) &llvm::IRBuilder<>::CreateFAdd},
+                {ArithOp::SUB, (func_type_t) &llvm::IRBuilder<>::CreateFSub},
+                {ArithOp::MUL, (func_type_t) &llvm::IRBuilder<>::CreateFMul},
+                {ArithOp::DIV, (func_type_t) &llvm::IRBuilder<>::CreateFDiv},
+                {ArithOp::MOD, (func_type_t) &llvm::IRBuilder<>::CreateFRem},
+            };
+
+            auto lhs = _Val(a);
+            auto rhs = _Val(b);
+            auto ltype = lhs->getType();
+            auto rtype = rhs->getType();
+
+            if (ltype->isIntegerTy() && rtype->isIntegerTy())
+                return ins_i[op](IR, lhs, rhs);
+
+            if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+                return ins_f[op](IR, lhs, rhs);
+
+            if (ltype->isIntegerTy() && rtype->isFloatingPointTy()) {
+                lhs = IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context));
+                return ins_f[op](IR, lhs, rhs);
+            }
+
+            if (ltype->isFloatingPointTy() && rtype->isIntegerTy()) {
+                rhs = IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context));
+                return ins_f[op](IR, lhs, rhs);
+            }
+
+            printf("Type of LHS or RHS is invalid.\n");
+            return nullptr;
         }
 
-        virtual omis_handle_t sub(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t mul(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t div(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t mod(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t cmp(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t eq(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t ne(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t gt(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t ge(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t lt(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t le(omis_handle_t a, omis_handle_t b) = 0;
+        virtual omis_handle_t add(omis_handle_t a, omis_handle_t b) override {
+            return this->arith(ArithOp::ADD, a, b);
+        }
+
+        virtual omis_handle_t sub(omis_handle_t a, omis_handle_t b) override {
+            return this->arith(ArithOp::SUB, a, b);
+        }
+
+        virtual omis_handle_t mul(omis_handle_t a, omis_handle_t b) override {
+            return this->arith(ArithOp::MUL, a, b);
+        }
+
+        virtual omis_handle_t div(omis_handle_t a, omis_handle_t b) override {
+            return this->arith(ArithOp::DIV, a, b);
+        }
+
+        virtual omis_handle_t mod(omis_handle_t a, omis_handle_t b) override {
+            return this->arith(ArithOp::MOD, a, b);
+        }
+
+        enum class CmpOp {EQ, NE, LE, GE, LT, GT};
+        omis_handle_t cmp(CmpOp op, omis_handle_t a, omis_handle_t b) {
+            static std::map<CmpOp, llvm::CmpInst::Predicate> op_i = {
+                {CmpOp::EQ, llvm::CmpInst::ICMP_EQ},
+                {CmpOp::NE, llvm::CmpInst::ICMP_NE},
+                {CmpOp::LE, llvm::CmpInst::ICMP_SLE},
+                {CmpOp::GE, llvm::CmpInst::ICMP_SGE},
+                {CmpOp::LT, llvm::CmpInst::ICMP_SLT},
+                {CmpOp::GT, llvm::CmpInst::ICMP_SGT},
+            };
+
+            static std::map<CmpOp, llvm::CmpInst::Predicate> op_f = {
+                {CmpOp::EQ, llvm::CmpInst::FCMP_OEQ},
+                {CmpOp::NE, llvm::CmpInst::FCMP_ONE},
+                {CmpOp::LE, llvm::CmpInst::FCMP_OLE},
+                {CmpOp::GE, llvm::CmpInst::FCMP_OGE},
+                {CmpOp::LT, llvm::CmpInst::FCMP_OLT},
+                {CmpOp::GT, llvm::CmpInst::FCMP_OGT},
+            };
+
+            auto lhs = _Val(a);
+            auto rhs = _Val(b);
+            auto ltype = lhs->getType();
+            auto rtype = rhs->getType();
+
+            if (ltype->isIntegerTy() && rtype->isIntegerTy())
+                return IR.CreateCmp(op_i[op], lhs, rhs, "", nullptr);
+
+            if (ltype->isPointerTy() && rtype->isPointerTy()) {
+                lhs = IR.CreatePtrToInt(lhs, llvm::Type::getInt64Ty(context));
+                rhs = IR.CreatePtrToInt(rhs, llvm::Type::getInt64Ty(context));
+                return IR.CreateCmp(op_i[op], lhs, rhs, "", nullptr);
+            }
+
+            if (ltype->isFloatingPointTy() && rtype->isFloatingPointTy())
+                return IR.CreateCmp(op_f[op], lhs, rhs, "", nullptr);
+
+            if (ltype->isIntegerTy() && rtype->isFloatingPointTy()) {
+                lhs = IR.CreateSIToFP(lhs, llvm::Type::getDoubleTy(context));
+                return IR.CreateCmp(op_f[op], lhs, rhs, "", nullptr);
+            }
+
+            if (ltype->isFloatingPointTy() && rtype->isIntegerTy()) {
+                rhs = IR.CreateSIToFP(rhs, llvm::Type::getDoubleTy(context));
+                return IR.CreateCmp(op_f[op], lhs, rhs, "", nullptr);
+            }
+
+            printf("Type of LHS or RHS is invalid.\n");
+            return nullptr;
+        }
+
+        virtual omis_handle_t eq(omis_handle_t a, omis_handle_t b) override {
+            return this->cmp(CmpOp::EQ, a, b);
+        }
+
+        virtual omis_handle_t ne(omis_handle_t a, omis_handle_t b) override {
+            return this->cmp(CmpOp::NE, a, b);
+        }
+
+        virtual omis_handle_t gt(omis_handle_t a, omis_handle_t b) override {
+            return this->cmp(CmpOp::GT, a, b);
+        }
+
+        virtual omis_handle_t ge(omis_handle_t a, omis_handle_t b) override {
+            return this->cmp(CmpOp::GE, a, b);
+        }
+
+        virtual omis_handle_t lt(omis_handle_t a, omis_handle_t b) override {
+            return this->cmp(CmpOp::LT, a, b);
+        }
+
+        virtual omis_handle_t le(omis_handle_t a, omis_handle_t b) override {
+            return this->cmp(CmpOp::LE, a, b);
+        }
 
         virtual omis_handle_t l_not(omis_handle_t a) override {
             auto rhs = _Val(a);
@@ -320,15 +445,35 @@ namespace eokas
             return nullptr;
         }
 
-        virtual omis_handle_t jump(omis_handle_t pos) = 0;
-        virtual omis_handle_t jump_cond(omis_handle_t cond, omis_handle_t branch_true, omis_handle_t branch_false) = 0;
-        virtual omis_handle_t phi(omis_handle_t type, size_t incommings) = 0;
-        virtual void phi_set_incomming(omis_handle_t phi, omis_handle_t value, omis_handle_t block) = 0;
-        virtual omis_handle_t call(omis_handle_t func, const std::vector<omis_handle_t>& args) = 0;
-        virtual omis_handle_t ret(omis_handle_t value) = 0;
+        virtual omis_handle_t jump(omis_handle_t block) override {
+            return IR.CreateBr(_Block(block));
+        }
 
-        virtual omis_handle_t make(omis_handle_t type, omis_handle_t count) = 0;
-        virtual void drop(omis_handle_t ptr) = 0;
+        virtual omis_handle_t jump_cond(omis_handle_t cond, omis_handle_t branch_true, omis_handle_t branch_false) override {
+            return IR.CreateCondBr(_Val(cond), _Block(branch_true), _Block(branch_false));
+        }
+
+        virtual omis_handle_t phi(omis_handle_t type, const std::map<omis_handle_t, omis_handle_t>& incomings) override {
+            auto phi = IR.CreatePHI(_Ty(type), incomings.size());
+            for(auto& pair : incomings) {
+                phi->addIncoming(_Val(pair.first), _Block(pair.second));
+            }
+        }
+
+        virtual omis_handle_t call(omis_handle_t func, const std::vector<omis_handle_t>& args) override {
+            std::vector<llvm::Value*> args_values;
+            for(auto& arg : args) {
+                args_values.push_back(_Val(arg));
+            }
+            return IR.CreateCall(_Func(func), args_values);
+        }
+
+        virtual omis_handle_t ret(omis_handle_t value) override {
+            return IR.CreateRet(_Val(value));
+        }
+
+        // virtual omis_handle_t make(omis_handle_t type, omis_handle_t count) = 0;
+        // virtual void drop(omis_handle_t ptr) = 0;
     };
 
 

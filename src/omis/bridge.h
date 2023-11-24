@@ -42,16 +42,18 @@ namespace eokas {
         virtual omis_handle_t mul(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t div(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t mod(omis_handle_t a, omis_handle_t b) = 0;
-        virtual omis_handle_t cmp(omis_handle_t a, omis_handle_t b) = 0;
+
         virtual omis_handle_t eq(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t ne(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t gt(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t ge(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t lt(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t le(omis_handle_t a, omis_handle_t b) = 0;
+
         virtual omis_handle_t l_not(omis_handle_t a) = 0;
         virtual omis_handle_t l_and(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t l_or(omis_handle_t a, omis_handle_t b) = 0;
+
         virtual omis_handle_t b_flip(omis_handle_t a) = 0;
         virtual omis_handle_t b_and(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t b_or(omis_handle_t a, omis_handle_t b) = 0;
@@ -61,8 +63,7 @@ namespace eokas {
 
         virtual omis_handle_t jump(omis_handle_t pos) = 0;
         virtual omis_handle_t jump_cond(omis_handle_t cond, omis_handle_t branch_true, omis_handle_t branch_false) = 0;
-        virtual omis_handle_t phi(omis_handle_t type, size_t incommings) = 0;
-        virtual void phi_set_incomming(omis_handle_t phi, omis_handle_t value, omis_handle_t block) = 0;
+        virtual omis_handle_t phi(omis_handle_t type, const std::map<omis_handle_t, omis_handle_t>& incomings) = 0;
         virtual omis_handle_t call(omis_handle_t func, const std::vector<omis_handle_t>& args) = 0;
         virtual omis_handle_t ret(omis_handle_t value) = 0;
 
