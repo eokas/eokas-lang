@@ -3,8 +3,160 @@
 #include "./bridge.h"
 
 namespace eokas {
+
+    omis_module_t::omis_module_t(const String &name, omis_bridge_t *bridge)
+        : name(name)
+        , bridge(bridge)
+        , root(new omis_scope_t(nullptr, nullptr))
+        , scope(this->root)
+        , usings()
+        , types()
+        , values() {
+
+    }
+
+    omis_module_t::~omis_module_t() {
+        _DeletePointer(root);
+        _DeleteList(types);
+        _DeleteList(values);
+    }
+
+    omis_bridge_t* omis_module_t::get_bridge() {
+        return bridge;
+    }
+
+    omis_scope_t* omis_module_t::get_scope() {
+        return scope;
+    }
+
+    omis_scope_t *omis_module_t::push_scope(omis_func_t* func) {
+        this->scope = this->scope->add_child(func);
+    }
+
+    omis_scope_t *omis_module_t::pop_scope() {
+        if(this->scope == this->root)
+            return this->root;
+        this->scope = this->scope->parent;
+    }
+
+    bool omis_module_t::using_module(omis_module_t *other) {
+        auto iter = std::find(usings.begin(), usings.end(), other);
+        if(iter != usings.end())
+            return false;
+        usings.push_back(other);
+        return true;
+    }
+
+    omis_type_t *omis_module_t::type(omis_handle_t handle) {
+        auto type = new omis_type_t(this, handle);
+        this->types.push_back(type);
+        return type;
+    }
+
+    omis_type_t* omis_module_t::type_void() {
+        static omis_type_t* type = this->type(bridge->type_void());
+        return type;
+    }
+
+    omis_type_t* omis_module_t::type_i8() {
+        static omis_type_t* type = this->type(bridge->type_i8());
+        return type;
+    }
+
+    omis_type_t* omis_module_t::type_i16() {
+        static omis_type_t* type = this->type(bridge->type_i16());
+        return type;
+    }
+
+    omis_type_t* omis_module_t::type_i32() {
+        static omis_type_t* type = this->type(bridge->type_i32());
+        return type;
+    }
+
+    omis_type_t* omis_module_t::type_i64() {
+        static omis_type_t* type = this->type(bridge->type_i64());
+        return type;
+    }
+
+    omis_type_t* omis_module_t::type_f32() {
+        static omis_type_t* type = this->type(bridge->type_f32());
+        return type;
+    }
+
+    omis_type_t *omis_module_t::type_f64() {
+        static omis_type_t* type = this->type(bridge->type_f64());
+        return type;
+    }
+
+    omis_type_t *omis_module_t::type_bool() {
+        static omis_type_t* type = this->type(bridge->type_bool());
+        return type;
+    }
+
+    omis_type_t *omis_module_t::type_func(omis_type_t *ret, const std::vector<omis_type_t *>& args) {
+        omis_handle_t ret_type = ret->get_handle();
+        std::vector<omis_handle_t> args_type;
+        for(auto& arg: args) {
+            args_type.push_back(arg->get_handle());
+        }
+        omis_handle_t handle = bridge->type_func(ret_type, args_type);
+        return this->type(handle);
+    }
+
+    bool omis_module_t::equals_type(omis_type_t *a, omis_type_t *b) {
+        return a == b || a->get_handle() == b->get_handle();
+    }
+
+    bool omis_module_t::can_losslessly_bitcast(omis_type_t *a, omis_type_t *b) {
+        return bridge->can_losslessly_cast(a->get_handle(), b->get_handle());
+    }
+
+    omis_value_t* omis_module_t::value(omis_type_t *type, omis_handle_t handle) {
+        auto val = new omis_value_t(this, type, handle);
+        this->values.push_back(val);
+        return val;
+    }
+
+    omis_value_t *omis_module_t::value_integer(u64_t val, u32_t bits) {
+        auto type = this->type_i64();
+        if(bits == 32)
+            type = this->type_i32();
+        auto handle = bridge->value_integer(val, bits);
+        return this->value(type, handle);
+    }
+
+    omis_value_t* omis_module_t::value_float(double val) {
+        auto type = this->type_f64();
+        auto handle = bridge->value_func(val);
+        return this->value(type, handle);
+    }
+
+    omis_value_t *omis_module_t::value_bool(bool val) {
+        auto type = this->type_bool();
+        auto handle = bridge->value_bool(val);
+        return this->value(type, handle);
+    }
+
+    omis_value_t *omis_module_t::value_string(const String &val) {
+        return nullptr;
+    }
+
+    omis_func_t *omis_module_t::value_func(const String &name, omis_type_t *ret, const std::vector<omis_type_t *> &args) {
+        omis_handle_t ret_type = ret->get_handle();
+
+        std::vector<omis_handle_t> args_types;
+        for(auto& arg : args) {
+            args_types.push_back(arg->get_handle());
+        }
+
+        auto type = this->type_func(ret, args);
+        auto handle = bridge->value_func(name, type->get_handle());
+        auto value = this->value(type, handle);
+        return dynamic_cast<omis_func_t*>(value);
+    }
+
     omis_type_t::omis_type_t(omis_module_t *module, omis_handle_t handle)
-        : module(module), handle(handle), default_value(nullptr) {
+            : module(module), handle(handle), default_value(nullptr) {
 
     }
 
@@ -29,7 +181,7 @@ namespace eokas {
     }
 
     omis_struct_t::omis_struct_t(omis_module_t *module, omis_typeid_t id, void *handle)
-        : omis_type_t(module, id, handle) {
+            : omis_type_t(module, id, handle) {
 
     }
 
@@ -111,7 +263,7 @@ namespace eokas {
     }
 
     omis_value_t::omis_value_t(omis_module_t *module, omis_type_t *type, void *handle)
-        : module(module), type(type), handle(handle) {
+            : module(module), type(type), handle(handle) {
 
     }
 
@@ -132,7 +284,7 @@ namespace eokas {
     }
 
     omis_func_t::omis_func_t(omis_module_t *module, omis_type_t *type, void *handle)
-        : omis_value_t(module, type, handle) {
+            : omis_value_t(module, type, handle) {
 
     }
 
@@ -315,156 +467,5 @@ namespace eokas {
         auto symbol = bridge->alloc(type->get_handle());
         bridge->store(symbol, value->get_handle());
         return module->value(symbol);
-    }
-
-    omis_module_t::omis_module_t(const String &name, omis_bridge_t *bridge)
-        : name(name)
-        , bridge(bridge)
-        , root(new omis_scope_t(nullptr, nullptr))
-        , scope(this->root)
-        , usings()
-        , types()
-        , values() {
-
-    }
-
-    omis_module_t::~omis_module_t() {
-        _DeletePointer(root);
-        _DeleteList(types);
-        _DeleteList(values);
-    }
-
-    omis_bridge_t* omis_module_t::get_bridge() {
-        return bridge;
-    }
-
-    omis_scope_t* omis_module_t::get_scope() {
-        return scope;
-    }
-
-    omis_scope_t *omis_module_t::push_scope(omis_func_t* func) {
-        this->scope = this->scope->add_child(func);
-    }
-
-    omis_scope_t *omis_module_t::pop_scope() {
-        if(this->scope == this->root)
-            return this->root;
-        this->scope = this->scope->parent;
-    }
-
-    bool omis_module_t::using_module(omis_module_t *other) {
-        auto iter = std::find(usings.begin(), usings.end(), other);
-        if(iter != usings.end())
-            return false;
-        usings.push_back(other);
-        return true;
-    }
-
-    omis_type_t *omis_module_t::type(omis_handle_t handle) {
-        auto type = new omis_type_t(this, handle);
-        this->types.push_back(type);
-        return type;
-    }
-
-    omis_type_t* omis_module_t::type_void() {
-        static omis_type_t* type = this->type(bridge->type_void());
-        return type;
-    }
-
-    omis_type_t* omis_module_t::type_i8() {
-        static omis_type_t* type = this->type(bridge->type_i8());
-        return type;
-    }
-
-    omis_type_t* omis_module_t::type_i16() {
-        static omis_type_t* type = this->type(bridge->type_i16());
-        return type;
-    }
-
-    omis_type_t* omis_module_t::type_i32() {
-        static omis_type_t* type = this->type(bridge->type_i32());
-        return type;
-    }
-
-    omis_type_t* omis_module_t::type_i64() {
-        static omis_type_t* type = this->type(bridge->type_i64());
-        return type;
-    }
-
-    omis_type_t* omis_module_t::type_f32() {
-        static omis_type_t* type = this->type(bridge->type_f32());
-        return type;
-    }
-
-    omis_type_t *omis_module_t::type_f64() {
-        static omis_type_t* type = this->type(bridge->type_f64());
-        return type;
-    }
-
-    omis_type_t *omis_module_t::type_bool() {
-        static omis_type_t* type = this->type(bridge->type_bool());
-        return type;
-    }
-
-    omis_type_t *omis_module_t::type_func(omis_type_t *ret, const std::vector<omis_type_t *>& args) {
-        omis_handle_t ret_type = ret->get_handle();
-        std::vector<omis_handle_t> args_type;
-        for(auto& arg: args) {
-            args_type.push_back(arg->get_handle());
-        }
-        omis_handle_t handle = bridge->type_func(ret_type, args_type);
-        return this->type(handle);
-    }
-
-    bool omis_module_t::equals_type(omis_type_t *a, omis_type_t *b) {
-        return a == b || a->get_handle() == b->get_handle();
-    }
-
-    bool omis_module_t::can_losslessly_bitcast(omis_type_t *a, omis_type_t *b) {
-        return bridge->can_losslessly_cast(a->get_handle(), b->get_handle());
-    }
-
-    omis_value_t* omis_module_t::value(omis_type_t *type, omis_handle_t handle) {
-        auto val = new omis_value_t(this, type, handle);
-        this->values.push_back(val);
-        return val;
-    }
-
-    omis_value_t *omis_module_t::value_integer(u64_t val, u32_t bits) {
-        auto type = this->type_i64();
-        if(bits == 32)
-            type = this->type_i32();
-        auto handle = bridge->value_integer(val, bits);
-        return this->value(type, handle);
-    }
-
-    omis_value_t* omis_module_t::value_float(double val) {
-        auto type = this->type_f64();
-        auto handle = bridge->value_func(val);
-        return this->value(type, handle);
-    }
-
-    omis_value_t *omis_module_t::value_bool(bool val) {
-        auto type = this->type_bool();
-        auto handle = bridge->value_bool(val);
-        return this->value(type, handle);
-    }
-
-    omis_value_t *omis_module_t::value_string(const String &val) {
-        return nullptr;
-    }
-
-    omis_func_t *omis_module_t::value_func(const String &name, omis_type_t *ret, const std::vector<omis_type_t *> &args) {
-        omis_handle_t ret_type = ret->get_handle();
-
-        std::vector<omis_handle_t> args_types;
-        for(auto& arg : args) {
-            args_types.push_back(arg->get_handle());
-        }
-
-        auto type = this->type_func(ret, args);
-        auto handle = bridge->value_func(name, type->get_handle());
-        auto value = this->value(type, handle);
-        return dynamic_cast<omis_func_t*>(value);
     }
 }

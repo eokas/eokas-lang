@@ -11,15 +11,16 @@ namespace eokas {
 
     struct omis_bridge_t;
 
-    class omis_type_t;
-    class omis_func_type_t;
-    class omis_struct_type_t;
+    class omis_scope_t;
+    class omis_module_t;
 
+    class omis_type_t;
+    class omis_struct_t;
+    
     class omis_value_t;
     class omis_func_t;
 
-    class omis_scope_t;
-    class omis_module_t;
+
 }
 
 #endif //_EOKAS_OMIS_HEADER_H_
