@@ -73,7 +73,7 @@ namespace eokas {
             omis_value_t* value;
         };
 
-        omis_struct_t(omis_module_t* module, omis_typeid_t id, omis_handle_t handle);
+        omis_struct_t(omis_module_t* module, omis_handle_t handle);
         virtual ~omis_struct_t();
 
         bool extends(const String& base);
@@ -114,7 +114,7 @@ namespace eokas {
         void activate_block(omis_value_t* block);
 
         omis_value_t* load(omis_value_t* ptr);
-        void store(omis_type_t* ptr, omis_value_t* val);
+        omis_value_t* store(omis_type_t* ptr, omis_value_t* val);
 
         omis_value_t* neg(omis_value_t* a);
         omis_value_t* add(omis_value_t* a, omis_value_t* b);

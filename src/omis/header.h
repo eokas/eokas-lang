@@ -16,7 +16,7 @@ namespace eokas {
 
     class omis_type_t;
     class omis_struct_t;
-    
+
     class omis_value_t;
     class omis_func_t;
 

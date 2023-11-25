@@ -127,7 +127,7 @@ namespace eokas {
 
     omis_value_t* omis_module_t::value_float(double val) {
         auto type = this->type_f64();
-        auto handle = bridge->value_func(val);
+        auto handle = bridge->value_float(val);
         return this->value(type, handle);
     }
 
@@ -168,10 +168,6 @@ namespace eokas {
         return module;
     }
 
-    omis_typeid_t omis_type_t::get_typeid() {
-        return id;
-    }
-
     omis_handle_t omis_type_t::get_handle() {
         return handle;
     }
@@ -180,8 +176,8 @@ namespace eokas {
         return default_value;
     }
 
-    omis_struct_t::omis_struct_t(omis_module_t *module, omis_typeid_t id, void *handle)
-            : omis_type_t(module, id, handle) {
+    omis_struct_t::omis_struct_t(omis_module_t *module, void *handle)
+            : omis_type_t(module, handle) {
 
     }
 
@@ -294,7 +290,7 @@ namespace eokas {
 
     omis_value_t* omis_func_t::create_block(const String &name) {
         auto bridge = module->get_bridge();
-        auto ret = bridge->create_block(name);
+        auto ret = bridge->create_block(this->get_handle(), name);
         return module->value(ret);
     }
 
@@ -309,15 +305,16 @@ namespace eokas {
         return module->value(ret);
     }
 
-    void omis_func_t::store(omis_type_t *ptr, omis_value_t *val) {
+    omis_value_t* omis_func_t::store(omis_type_t *ptr, omis_value_t *val) {
         auto bridge = module->get_bridge();
-        bridge->store(ptr->get_handle(), val->get_handle());
+        auto ret = bridge->store(ptr->get_handle(), val->get_handle());
+        return module->value(ret);
     }
 
     omis_value_t* omis_func_t::neg(omis_value_t *a) {
         auto bridge = module->get_bridge();
         auto ret = bridge->neg(a->get_handle());
-        return module->value(ret);
+        return module->value(a->get_type(), ret);
     }
 
     omis_value_t* omis_func_t::add(omis_value_t *a, omis_value_t *b) {
@@ -353,91 +350,91 @@ namespace eokas {
     omis_value_t* omis_func_t::eq(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->eq(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(module->type_bool(), ret);
     }
 
     omis_value_t* omis_func_t::ne(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->ne(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(module->type_bool(), ret);
     }
 
     omis_value_t* omis_func_t::gt(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->gt(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(module->type_bool(), ret);
     }
 
     omis_value_t* omis_func_t::ge(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->ge(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(module->type_bool(), ret);
     }
 
     omis_value_t* omis_func_t::lt(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->lt(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(module->type_bool(), ret);
     }
 
     omis_value_t* omis_func_t::le(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->le(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(module->type_bool(), ret);
     }
 
     omis_value_t* omis_func_t::l_not(omis_value_t *a) {
         auto bridge = module->get_bridge();
         auto ret = bridge->l_not(a->get_handle());
-        return module->value(ret);
+        return module->value(module->type_bool(), ret);
     }
 
     omis_value_t* omis_func_t::l_and(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->l_and(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(module->type_bool(), ret);
     }
 
     omis_value_t* omis_func_t::l_or(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->l_or(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(module->type_bool(), ret);
     }
 
     omis_value_t* omis_func_t::b_flip(omis_value_t *a) {
         auto bridge = module->get_bridge();
         auto ret = bridge->b_flip(a->get_handle());
-        return module->value(ret);
+        return module->value(a->get_type(), ret);
     }
 
     omis_value_t* omis_func_t::b_and(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->b_and(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(a->get_type(), ret);
     }
 
     omis_value_t* omis_func_t::b_or(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->b_or(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(a->get_type(), ret);
     }
 
     omis_value_t* omis_func_t::b_xor(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->b_xor(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(a->get_type(), ret);
     }
 
     omis_value_t* omis_func_t::b_shl(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->b_shl(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(a->get_type(), ret);
     }
 
     omis_value_t* omis_func_t::b_shr(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->b_shr(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        return module->value(a->get_type(), ret);
     }
 
     omis_value_t* omis_func_t::jump(omis_value_t *pos) {
