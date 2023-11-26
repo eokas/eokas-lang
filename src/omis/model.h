@@ -44,10 +44,8 @@ namespace eokas {
         omis_scope_t* root;
         omis_scope_t* scope;
         std::vector<omis_module_t*> usings;
-        std::vector<omis_type_t*> types;
-        std::vector<omis_value_t*> values;
-
-        omis_type_t* m_type_i32;
+        std::map<omis_handle_t, omis_type_t*> types;
+        std::map<omis_handle_t, omis_value_t*> values;
     };
 
     class omis_type_t {

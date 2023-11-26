@@ -17,8 +17,8 @@ namespace eokas {
 
     omis_module_t::~omis_module_t() {
         _DeletePointer(root);
-        _DeleteList(types);
-        _DeleteList(values);
+        _DeleteMap(types);
+        _DeleteMap(values);
     }
 
     omis_bridge_t* omis_module_t::get_bridge() {
@@ -48,8 +48,13 @@ namespace eokas {
     }
 
     omis_type_t *omis_module_t::type(omis_handle_t handle) {
+        auto iter = this->types.find(handle);
+        if(iter != this->types.end())
+            return iter->second;
+
         auto type = new omis_type_t(this, handle);
-        this->types.push_back(type);
+        this->types.insert(std::make_pair(handle, type));
+
         return type;
     }
 
@@ -112,8 +117,13 @@ namespace eokas {
     }
 
     omis_value_t* omis_module_t::value(omis_type_t *type, omis_handle_t handle) {
+        auto iter = this->values.find(handle);
+        if(iter != this->values.end())
+            return iter->second;
+
         auto val = new omis_value_t(this, type, handle);
-        this->values.push_back(val);
+        this->values.insert(std::make_pair(handle, val));
+
         return val;
     }
 
@@ -291,7 +301,7 @@ namespace eokas {
     omis_value_t* omis_func_t::create_block(const String &name) {
         auto bridge = module->get_bridge();
         auto ret = bridge->create_block(this->get_handle(), name);
-        return module->value(ret);
+        return module->value(module->type_void(), ret);
     }
 
     void omis_func_t::activate_block(omis_value_t* block) {
@@ -302,13 +312,14 @@ namespace eokas {
     omis_value_t* omis_func_t::load(omis_value_t *ptr) {
         auto bridge = module->get_bridge();
         auto ret = bridge->load(ptr->get_handle());
-        return module->value(ret);
+        auto type = bridge->get_value_type(ret);
+        return module->value(module->type(type), ret);
     }
 
     omis_value_t* omis_func_t::store(omis_type_t *ptr, omis_value_t *val) {
         auto bridge = module->get_bridge();
         auto ret = bridge->store(ptr->get_handle(), val->get_handle());
-        return module->value(ret);
+        return module->value(module->type_void(), ret);
     }
 
     omis_value_t* omis_func_t::neg(omis_value_t *a) {
@@ -320,31 +331,36 @@ namespace eokas {
     omis_value_t* omis_func_t::add(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->add(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        auto type = bridge->get_value_type(ret);
+        return module->value(module->type(type), ret);
     }
 
     omis_value_t* omis_func_t::sub(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->sub(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        auto type = bridge->get_value_type(ret);
+        return module->value(module->type(type), ret);
     }
 
     omis_value_t* omis_func_t::mul(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->mul(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        auto type = bridge->get_value_type(ret);
+        return module->value(module->type(type), ret);
     }
 
     omis_value_t* omis_func_t::div(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->div(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        auto type = bridge->get_value_type(ret);
+        return module->value(module->type(type), ret);
     }
 
     omis_value_t* omis_func_t::mod(omis_value_t *a, omis_value_t *b) {
         auto bridge = module->get_bridge();
         auto ret = bridge->mod(a->get_handle(), b->get_handle());
-        return module->value(ret);
+        auto type = bridge->get_value_type(ret);
+        return module->value(module->type(type), ret);
     }
 
     omis_value_t* omis_func_t::eq(omis_value_t *a, omis_value_t *b) {
@@ -440,13 +456,15 @@ namespace eokas {
     omis_value_t* omis_func_t::jump(omis_value_t *pos) {
         auto bridge = module->get_bridge();
         auto ret = bridge->jump(pos->get_handle());
-        return module->value(ret);
+        auto type = bridge->get_value_type(ret);
+        return module->value(module->type(type), ret);
     }
 
     omis_value_t* omis_func_t::jump_cond(omis_value_t* cond, omis_value_t* branch_true, omis_value_t* branch_false) {
         auto bridge = module->get_bridge();
         auto ret = bridge->jump_cond(cond->get_handle(), branch_true->get_handle(), branch_false->get_handle());
-        return module->value(ret);
+        auto type = bridge->get_value_type(ret);
+        return module->value(module->type(type), ret);
     }
 
     omis_value_t* omis_func_t::phi(omis_type_t *type, const std::map<omis_value_t *, omis_value_t *>& incomings) {
@@ -456,13 +474,15 @@ namespace eokas {
             incomings_handles.insert(std::make_pair(pair.first->get_handle(), pair.second->get_handle()));
         }
         auto phi = bridge->phi(type->get_handle(), incomings_handles);
-        return module->value(phi);
+        auto phi_type = bridge->get_value_type(phi);
+        return module->value(module->type(phi_type), phi);
     }
 
     omis_value_t* omis_func_t::create_local_symbol(const String &name, omis_type_t *type, omis_value_t *value) {
         auto bridge = module->get_bridge();
         auto symbol = bridge->alloc(type->get_handle());
-        bridge->store(symbol, value->get_handle());
-        return module->value(symbol);
+        auto ret = bridge->store(symbol, value->get_handle());
+        auto ret_type = bridge->get_value_type(ret);
+        return module->value(module->type(ret_type), ret);
     }
 }

@@ -162,6 +162,10 @@ namespace eokas
 
         // virtual omis_handle_t create_array(omis_handle_t element_type) = 0;
 
+        virtual omis_handle_t get_value_type(omis_handle_t value) override {
+            return _Val(value)->getType();
+        }
+
         virtual omis_handle_t create_block(omis_handle_t func, const String& name) override {
             return llvm::BasicBlock::Create(context, name.cstr(), _Func(func));
         }

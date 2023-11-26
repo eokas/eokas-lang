@@ -28,6 +28,8 @@ namespace eokas {
         virtual omis_handle_t value_func(const String& name, omis_handle_t type) = 0;
         // virtual omis_handle_t value_array(omis_handle_t element_type) = 0;
 
+        virtual omis_handle_t get_value_type(omis_handle_t value) = 0;
+
         virtual omis_handle_t create_block(omis_handle_t func, const String& name) = 0;
         virtual void activate_block(omis_handle_t block) = 0;
 
