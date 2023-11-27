@@ -3,15 +3,9 @@
 #include "./bridge.h"
 
 namespace eokas {
-
-    omis_module_t::omis_module_t(const String &name, omis_bridge_t *bridge)
-        : name(name)
-        , bridge(bridge)
-        , root(new omis_scope_t(nullptr, nullptr))
-        , scope(this->root)
-        , usings()
-        , types()
-        , values() {
+    omis_module_t::omis_module_t(const String& name, omis_bridge_t* bridge)
+            : name(name), bridge(bridge), root(new omis_scope_t(nullptr, nullptr)), scope(this->root), usings(),
+              types(), values() {
 
     }
 
@@ -21,35 +15,55 @@ namespace eokas {
         _DeleteMap(values);
     }
 
+    bool omis_module_t::main() {
+        return true;
+    }
+
     omis_bridge_t* omis_module_t::get_bridge() {
         return bridge;
+    }
+
+    bool omis_module_t::using_module(omis_module_t* other) {
+        auto iter = std::find(usings.begin(), usings.end(), other);
+        if (iter != usings.end())
+            return false;
+        usings.push_back(other);
+        return true;
     }
 
     omis_scope_t* omis_module_t::get_scope() {
         return scope;
     }
 
-    omis_scope_t *omis_module_t::push_scope(omis_func_t* func) {
+    omis_scope_t* omis_module_t::push_scope(omis_func_t* func) {
         this->scope = this->scope->add_child(func);
     }
 
-    omis_scope_t *omis_module_t::pop_scope() {
-        if(this->scope == this->root)
+    omis_scope_t* omis_module_t::pop_scope() {
+        if (this->scope == this->root)
             return this->root;
         this->scope = this->scope->parent;
     }
 
-    bool omis_module_t::using_module(omis_module_t *other) {
-        auto iter = std::find(usings.begin(), usings.end(), other);
-        if(iter != usings.end())
-            return false;
-        usings.push_back(other);
-        return true;
+    omis_type_symbol_t* omis_module_t::get_type_symbol(const String& name, bool lookup) {
+        return this->get_scope()->get_type_symbol(name, lookup);
     }
 
-    omis_type_t *omis_module_t::type(omis_handle_t handle) {
+    bool omis_module_t::add_type_symbol(const String& name, omis_type_t* type) {
+        return this->get_scope()->add_type_symbol(name, type);
+    }
+
+    omis_value_symbol_t* omis_module_t::get_value_symbol(const String& name, bool lookup) {
+        return this->get_scope()->get_value_symbol(name, lookup);
+    }
+
+    bool omis_module_t::add_value_symbol(const String& name, omis_value_t* type) {
+        return this->get_scope()->add_value_symbol(name, type);
+    }
+
+    omis_type_t* omis_module_t::type(omis_handle_t handle) {
         auto iter = this->types.find(handle);
-        if(iter != this->types.end())
+        if (iter != this->types.end())
             return iter->second;
 
         auto type = new omis_type_t(this, handle);
@@ -88,37 +102,42 @@ namespace eokas {
         return type;
     }
 
-    omis_type_t *omis_module_t::type_f64() {
+    omis_type_t* omis_module_t::type_f64() {
         static omis_type_t* type = this->type(bridge->type_f64());
         return type;
     }
 
-    omis_type_t *omis_module_t::type_bool() {
+    omis_type_t* omis_module_t::type_bool() {
         static omis_type_t* type = this->type(bridge->type_bool());
         return type;
     }
 
-    omis_type_t *omis_module_t::type_func(omis_type_t *ret, const std::vector<omis_type_t *>& args) {
+    omis_type_t* omis_module_t::type_bytes() {
+        static omis_type_t* type = this->type(bridge->type_bytes());
+        return type;
+    }
+
+    omis_type_t* omis_module_t::type_func(omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg) {
         omis_handle_t ret_type = ret->get_handle();
         std::vector<omis_handle_t> args_type;
-        for(auto& arg: args) {
+        for (auto& arg: args) {
             args_type.push_back(arg->get_handle());
         }
-        omis_handle_t handle = bridge->type_func(ret_type, args_type);
+        omis_handle_t handle = bridge->type_func(ret_type, args_type, varg);
         return this->type(handle);
     }
 
-    bool omis_module_t::equals_type(omis_type_t *a, omis_type_t *b) {
+    bool omis_module_t::equals_type(omis_type_t* a, omis_type_t* b) {
         return a == b || a->get_handle() == b->get_handle();
     }
 
-    bool omis_module_t::can_losslessly_bitcast(omis_type_t *a, omis_type_t *b) {
+    bool omis_module_t::can_losslessly_bitcast(omis_type_t* a, omis_type_t* b) {
         return bridge->can_losslessly_cast(a->get_handle(), b->get_handle());
     }
 
-    omis_value_t* omis_module_t::value(omis_type_t *type, omis_handle_t handle) {
+    omis_value_t* omis_module_t::value(omis_type_t* type, omis_handle_t handle) {
         auto iter = this->values.find(handle);
-        if(iter != this->values.end())
+        if (iter != this->values.end())
             return iter->second;
 
         auto val = new omis_value_t(this, type, handle);
@@ -127,9 +146,9 @@ namespace eokas {
         return val;
     }
 
-    omis_value_t *omis_module_t::value_integer(u64_t val, u32_t bits) {
+    omis_value_t* omis_module_t::value_integer(u64_t val, u32_t bits) {
         auto type = this->type_i64();
-        if(bits == 32)
+        if (bits == 32)
             type = this->type_i32();
         auto handle = bridge->value_integer(val, bits);
         return this->value(type, handle);
@@ -141,31 +160,123 @@ namespace eokas {
         return this->value(type, handle);
     }
 
-    omis_value_t *omis_module_t::value_bool(bool val) {
+    omis_value_t* omis_module_t::value_bool(bool val) {
         auto type = this->type_bool();
         auto handle = bridge->value_bool(val);
         return this->value(type, handle);
     }
 
-    omis_value_t *omis_module_t::value_string(const String &val) {
+    omis_value_t* omis_module_t::value_string(const String& val) {
         return nullptr;
     }
 
-    omis_func_t *omis_module_t::value_func(const String &name, omis_type_t *ret, const std::vector<omis_type_t *> &args) {
+    omis_func_t*
+    omis_module_t::value_func(const String& name, omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg) {
         omis_handle_t ret_type = ret->get_handle();
 
         std::vector<omis_handle_t> args_types;
-        for(auto& arg : args) {
+        for (auto& arg: args) {
             args_types.push_back(arg->get_handle());
         }
 
-        auto type = this->type_func(ret, args);
+        auto type = this->type_func(ret, args, varg);
         auto handle = bridge->value_func(name, type->get_handle());
         auto value = this->value(type, handle);
         return dynamic_cast<omis_func_t*>(value);
     }
+}
 
-    omis_type_t::omis_type_t(omis_module_t *module, omis_handle_t handle)
+namespace eokas {
+    omis_scope_t::omis_scope_t(omis_scope_t* parent, omis_func_t* func)
+            : parent(parent), func(func), children(), types(), values() {}
+
+    omis_scope_t::~omis_scope_t() {
+        this->parent = nullptr;
+        this->func = nullptr;
+        _DeleteList(this->children);
+    }
+
+    omis_scope_t* omis_scope_t::add_child(omis_func_t* f) {
+        auto* child = new omis_scope_t(this, f != nullptr ? f : this->func);
+        this->children.push_back(child);
+        return child;
+    }
+
+    bool omis_scope_t::add_type_symbol(const String& name, omis_type_t* type) {
+        auto symbol = new omis_type_symbol_t{.name = name, .type = type};
+        bool ret = this->types.add(name, symbol);
+        return ret;
+    }
+
+    omis_type_symbol_t* omis_scope_t::get_type_symbol(const String& name, bool lookup) {
+        if (lookup) {
+            for (auto scope = this; scope != nullptr; scope = scope->parent) {
+                auto* symbol = scope->types.get(name);
+                if (symbol != nullptr)
+                    return symbol;
+            }
+            return nullptr;
+        } else {
+            return this->types.get(name);
+        }
+    }
+
+    omis_type_symbol_t* omis_scope_t::get_type_symbol(predicate_t<omis_type_symbol_t> predicate, bool lookup) {
+        if (lookup) {
+            for (auto scope = this; scope != nullptr; scope = scope->parent) {
+                auto* symbol = scope->types.get([&](auto name, auto symbol) -> auto {
+                    return predicate(symbol);
+                });
+                if (symbol != nullptr)
+                    return symbol;
+            }
+            return nullptr;
+        } else {
+            return this->types.get([&](auto name, auto symbol) -> auto {
+                return predicate(symbol);
+            });
+        }
+    }
+
+    bool omis_scope_t::add_value_symbol(const String& name, omis_value_t* value) {
+        auto symbol = new omis_value_symbol_t{.name =  name, .value = value, .scope = this};
+        bool ret = this->values.add(name, symbol);
+        return ret;
+    }
+
+    omis_value_symbol_t* omis_scope_t::get_value_symbol(const String& name, bool lookup) {
+        if (lookup) {
+            for (auto scope = this; scope != nullptr; scope = scope->parent) {
+                auto symbol = scope->values.get(name);
+                if (symbol != nullptr)
+                    return symbol;
+            }
+            return nullptr;
+        } else {
+            return this->values.get(name);
+        }
+    }
+
+    omis_value_symbol_t* omis_scope_t::get_value_symbol(predicate_t<omis_value_symbol_t> predicate, bool lookup) {
+        if (lookup) {
+            for (auto scope = this; scope != nullptr; scope = scope->parent) {
+                auto* symbol = scope->values.get([&](auto name, auto symbol) -> auto {
+                    return predicate(symbol);
+                });
+                if (symbol != nullptr)
+                    return symbol;
+            }
+            return nullptr;
+        } else {
+            return this->values.get([&](auto name, auto symbol) -> auto {
+                return predicate(symbol);
+            });
+        }
+    }
+}
+
+namespace eokas {
+    omis_type_t::omis_type_t(omis_module_t* module, omis_handle_t handle)
             : module(module), handle(handle), default_value(nullptr) {
 
     }
@@ -186,7 +297,7 @@ namespace eokas {
         return default_value;
     }
 
-    omis_struct_t::omis_struct_t(omis_module_t *module, void *handle)
+    omis_struct_t::omis_struct_t(omis_module_t* module, void* handle)
             : omis_type_t(module, handle) {
 
     }
@@ -195,13 +306,17 @@ namespace eokas {
         members.clear();
     }
 
+    bool omis_struct_t::main() {
+        return true;
+    }
+
     bool omis_struct_t::extends(const String& base) {
         auto symbol = module->get_scope()->get_type_symbol(base, true);
-        if(symbol == nullptr)
+        if (symbol == nullptr)
             return false;
         auto base_type = symbol->type;
         auto base_struct = dynamic_cast<omis_struct_t*>(base_type);
-        if(base_struct == nullptr)
+        if (base_struct == nullptr)
             return false;
         return this->extends(base_struct);
     }
@@ -211,7 +326,7 @@ namespace eokas {
             return false;
         this->add_member("base", base);
         for (auto& m: base->members) {
-            if(m.name == "base")
+            if (m.name == "base")
                 continue;
             if (this->add_member(&m) == nullptr)
                 return false;
@@ -267,7 +382,9 @@ namespace eokas {
         }
         return -1;
     }
+}
 
+namespace eokas {
     omis_value_t::omis_value_t(omis_module_t *module, omis_type_t *type, void *handle)
             : module(module), type(type), handle(handle) {
 

@@ -19,7 +19,7 @@ namespace eokas {
         virtual omis_handle_t type_f64() = 0;
         virtual omis_handle_t type_bool() = 0;
         virtual omis_handle_t type_bytes() = 0;
-        virtual omis_handle_t type_func(omis_handle_t ret, const std::vector<omis_handle_t>& args) = 0;
+        virtual omis_handle_t type_func(omis_handle_t ret, const std::vector<omis_handle_t>& args, bool varg) = 0;
         virtual bool can_losslessly_cast(omis_handle_t a, omis_handle_t b) = 0;
 
         virtual omis_handle_t value_integer(uint64_t val, uint32_t bits) = 0;

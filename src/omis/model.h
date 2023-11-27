@@ -10,13 +10,20 @@ namespace eokas {
         omis_module_t(const String& name, omis_bridge_t* bridge);
         virtual ~omis_module_t();
 
+        virtual bool main();
+
         omis_bridge_t* get_bridge();
+
+        bool using_module(omis_module_t* other);
 
         omis_scope_t* get_scope();
         omis_scope_t* push_scope(omis_func_t* func = nullptr);
         omis_scope_t* pop_scope();
 
-        bool using_module(omis_module_t* other);
+        omis_type_symbol_t* get_type_symbol(const String& name, bool lookup = true);
+        bool add_type_symbol(const String& name, omis_type_t* type);
+        omis_value_symbol_t* get_value_symbol(const String& name, bool lookup = true);
+        bool add_value_symbol(const String& name, omis_value_t* type);
 
         omis_type_t* type(omis_handle_t handle);
         omis_type_t* type_void();
@@ -27,7 +34,8 @@ namespace eokas {
         omis_type_t* type_i64();
         omis_type_t* type_f64();
         omis_type_t* type_bool();
-        omis_type_t* type_func(omis_type_t* ret, const std::vector<omis_type_t*>& args);
+        omis_type_t* type_bytes();
+        omis_type_t* type_func(omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
         bool equals_type(omis_type_t* a, omis_type_t* b);
         bool can_losslessly_bitcast(omis_type_t* a, omis_type_t* b);
 
@@ -36,7 +44,7 @@ namespace eokas {
         omis_value_t* value_float(f64_t val);
         omis_value_t* value_bool(bool val);
         omis_value_t* value_string(const String& val);
-        omis_func_t* value_func(const String& name, omis_type_t* ret, const std::vector<omis_type_t*>& args);
+        omis_func_t* value_func(const String& name, omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
 
     protected:
         String name;
@@ -46,6 +54,80 @@ namespace eokas {
         std::vector<omis_module_t*> usings;
         std::map<omis_handle_t, omis_type_t*> types;
         std::map<omis_handle_t, omis_value_t*> values;
+    };
+
+    template<typename T, bool gc = true>
+    struct omis_table_t {
+        std::map<String, T *> table;
+
+        explicit omis_table_t() : table() {
+        }
+
+        ~omis_table_t() {
+            if (gc && !this->table.empty()) {
+                _DeleteMap(this->table);
+            }
+            this->table.clear();
+        }
+
+        bool add(const String &name, T *object) {
+            if (this->table.find(name) != this->table.end())
+                return false;
+            this->table.insert(std::make_pair(name, object));
+            return true;
+        }
+
+        T *get(const String &name) {
+            auto iter = this->table.find(name);
+            if (iter == this->table.end())
+                return nullptr;
+            return iter->second;
+        }
+
+        T *get(const std::function<bool(const String&, const T&)>& predicate) {
+            for(auto& pair : this->table) {
+                if(predicate(pair.first, *pair.second)) {
+                    return pair.second;
+                }
+            }
+            return nullptr;
+        }
+    };
+
+    struct omis_value_symbol_t
+    {
+        String name = "";
+        omis_value_t* value = nullptr;
+        omis_scope_t* scope = nullptr;
+    };
+
+    struct omis_type_symbol_t
+    {
+        String name = "";
+        omis_type_t* type = nullptr;
+    };
+
+    struct omis_scope_t
+    {
+        omis_scope_t* parent;
+        omis_func_t* func;
+        std::vector<omis_scope_t*> children;
+
+        omis_table_t<omis_type_symbol_t> types;
+        omis_table_t<omis_value_symbol_t> values;
+
+        omis_scope_t(omis_scope_t* parent, omis_func_t* func);
+        virtual ~omis_scope_t();
+
+        omis_scope_t* add_child(omis_func_t* f = nullptr);
+
+        bool add_type_symbol(const String& name, omis_type_t* type);
+        omis_type_symbol_t* get_type_symbol(const String& name, bool lookup);
+        omis_type_symbol_t* get_type_symbol(predicate_t<omis_type_symbol_t> predicate, bool lookup);
+
+        bool add_value_symbol(const String& name, omis_value_t* value);
+        omis_value_symbol_t* get_value_symbol(const String& name, bool lookup);
+        omis_value_symbol_t* get_value_symbol(predicate_t<omis_value_symbol_t> predicate, bool lookup);
     };
 
     class omis_type_t {
@@ -73,6 +155,8 @@ namespace eokas {
 
         omis_struct_t(omis_module_t* module, omis_handle_t handle);
         virtual ~omis_struct_t();
+
+        virtual bool main();
 
         bool extends(const String& base);
         bool extends(omis_struct_t* base);

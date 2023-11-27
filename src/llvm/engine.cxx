@@ -119,13 +119,13 @@ namespace eokas
             return ty_bytes;
         }
 
-        virtual omis_handle_t type_func(omis_handle_t ret, const std::vector<omis_handle_t>& args) override {
+        virtual omis_handle_t type_func(omis_handle_t ret, const std::vector<omis_handle_t>& args, bool varg) override {
             llvm::Type* ret_type = _Ty(ret);
             std::vector<llvm::Type*> args_type;
             for(auto& arg : args) {
                 args_type.push_back(_Ty(arg));
             }
-            llvm::FunctionType* funcType = llvm::FunctionType::get(ret_type, args_type, false);
+            llvm::FunctionType* funcType = llvm::FunctionType::get(ret_type, args_type, varg);
             return funcType;
         }
 
