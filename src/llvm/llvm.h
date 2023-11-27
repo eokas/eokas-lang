@@ -1,7 +1,17 @@
 #ifndef _EOKAS_LLVM_ENGINE_H_
 #define _EOKAS_LLVM_ENGINE_H_
 
-#include "header.h"
+#include "../ast/ast.h"
+
+namespace llvm
+{
+    class LLVMContext;
+    class Type;
+    class Value;
+    class Function;
+    class Module;
+    class BasicBlock;
+}
 
 namespace eokas
 {

@@ -1,6 +1,6 @@
-#include "engine.h"
-#include "coder.h"
-#include "scope.h"
+#include "llvm.h"
+#include "../llvm-old/coder.h"
+#include "../llvm-old/scope.h"
 #include "../omis/bridge.h"
 #include "../omis/model.h"
 
