@@ -1,14 +1,24 @@
 #include "llvm.h"
-#include "../llvm-old/coder.h"
-#include "../llvm-old/scope.h"
+
 #include "../omis/bridge.h"
 #include "../omis/model.h"
 
+#include <sstream>
+
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
+
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
 #include <llvm/IR/Mangler.h>
 #include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/BasicBlock.h>
 
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Host.h>
@@ -65,6 +75,13 @@ namespace eokas
             ty_bool = llvm::Type::getInt1Ty(context);
             ty_bytes = llvm::Type::getInt8PtrTy(context);
             ty_void_ptr = ty_void->getPointerTo();
+        }
+
+        virtual String dump() override {
+            std::string str;
+            llvm::raw_string_ostream stream(str);
+            module.print(stream, nullptr);
+            return String{str.c_str(), str.length()};
         }
 
         virtual omis_handle_t type_void() override {
@@ -502,29 +519,29 @@ namespace eokas
         // virtual void drop(omis_handle_t ptr) = 0;
     };
 
-	bool llvm_jit(ast_node_module_t* m)
+    omis_bridge_t* llvm_create_bridge(const String& name) {
+        llvm::LLVMContext context;
+        omis_bridge_t* bridge = new llvm_bridge_t(name, context);
+        return bridge;
+    }
+
+    void llvm_destroy_bridge(omis_bridge_t* bridge) {
+        _DeletePointer(bridge);
+    }
+
+	bool llvm_jit(omis_module_t* mod)
 	{
 		llvm::InitializeNativeTarget();
 		llvm::InitializeNativeTargetAsmPrinter();
 		llvm::InitializeNativeTargetAsmParser();
-		
-		llvm::LLVMContext context;
-        llvm_bridge_t bridge(m->name, context);
-        omis_module_t module(m->name, &bridge);
 
-        module
-
-		llvm_module_t* module = llvm_encode(context, m);
-		if(module == nullptr)
-			return false;
-		
-		module->module.print(llvm::errs(), nullptr);
-		
-		auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(&module->module)).setEngineKind(llvm::EngineKind::JIT).create();
+		auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(&mod->module))
+                .setEngineKind(llvm::EngineKind::JIT)
+                .create();
 		
 		ee->finalizeObject();
 		
-		llvm::Function* func = module->module.getFunction("main");
+		llvm::Function* func = mod->module.getFunction("main");
 		if(func == nullptr)
 			return false;
 		
@@ -533,28 +550,20 @@ namespace eokas
 		auto retval = ee->runFunction(func, args);
 		printf("\nRET: %s \n", retval.IntVal.toString(10, true).c_str());
 		printf("---------------- JIT END ----------------\n");
-		
-		_DeletePointer(module);
-		
+
 		return true;
 	}
 	
-	bool llvm_aot(ast_node_module_t* m)
+	bool llvm_aot(omis_module_t* mod)
 	{
 		llvm::InitializeAllTargetInfos();
 		llvm::InitializeAllTargets();
 		llvm::InitializeAllTargetMCs();
 		llvm::InitializeAllAsmParsers();
 		llvm::InitializeAllAsmPrinters();
-		
-		llvm::LLVMContext context;
-		
-		llvm_module_t* module = llvm_encode(context, m);
-		if(module == nullptr)
-			return false;
-		
+
 		// DUMP CODE
-		module->module.print(llvm::errs(), nullptr);
+		mod->module.print(llvm::errs(), nullptr);
 		
 		auto targetTriple = llvm::sys::getDefaultTargetTriple();
 		std::string error;
@@ -566,8 +575,8 @@ namespace eokas
 		auto RM = llvm::Optional<llvm::Reloc::Model>();
 		auto targetMachine = target->createTargetMachine(targetTriple, CPU, features, opt, RM);
 		
-		module->module.setDataLayout(targetMachine->createDataLayout());
-		module->module.setTargetTriple(targetTriple);
+		mod->module.setDataLayout(targetMachine->createDataLayout());
+		mod->module.setTargetTriple(targetTriple);
 		
 		auto filename = "output.o";
 		std::error_code EC;
@@ -586,10 +595,8 @@ namespace eokas
 			return false;
 		}
 		
-		pass.run(module->module);
+		pass.run(mod->module);
 		dest.flush();
-		
-		_DeletePointer(module);
 		
 		return true;
 	}

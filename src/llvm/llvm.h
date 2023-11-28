@@ -1,7 +1,7 @@
 #ifndef _EOKAS_LLVM_ENGINE_H_
 #define _EOKAS_LLVM_ENGINE_H_
 
-#include "../ast/ast.h"
+#include "../omis/model.h"
 
 namespace llvm
 {
@@ -15,8 +15,11 @@ namespace llvm
 
 namespace eokas
 {
-	bool llvm_jit(ast_node_module_t* module);
-	bool llvm_aot(ast_node_module_t* module);
+    omis_bridge_t* llvm_create_bridge(const String& name);
+    void llvm_destroy_bridge(omis_bridge_t* bridge);
+
+	bool llvm_jit(omis_module_t* module);
+	bool llvm_aot(omis_module_t* module);
 }
 
 #endif//_EOKAS_LLVM_ENGINE_H_

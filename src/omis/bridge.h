@@ -5,7 +5,12 @@
 #include "./header.h"
 
 namespace eokas {
+
     struct omis_bridge_t {
+        virtual ~omis_bridge_t() = default;
+
+        virtual String dump() = 0;
+
         virtual omis_handle_t type_void() = 0;
         virtual omis_handle_t type_i8() = 0;
         virtual omis_handle_t type_i16() = 0;

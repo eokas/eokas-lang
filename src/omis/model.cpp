@@ -27,6 +27,10 @@ namespace eokas {
         return bridge;
     }
 
+    String omis_module_t::dump() {
+        return bridge->dump();
+    }
+
     bool omis_module_t::using_module(omis_module_t* other) {
         auto iter = std::find(usings.begin(), usings.end(), other);
         if (iter != usings.end())
