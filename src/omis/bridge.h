@@ -9,6 +9,7 @@ namespace eokas {
     struct omis_bridge_t {
         virtual ~omis_bridge_t() = default;
 
+        virtual omis_handle_t get_handle() = 0;
         virtual String dump() = 0;
 
         virtual omis_handle_t type_void() = 0;

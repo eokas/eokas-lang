@@ -14,6 +14,7 @@ namespace eokas {
 
         const String& get_name() const;
         omis_bridge_t* get_bridge();
+        omis_handle_t get_handle();
         String dump();
 
         bool using_module(omis_module_t* other);

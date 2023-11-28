@@ -27,6 +27,10 @@ namespace eokas {
         return bridge;
     }
 
+    omis_handle_t omis_module_t::get_handle() {
+        return bridge->get_handle();
+    }
+
     String omis_module_t::dump() {
         return bridge->dump();
     }

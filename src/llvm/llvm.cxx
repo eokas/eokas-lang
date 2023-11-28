@@ -77,6 +77,10 @@ namespace eokas
             ty_void_ptr = ty_void->getPointerTo();
         }
 
+        virtual omis_handle_t get_handle() override {
+            return &module;
+        }
+
         virtual String dump() override {
             std::string str;
             llvm::raw_string_ostream stream(str);
@@ -519,13 +523,13 @@ namespace eokas
         // virtual void drop(omis_handle_t ptr) = 0;
     };
 
-    omis_bridge_t* llvm_create_bridge(const String& name) {
+    omis_bridge_t* llvm_bridge_init(const String& name) {
         llvm::LLVMContext context;
         omis_bridge_t* bridge = new llvm_bridge_t(name, context);
         return bridge;
     }
 
-    void llvm_destroy_bridge(omis_bridge_t* bridge) {
+    void llvm_bridge_quit(omis_bridge_t* bridge) {
         _DeletePointer(bridge);
     }
 
@@ -535,13 +539,15 @@ namespace eokas
 		llvm::InitializeNativeTargetAsmPrinter();
 		llvm::InitializeNativeTargetAsmParser();
 
-		auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(&mod->module))
+        auto* module = (llvm::Module*)mod->get_handle();
+
+		auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(module))
                 .setEngineKind(llvm::EngineKind::JIT)
                 .create();
 		
 		ee->finalizeObject();
 		
-		llvm::Function* func = mod->module.getFunction("main");
+		llvm::Function* func = module->getFunction("main");
 		if(func == nullptr)
 			return false;
 		
@@ -562,9 +568,8 @@ namespace eokas
 		llvm::InitializeAllAsmParsers();
 		llvm::InitializeAllAsmPrinters();
 
-		// DUMP CODE
-		mod->module.print(llvm::errs(), nullptr);
-		
+        auto* module = (llvm::Module*)mod->get_handle();
+
 		auto targetTriple = llvm::sys::getDefaultTargetTriple();
 		std::string error;
 		auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
@@ -574,9 +579,9 @@ namespace eokas
 		llvm::TargetOptions opt;
 		auto RM = llvm::Optional<llvm::Reloc::Model>();
 		auto targetMachine = target->createTargetMachine(targetTriple, CPU, features, opt, RM);
-		
-		mod->module.setDataLayout(targetMachine->createDataLayout());
-		mod->module.setTargetTriple(targetTriple);
+
+        module->setDataLayout(targetMachine->createDataLayout());
+		module->setTargetTriple(targetTriple);
 		
 		auto filename = "output.o";
 		std::error_code EC;
@@ -595,7 +600,7 @@ namespace eokas
 			return false;
 		}
 		
-		pass.run(mod->module);
+		pass.run(*module);
 		dest.flush();
 		
 		return true;
