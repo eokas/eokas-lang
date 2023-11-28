@@ -20,8 +20,30 @@ namespace eokas {
         return this->bridge;
     }
 
-    omis_module_t* omis_engine_t::load_ast(eokas::ast_node_module_t *node) {
-        return nullptr;
+    bool omis_engine_t::add_module(const String &name, omis_module_t *mod) {
+        auto iter = this->modules.find(name);
+        if(iter != this->modules.end())
+            return false;
+        this->modules.insert(std::make_pair(name, mod));
+        return true;
+    }
+
+    omis_module_t* omis_engine_t::get_module(const String& name) {
+        auto iter = this->modules.find(name);
+        if(iter == this->modules.end())
+            return nullptr;
+        return iter->second;
+    }
+
+    omis_module_t* omis_engine_t::load_module(const String& name, omis_loading_t& loading) {
+        if(this->get_module(name) != nullptr)
+            return nullptr;
+        auto mod = loading();
+        if(mod == nullptr)
+            return nullptr;
+        if(!this->add_module(name, mod))
+            return nullptr;
+        return mod;
     }
 
     void omis_engine_t::jit(eokas::omis_module_t *mod) {

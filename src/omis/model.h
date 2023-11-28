@@ -12,6 +12,7 @@ namespace eokas {
 
         virtual bool main();
 
+        const String& get_name() const;
         omis_bridge_t* get_bridge();
 
         bool using_module(omis_module_t* other);

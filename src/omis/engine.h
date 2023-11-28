@@ -13,7 +13,9 @@ namespace eokas {
         void set_bridge(omis_bridge_t* bridge);
         omis_bridge_t* get_bridge();
 
-        omis_module_t* load_ast(ast_node_module_t* node);
+        bool add_module(const String& name, omis_module_t* mod);
+        omis_module_t* get_module(const String& name);
+        omis_module_t* load_module(const String& name, omis_loading_t& loading);
 
         void jit(omis_module_t* mod);
         void aot(omis_module_t* mod);

@@ -19,6 +19,10 @@ namespace eokas {
         return true;
     }
 
+    const String& omis_module_t::get_name() const {
+        return name;
+    }
+
     omis_bridge_t* omis_module_t::get_bridge() {
         return bridge;
     }
