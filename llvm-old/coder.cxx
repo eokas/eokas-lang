@@ -1,8 +1,8 @@
 #include "./coder.h"
 #include "./scope.h"
 #include "./models.h"
-#include "../omis/x-module-core.h"
-#include "../omis/x-module-cstd.h"
+#include "../src/omis/x-module-core.h"
+#include "../src/omis/x-module-cstd.h"
 
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>

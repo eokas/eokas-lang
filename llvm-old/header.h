@@ -1,7 +1,7 @@
 #ifndef _EOKAS_LLVM_HEADER_H_
 #define _EOKAS_LLVM_HEADER_H_
 
-#include "../ast/ast.h"
+#include "../src/ast/ast.h"
 
 namespace llvm
 {
