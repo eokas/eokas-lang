@@ -97,7 +97,7 @@ namespace eokas {
 
         virtual bool main() override;
 
-        llvm_function_t* define_func_print();
+        omis_func_t* define_func_print();
     };
 }
 

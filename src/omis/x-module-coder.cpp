@@ -2,6 +2,10 @@
 #include "./model.h"
 
 namespace eokas {
+    omis_module_coder_t::omis_module_coder_t(omis_bridge_t* bridge, const String& name)
+        : omis_module_t(bridge, name){
+
+    }
 
     bool omis_module_coder_t::encode_module(ast_node_module_t* node) {
         if (node == nullptr)
@@ -17,7 +21,7 @@ namespace eokas {
         {
             auto entry = func->create_block("entry");
             // IR.SetInsertPoint(entry);
-            func->activate_block(entry);
+            func->set_active_block(entry);
 
             for (auto& stmt: node->entry->body) {
                 if (!this->encode_stmt(stmt))
@@ -171,7 +175,7 @@ namespace eokas {
         auto trinary_end = func->create_block("trinary.end");
 
         func->jump(trinary_begin);
-        func->activate_block(trinary_begin);
+        func->set_active_block(trinary_begin);
         auto* cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return nullptr;
@@ -184,19 +188,19 @@ namespace eokas {
 
         func->jump_cond(cond, trinary_true, trinary_false);
 
-        func->activate_block(trinary_true);
+        func->set_active_block(trinary_true);
         auto* trueV = this->encode_expr(node->branch_true);
         if (trueV == nullptr)
             return nullptr;
         func->jump(trinary_end);
 
-        func->activate_block(trinary_false);
+        func->set_active_block(trinary_false);
         auto falseV = this->encode_expr(node->branch_false);
         if (falseV == nullptr)
             return nullptr;
         func->jump(trinary_end);
 
-        func->activate_block(trinary_end);
+        func->set_active_block(trinary_end);
         if (!this->equals_type(trueV->get_type(), falseV->get_type())) {
             printf("Type of true-branch must be the same as false-branch.\n");
             return nullptr;

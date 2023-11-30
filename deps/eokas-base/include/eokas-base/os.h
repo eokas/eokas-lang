@@ -2,8 +2,8 @@
 #ifndef _EOKAS_BASE_OS_H_
 #define _EOKAS_BASE_OS_H_
 
-#include "header.h"
-#include "String.h"
+#include "./header.h"
+#include "./String.h"
 
 namespace eokas
 {

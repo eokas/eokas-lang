@@ -201,7 +201,7 @@ namespace eokas {
         }
 
         auto type = this->type_func(ret, args, varg);
-        auto handle = bridge->value_func(name, type->get_handle());
+        auto handle = bridge->value_func(this->handle, name, type->get_handle());
         auto value = this->value(type, handle);
         return dynamic_cast<omis_func_t*>(value);
     }
@@ -442,9 +442,15 @@ namespace eokas {
         return module->value(module->type_void(), ret);
     }
 
-    void omis_func_t::activate_block(omis_value_t* block) {
+    omis_value_t* omis_func_t::get_active_block() {
         auto bridge = module->get_bridge();
-        bridge->activate_block(block->get_handle());
+        auto ret = bridge->get_active_block();
+        return module->value(module->type_void(), ret);
+    }
+
+    void omis_func_t::set_active_block(omis_value_t* block) {
+        auto bridge = module->get_bridge();
+        bridge->set_active_block(block->get_handle());
     }
 
     omis_value_t* omis_func_t::load(omis_value_t *ptr) {
@@ -622,5 +628,20 @@ namespace eokas {
         auto ret = bridge->store(symbol, value->get_handle());
         auto ret_type = bridge->get_value_type(ret);
         return module->value(module->type(ret_type), ret);
+    }
+
+    void omis_func_t::ensure_tail_ret() {
+        auto bridge = module->get_bridge();
+
+        auto block = bridge->get_active_block();
+        auto lastOp = bridge->get_block_tail(block);
+
+        if(!bridge->is_terminator_ins(lastOp)) {
+            auto ret_type = bridge->get_func_ret_type(this->type->get_handle());
+            if (ret_type == module->type_void()->get_handle())
+                bridge->ret_void();
+            else
+                bridge->ret(bridge->get_default_value(ret_type));
+        }
     }
 }

@@ -1,11 +1,14 @@
 
-#ifndef _EOKAS_CODER_H_
-#define _EOKAS_CODER_H_
+#ifndef _EOKAS_OMIS_CODER_H_
+#define _EOKAS_OMIS_CODER_H_
 
 #include "./model.h"
 
 namespace eokas {
     class omis_module_coder_t :public omis_module_t {
+    public:
+        omis_module_coder_t(omis_bridge_t* bridge, const String& name);
+
         bool encode_module(ast_node_module_t *node);
         bool encode_stmt(ast_node_stmt_t* node);
         bool encode_stmt_symbol_def(ast_node_symbol_def_t* node);
@@ -24,4 +27,4 @@ namespace eokas {
     };
 }
 
-#endif //_EOKAS_CODER_H_
+#endif //_EOKAS_OMIS_CODER_H_

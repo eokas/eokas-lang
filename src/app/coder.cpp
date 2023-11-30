@@ -4,22 +4,33 @@
 #include "../omis/model.h"
 #include "../omis/engine.h"
 #include "../llvm/llvm.h"
+#include "../omis/x-module-coder.h"
 
 namespace eokas {
     coder_t::coder_t() {
-        bridge = llvm_init();
-        engine = new omis_engine_t(bridge);
+        engine = new omis_engine_t();
     }
 
     coder_t::~coder_t() {
         _DeletePointer(engine);
-        llvm_quit(bridge);
     }
 
-    void coder_t::encode(ast_node_module_t* node) {
-        engine->load_module(node->name, [&]() -> omis_module_t* {
-            auto mb = engine->get_bridge()->make_module(node->name);
-            omis_module_t* mod = new omis_module_t(node->name, mb);
+    omis_module_t* coder_t::encode(ast_node_module_t* node) {
+        return engine->load_module(node->name, [&]() -> omis_module_t* {
+            omis_module_coder_t* mod = new omis_module_coder_t(engine->get_bridge(), node->name);
+            if(!mod->encode_module(node)) {
+                _DeletePointer(mod);
+                return nullptr;
+            }
+            return mod;
         });
+    }
+
+    void coder_t::jit(omis_module_t* mod) {
+        engine->jit(mod);
+    }
+
+    void coder_t::aot(omis_module_t* mod) {
+        engine->aot(mod);
     }
 }

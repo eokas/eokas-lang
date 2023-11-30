@@ -2,15 +2,18 @@
 #include "./engine.h"
 #include "./model.h"
 #include "./bridge.h"
+#include "../llvm/llvm.h"
 
 namespace eokas {
-    omis_engine_t::omis_engine_t(omis_bridge_t* bridge)
-        : bridge(bridge)
-        , modules() { }
+    omis_engine_t::omis_engine_t()
+        : bridge(nullptr)
+        , modules() {
+        bridge = llvm_init();
+    }
 
     omis_engine_t::~omis_engine_t() {
         _DeleteMap(this->modules);
-        this->bridge = nullptr;
+        llvm_quit(this->bridge);
     }
 
     omis_bridge_t* omis_engine_t::get_bridge() {

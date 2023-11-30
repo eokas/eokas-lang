@@ -28,17 +28,25 @@ namespace eokas {
         virtual omis_handle_t type_bytes() = 0;
         virtual omis_handle_t type_func(omis_handle_t ret, const std::vector<omis_handle_t>& args, bool varg) = 0;
         virtual bool can_losslessly_cast(omis_handle_t a, omis_handle_t b) = 0;
+        virtual omis_handle_t get_func_ret_type(omis_handle_t type_func) = 0;
+        virtual uint32_t get_func_arg_count(omis_handle_t type_func) = 0;
+        virtual omis_handle_t get_func_arg_type(omis_handle_t type_func, uint32_t index) = 0;
+        virtual omis_handle_t get_default_value(omis_handle_t type) = 0;
 
         virtual omis_handle_t value_integer(uint64_t val, uint32_t bits) = 0;
         virtual omis_handle_t value_float(double val) = 0;
         virtual omis_handle_t value_bool(bool val) = 0;
-        virtual omis_handle_t value_func(omis_handle_t module, const String& name, omis_handle_t type) = 0;
+        virtual omis_handle_t value_func(omis_handle_t mod, const String& name, omis_handle_t type) = 0;
         // virtual omis_handle_t value_array(omis_handle_t element_type) = 0;
 
         virtual omis_handle_t get_value_type(omis_handle_t value) = 0;
 
         virtual omis_handle_t create_block(omis_handle_t func, const String& name) = 0;
-        virtual void activate_block(omis_handle_t block) = 0;
+        virtual omis_handle_t get_active_block() = 0;
+        virtual void set_active_block(omis_handle_t block) = 0;
+        virtual omis_handle_t get_block_tail(omis_handle_t block) = 0;
+
+        virtual bool is_terminator_ins(omis_handle_t ins) = 0;
 
         virtual omis_handle_t alloc(omis_handle_t type) = 0;
         virtual omis_handle_t load(omis_handle_t ptr) = 0;
@@ -75,6 +83,7 @@ namespace eokas {
         virtual omis_handle_t phi(omis_handle_t type, const std::map<omis_handle_t, omis_handle_t>& incomings) = 0;
         virtual omis_handle_t call(omis_handle_t func, const std::vector<omis_handle_t>& args) = 0;
         virtual omis_handle_t ret(omis_handle_t value) = 0;
+        virtual omis_handle_t ret_void() = 0;
 
         // virtual omis_handle_t make(omis_handle_t type, omis_handle_t count) = 0;
         // virtual void drop(omis_handle_t ptr) = 0;

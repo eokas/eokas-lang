@@ -41,6 +41,7 @@ namespace eokas
 #define _Val(handle) ((llvm::Value*)handle)
 #define _Func(handle) ((llvm::Function*)handle)
 #define _Block(handle) ((llvm::BasicBlock*)handle)
+#define _Ins(handle) ((llvm::Instruction*)handle)
 
     struct llvm_bridge_t :public omis_bridge_t {
         llvm::LLVMContext context;
@@ -165,6 +166,33 @@ namespace eokas
             return aT->canLosslesslyBitCastTo(bT);
         }
 
+        virtual omis_handle_t get_func_ret_type(omis_handle_t type_func) override {
+            llvm::FunctionType* type = (llvm::FunctionType*)type_func;
+            return type->getReturnType();
+        }
+
+        virtual uint32_t get_func_arg_count(omis_handle_t type_func) override {
+            llvm::FunctionType* type = (llvm::FunctionType*)type_func;
+            return type->getNumParams();
+        }
+
+        virtual omis_handle_t get_func_arg_type(omis_handle_t type_func, uint32_t index) override {
+            llvm::FunctionType* type = (llvm::FunctionType*)type_func;
+            return type->getParamType(index);
+        }
+
+        virtual omis_handle_t get_default_value(omis_handle_t type) override {
+            auto ty = _Ty(type);
+            if (ty->isIntegerTy()) {
+                auto bits = ty->getIntegerBitWidth();
+                return llvm::ConstantInt::get(context, llvm::APInt(bits, 0));
+            }
+            if (ty->isFloatingPointTy()) {
+                return llvm::ConstantFP::get(context, llvm::APFloat(0.0f));
+            }
+            return llvm::ConstantPointerNull::get(llvm::Type::getVoidTy(context)->getPointerTo());
+        }
+
         virtual omis_handle_t value_integer(uint64_t val, uint32_t bits) override {
             auto* type = ty_i64;
             if(bits == 32) type = ty_i32;
@@ -201,8 +229,22 @@ namespace eokas
             return llvm::BasicBlock::Create(context, name.cstr(), _Func(func));
         }
 
-        virtual void activate_block(omis_handle_t block) override {
+        virtual omis_handle_t get_active_block() override {
+            auto block = IR.GetInsertBlock();
+            return block;
+        }
+
+        virtual void set_active_block(omis_handle_t block) override {
             IR.SetInsertPoint(_Block(block));
+        }
+
+        virtual omis_handle_t get_block_tail(omis_handle_t block) override {
+            auto& back = _Block(block)->back();
+            return &back;
+        }
+
+        virtual bool is_terminator_ins(omis_handle_t ins) override {
+            return _Ins(ins)->isTerminator();
         }
 
         virtual omis_handle_t alloc(omis_handle_t type) override {
@@ -527,6 +569,10 @@ namespace eokas
 
         virtual omis_handle_t ret(omis_handle_t value) override {
             return IR.CreateRet(_Val(value));
+        }
+
+        virtual omis_handle_t ret_void() override {
+            return IR.CreateRetVoid();
         }
 
         // virtual omis_handle_t make(omis_handle_t type, omis_handle_t count) = 0;

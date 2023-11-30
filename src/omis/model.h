@@ -197,7 +197,8 @@ namespace eokas {
         virtual ~omis_func_t();
 
         omis_value_t* create_block(const String& name);
-        void activate_block(omis_value_t* block);
+        omis_value_t* get_active_block();
+        void set_active_block(omis_value_t* block);
 
         omis_value_t* load(omis_value_t* ptr);
         omis_value_t* store(omis_type_t* ptr, omis_value_t* val);

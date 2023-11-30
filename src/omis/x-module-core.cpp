@@ -151,7 +151,7 @@ namespace eokas {
 
 namespace eokas {
     omis_module_core_t::omis_module_core_t(omis_bridge_t* bridge)
-            : omis_module_t("core", bridge) {}
+            : omis_module_t(bridge, "core") {}
 
     bool omis_module_core_t::main() {
         if (!omis_module_t::main())

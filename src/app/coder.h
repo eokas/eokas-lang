@@ -11,10 +11,11 @@ namespace eokas {
         coder_t();
         ~coder_t();
 
-        void encode(ast_node_module_t* node);
+        omis_module_t* encode(ast_node_module_t* node);
+        void jit(omis_module_t* mod);
+        void aot(omis_module_t* mod);
 
     private:
-        omis_engine_bridge_t* bridge;
         omis_engine_t* engine;
     };
 }

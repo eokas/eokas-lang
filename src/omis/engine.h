@@ -7,7 +7,7 @@
 namespace eokas {
     class omis_engine_t {
     public:
-        omis_engine_t(omis_bridge_t* bridge);
+        omis_engine_t();
         virtual ~omis_engine_t();
 
         omis_bridge_t* get_bridge();

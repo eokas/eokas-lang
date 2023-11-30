@@ -2,7 +2,7 @@
 
 namespace eokas {
     omis_module_cstd_t::omis_module_cstd_t(omis_bridge_t* bridge)
-            : omis_module_t("c", bridge) {}
+            : omis_module_t(bridge, "c") {}
 
     bool omis_module_cstd_t::main() {
         this->printf();
