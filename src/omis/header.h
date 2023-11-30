@@ -12,11 +12,11 @@ namespace eokas {
 
     struct omis_bridge_t;
 
+    class omis_engine_t;
+    class omis_module_t;
     class omis_scope_t;
     struct omis_type_symbol_t;
     struct omis_value_symbol_t;
-
-    class omis_module_t;
 
     class omis_type_t;
     class omis_struct_t;

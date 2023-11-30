@@ -9,8 +9,9 @@ namespace eokas {
     struct omis_bridge_t {
         virtual ~omis_bridge_t() = default;
 
-        virtual omis_handle_t get_handle() = 0;
-        virtual String dump() = 0;
+        virtual omis_handle_t make_module(const String& name) = 0;
+        virtual void drop_module(omis_handle_t mod) = 0;
+        virtual String dump_module(omis_handle_t mod) = 0;
 
         virtual omis_handle_t type_void() = 0;
         virtual omis_handle_t type_i8() = 0;
@@ -31,7 +32,7 @@ namespace eokas {
         virtual omis_handle_t value_integer(uint64_t val, uint32_t bits) = 0;
         virtual omis_handle_t value_float(double val) = 0;
         virtual omis_handle_t value_bool(bool val) = 0;
-        virtual omis_handle_t value_func(const String& name, omis_handle_t type) = 0;
+        virtual omis_handle_t value_func(omis_handle_t module, const String& name, omis_handle_t type) = 0;
         // virtual omis_handle_t value_array(omis_handle_t element_type) = 0;
 
         virtual omis_handle_t get_value_type(omis_handle_t value) = 0;
@@ -78,6 +79,8 @@ namespace eokas {
         // virtual omis_handle_t make(omis_handle_t type, omis_handle_t count) = 0;
         // virtual void drop(omis_handle_t ptr) = 0;
 
+        virtual bool jit(omis_handle_t module) = 0;
+        virtual bool aot(omis_handle_t module) = 0;
     };
 }
 

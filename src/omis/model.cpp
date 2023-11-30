@@ -1,18 +1,27 @@
 #include "./model.h"
-#include "./scope.h"
 #include "./bridge.h"
 
 namespace eokas {
-    omis_module_t::omis_module_t(const String& name, omis_bridge_t* bridge)
-            : name(name), bridge(bridge), root(new omis_scope_t(nullptr, nullptr)), scope(this->root), usings(),
-              types(), values() {
-
+    omis_module_t::omis_module_t(omis_bridge_t* bridge, const String& name)
+        : bridge(bridge)
+        , name(name)
+        , handle(nullptr)
+        , root(new omis_scope_t(nullptr, nullptr))
+        , scope(this->root)
+        , usings()
+        , types()
+        , values() {
+        this->handle = bridge->make_module(name.cstr());
     }
 
     omis_module_t::~omis_module_t() {
         _DeletePointer(root);
         _DeleteMap(types);
         _DeleteMap(values);
+
+        this->bridge->drop_module(this->handle);
+        this->handle = nullptr;
+        this->bridge = nullptr;
     }
 
     bool omis_module_t::main() {
@@ -28,11 +37,11 @@ namespace eokas {
     }
 
     omis_handle_t omis_module_t::get_handle() {
-        return bridge->get_handle();
+        return handle;
     }
 
     String omis_module_t::dump() {
-        return bridge->dump();
+        return bridge->dump_module(handle);
     }
 
     bool omis_module_t::using_module(omis_module_t* other) {

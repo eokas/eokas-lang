@@ -7,13 +7,13 @@
 namespace eokas {
     class omis_module_t {
     public:
-        omis_module_t(const String& name, omis_bridge_t* bridge);
+        omis_module_t(omis_bridge_t* bridge, const String& name);
         virtual ~omis_module_t();
 
         virtual bool main();
 
-        const String& get_name() const;
         omis_bridge_t* get_bridge();
+        const String& get_name() const;
         omis_handle_t get_handle();
         String dump();
 
@@ -50,8 +50,9 @@ namespace eokas {
         omis_func_t* value_func(const String& name, omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
 
     protected:
-        String name;
         omis_bridge_t* bridge;
+        String name;
+        omis_handle_t handle;
         omis_scope_t* root;
         omis_scope_t* scope;
         std::vector<omis_module_t*> usings;

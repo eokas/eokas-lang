@@ -30,5 +30,7 @@ aux_source_directory(src/ast SRC_AST)
 aux_source_directory(src/llvm SRC_LLVM)
 aux_source_directory(src/omis SRC_OMIS)
 
-add_executable(${PROJECT_NAME} ${SRC} ${SRC_PARSER} ${SRC_AST} ${SRC_LLVM} ${SRC_OMIS})
+add_executable(${PROJECT_NAME} ${SRC} ${SRC_PARSER} ${SRC_AST} ${SRC_LLVM} ${SRC_OMIS}
+        src/app/coder.cpp
+        src/app/coder.h)
 target_link_libraries(${PROJECT_NAME} ${LIBS})

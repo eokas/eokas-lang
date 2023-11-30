@@ -15,11 +15,8 @@ namespace llvm
 
 namespace eokas
 {
-    omis_bridge_t* llvm_bridge_init(const String& name);
-    void llvm_bridge_quit(omis_bridge_t* bridge);
-
-	bool llvm_jit(omis_module_t* module);
-	bool llvm_aot(omis_module_t* module);
+    omis_bridge_t* llvm_init();
+    void llvm_quit(omis_bridge_t* bridge);
 }
 
 #endif//_EOKAS_LLVM_ENGINE_H_

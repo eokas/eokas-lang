@@ -5,6 +5,8 @@
 
 #include <sstream>
 
+#include <llvm/ADT/APInt.h>
+#include <llvm/ADT/APSInt.h>
 #include <llvm/ADT/APFloat.h>
 #include <llvm/ADT/STLExtras.h>
 
@@ -20,13 +22,13 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/BasicBlock.h>
 
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/Target/TargetOptions.h>
+
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/TargetRegistry.h>
 #include <llvm/Support/TargetSelect.h>
-
-#include <llvm/Target/TargetMachine.h>
-#include <llvm/Target/TargetOptions.h>
 
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
@@ -34,14 +36,14 @@
 
 namespace eokas
 {
+#define _Mod(handle) ((llvm::Module*)handle)
 #define _Ty(handle) ((llvm::Type*)handle)
 #define _Val(handle) ((llvm::Value*)handle)
 #define _Func(handle) ((llvm::Function*)handle)
 #define _Block(handle) ((llvm::BasicBlock*)handle)
 
     struct llvm_bridge_t :public omis_bridge_t {
-        llvm::LLVMContext& context;
-        llvm::Module module;
+        llvm::LLVMContext context;
         llvm::IRBuilder<> IR;
 
         llvm::Type* ty_void;
@@ -59,8 +61,8 @@ namespace eokas
         llvm::Type* ty_bytes;
         llvm::Type* ty_void_ptr;
 
-        llvm_bridge_t(const String& name, llvm::LLVMContext& context)
-                : omis_bridge_t(), context(context), module(name.cstr(), context), IR(context) {
+        llvm_bridge_t()
+            : omis_bridge_t(), context(), IR(context) {
             ty_void = llvm::Type::getVoidTy(context);
             ty_i8 = llvm::Type::getInt8Ty(context);
             ty_i16 = llvm::Type::getInt16Ty(context);
@@ -77,14 +79,21 @@ namespace eokas
             ty_void_ptr = ty_void->getPointerTo();
         }
 
-        virtual omis_handle_t get_handle() override {
-            return &module;
+        virtual omis_handle_t make_module(const String& name) override {
+            llvm::Module* mod = new llvm::Module(name.cstr(), context);
+            return mod;
         }
 
-        virtual String dump() override {
+        virtual void drop_module(omis_handle_t mod) override {
+            llvm::Module* module = _Mod(mod);
+            _DeletePointer(module);
+        }
+
+        virtual String dump_module(omis_handle_t mod) override {
+            auto* module = _Mod(mod);
             std::string str;
             llvm::raw_string_ostream stream(str);
-            module.print(stream, nullptr);
+            module->print(stream, nullptr);
             return String{str.c_str(), str.length()};
         }
 
@@ -170,7 +179,8 @@ namespace eokas
             return llvm::Constant::getIntegerValue(ty_bool, llvm::APInt(1, val ? 1 : 0, true));
         }
 
-        virtual omis_handle_t value_func(const String& name, omis_handle_t type) override {
+        virtual omis_handle_t value_func(omis_handle_t mod, const String& name, omis_handle_t type) override {
+            llvm::Module* module = _Mod(mod);
             llvm::FunctionType* funcType = (llvm::FunctionType*)type;
             llvm::Function* funcPtr = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name.cstr(), module);
 
@@ -521,88 +531,86 @@ namespace eokas
 
         // virtual omis_handle_t make(omis_handle_t type, omis_handle_t count) = 0;
         // virtual void drop(omis_handle_t ptr) = 0;
+
+        virtual bool jit(omis_handle_t mod) override {
+            llvm::InitializeNativeTarget();
+            llvm::InitializeNativeTargetAsmPrinter();
+            llvm::InitializeNativeTargetAsmParser();
+
+            auto* module = _Mod(mod);
+
+            auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(module))
+                    .setEngineKind(llvm::EngineKind::JIT)
+                    .create();
+
+            ee->finalizeObject();
+
+            llvm::Function* func = module->getFunction("main");
+            if(func == nullptr)
+                return false;
+
+            printf("---------------- JIT RUN ----------------\n");
+            std::vector<llvm::GenericValue> args;
+            auto retval = ee->runFunction(func, args);
+            llvm::SmallString<32> str;
+            retval.IntVal.toString(str, 10, true);
+            printf("\nRET: %s \n", str.data());
+            printf("---------------- JIT END ----------------\n");
+
+            return true;
+        }
+
+        virtual bool aot(omis_handle_t mod) override {
+            llvm::InitializeAllTargetInfos();
+            llvm::InitializeAllTargets();
+            llvm::InitializeAllTargetMCs();
+            llvm::InitializeAllAsmParsers();
+            llvm::InitializeAllAsmPrinters();
+
+            auto* module = _Mod(mod);
+
+            auto targetTriple = llvm::sys::getDefaultTargetTriple();
+            std::string error;
+            auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
+
+            auto CPU = "generic";
+            auto features = "";
+            llvm::TargetOptions opt;
+            auto RM = llvm::Optional<llvm::Reloc::Model>();
+            auto targetMachine = target->createTargetMachine(targetTriple, CPU, features, opt, RM);
+
+            module->setDataLayout(targetMachine->createDataLayout());
+            module->setTargetTriple(targetTriple);
+
+            auto filename = "output.o";
+            std::error_code EC;
+            llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::OF_None);
+            if(EC)
+            {
+                llvm::errs() << "Could not open file: " << EC.message();
+                return false;
+            }
+
+            llvm::legacy::PassManager pass;
+            auto fileType = llvm::CGFT_ObjectFile;
+            if(targetMachine->addPassesToEmitFile(pass, dest, nullptr, fileType))
+            {
+                llvm::errs() << "TargetMachine can't emit a file of this type";
+                return false;
+            }
+
+            pass.run(*module);
+            dest.flush();
+
+            return true;
+        }
     };
 
-    omis_bridge_t* llvm_bridge_init(const String& name) {
-        llvm::LLVMContext context;
-        omis_bridge_t* bridge = new llvm_bridge_t(name, context);
-        return bridge;
+    omis_bridge_t* llvm_init() {
+        return new llvm_bridge_t();
     }
 
-    void llvm_bridge_quit(omis_bridge_t* bridge) {
+    void llvm_quit(omis_bridge_t* bridge) {
         _DeletePointer(bridge);
     }
-
-	bool llvm_jit(omis_module_t* mod)
-	{
-		llvm::InitializeNativeTarget();
-		llvm::InitializeNativeTargetAsmPrinter();
-		llvm::InitializeNativeTargetAsmParser();
-
-        auto* module = (llvm::Module*)mod->get_handle();
-
-		auto ee = llvm::EngineBuilder(std::unique_ptr<llvm::Module>(module))
-                .setEngineKind(llvm::EngineKind::JIT)
-                .create();
-		
-		ee->finalizeObject();
-		
-		llvm::Function* func = module->getFunction("main");
-		if(func == nullptr)
-			return false;
-		
-		printf("---------------- JIT RUN ----------------\n");
-		std::vector<llvm::GenericValue> args;
-		auto retval = ee->runFunction(func, args);
-		printf("\nRET: %s \n", retval.IntVal.toString(10, true).c_str());
-		printf("---------------- JIT END ----------------\n");
-
-		return true;
-	}
-	
-	bool llvm_aot(omis_module_t* mod)
-	{
-		llvm::InitializeAllTargetInfos();
-		llvm::InitializeAllTargets();
-		llvm::InitializeAllTargetMCs();
-		llvm::InitializeAllAsmParsers();
-		llvm::InitializeAllAsmPrinters();
-
-        auto* module = (llvm::Module*)mod->get_handle();
-
-		auto targetTriple = llvm::sys::getDefaultTargetTriple();
-		std::string error;
-		auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
-		
-		auto CPU = "generic";
-		auto features = "";
-		llvm::TargetOptions opt;
-		auto RM = llvm::Optional<llvm::Reloc::Model>();
-		auto targetMachine = target->createTargetMachine(targetTriple, CPU, features, opt, RM);
-
-        module->setDataLayout(targetMachine->createDataLayout());
-		module->setTargetTriple(targetTriple);
-		
-		auto filename = "output.o";
-		std::error_code EC;
-		llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::OF_None);
-		if(EC)
-		{
-			llvm::errs() << "Could not open file: " << EC.message();
-			return false;
-		}
-		
-		llvm::legacy::PassManager pass;
-		auto fileType = llvm::CGFT_ObjectFile;
-		if(targetMachine->addPassesToEmitFile(pass, dest, nullptr, fileType))
-		{
-			llvm::errs() << "TargetMachine can't emit a file of this type";
-			return false;
-		}
-		
-		pass.run(*module);
-		dest.flush();
-		
-		return true;
-	}
 }
