@@ -1,7 +1,7 @@
 #include "llvm.h"
 
-#include "../omis/bridge.h"
-#include "../omis/model.h"
+#include "../bridge.h"
+#include "../model.h"
 
 #include <sstream>
 
@@ -591,7 +591,7 @@ namespace eokas
 
             ee->finalizeObject();
 
-            llvm::Function* func = module->getFunction("main");
+            llvm::Function* func = module->getFunction("$main");
             if(func == nullptr)
                 return false;
 
@@ -600,7 +600,7 @@ namespace eokas
             auto retval = ee->runFunction(func, args);
             llvm::SmallString<32> str;
             retval.IntVal.toString(str, 10, true);
-            printf("\nRET: %s \n", str.data());
+            printf("\nRET: %s \n", str.c_str());
             printf("---------------- JIT END ----------------\n");
 
             return true;

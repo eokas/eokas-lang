@@ -202,8 +202,14 @@ namespace eokas {
 
         auto type = this->type_func(ret, args, varg);
         auto handle = bridge->value_func(this->handle, name, type->get_handle());
-        auto value = this->value(type, handle);
-        return dynamic_cast<omis_func_t*>(value);
+
+        auto iter = this->values.find(handle);
+        if(iter != this->values.end())
+            return nullptr;
+        auto value = new omis_func_t(this, type, handle);
+        this->values.insert(std::make_pair(handle, value));
+
+        return value;
     }
 }
 

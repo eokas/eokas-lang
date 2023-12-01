@@ -1,5 +1,3 @@
-import io: "eokas.io"
 
-val main = func(args: i32): i32 {
+val a = 10;
 
-}

@@ -2,7 +2,7 @@
 #include "./engine.h"
 #include "./model.h"
 #include "./bridge.h"
-#include "../llvm/llvm.h"
+#include "./llvm/llvm.h"
 
 namespace eokas {
     omis_engine_t::omis_engine_t()

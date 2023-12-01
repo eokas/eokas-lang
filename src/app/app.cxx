@@ -101,6 +101,8 @@ static void eokas_main(coder_t& coder, const String& fileName, const String& cmd
 
     printf("=> Encode to IR:\n");
     printf("------------------------------------------\n");
+    printf(coder.dump(mod).cstr());
+    printf("------------------------------------------\n");
     if(cmd == "run")
         coder.jit(mod);
     else

@@ -54,10 +54,8 @@ set(LIBS eokas-base ${LLVM_DEPS} ${LLVM_LIBS})
 aux_source_directory(src SRC)
 aux_source_directory(src/app SRC_PARSER)
 aux_source_directory(src/ast SRC_AST)
-aux_source_directory(src/llvm SRC_LLVM)
+aux_source_directory(src/omis/llvm SRC_LLVM)
 aux_source_directory(src/omis SRC_OMIS)
 
-add_executable(${PROJECT_NAME} ${SRC} ${SRC_PARSER} ${SRC_AST} ${SRC_LLVM} ${SRC_OMIS}
-        src/app/coder.cpp
-        src/app/coder.h)
+add_executable(${PROJECT_NAME} ${SRC} ${SRC_PARSER} ${SRC_AST} ${SRC_LLVM} ${SRC_OMIS})
 target_link_libraries(${PROJECT_NAME} ${LIBS})

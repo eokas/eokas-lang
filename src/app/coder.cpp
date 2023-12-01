@@ -1,9 +1,6 @@
 
 #include "./coder.h"
-#include "../omis/bridge.h"
 #include "../omis/model.h"
-#include "../omis/engine.h"
-#include "../llvm/llvm.h"
 #include "../omis/x-module-coder.h"
 
 namespace eokas {
@@ -24,6 +21,10 @@ namespace eokas {
             }
             return mod;
         });
+    }
+
+    String coder_t::dump(omis_module_t *mod) {
+        return mod->dump();
     }
 
     void coder_t::jit(omis_module_t* mod) {

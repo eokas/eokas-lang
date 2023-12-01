@@ -1,7 +1,7 @@
 #ifndef _EOKAS_LLVM_ENGINE_H_
 #define _EOKAS_LLVM_ENGINE_H_
 
-#include "../omis/model.h"
+#include "../model.h"
 
 namespace llvm
 {
