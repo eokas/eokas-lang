@@ -11,9 +11,12 @@ namespace eokas {
 
         bool encode_module(ast_node_module_t *node);
         bool encode_stmt(ast_node_stmt_t* node);
+        bool encode_stmt_block(ast_node_block_t* node);
         bool encode_stmt_symbol_def(ast_node_symbol_def_t* node);
+        bool encode_stmt_assign(ast_node_assign_t* node);
         bool encode_stmt_return(ast_node_return_t* node);
         bool encode_stmt_if(ast_node_if_t* node);
+        bool encode_stmt_loop(ast_node_loop_t* node);
 
         omis_type_t* encode_type_ref(ast_node_type_t* node);
 
@@ -26,6 +29,10 @@ namespace eokas {
         omis_value_t *encode_expr_bool(ast_node_literal_bool_t *node);
         omis_value_t *encode_expr_string(ast_node_literal_string_t *node);
         omis_value_t *encode_expr_symbol_ref(ast_node_symbol_ref_t *node);
+
+    private:
+        omis_value_t* continue_point;
+        omis_value_t* break_point;
     };
 }
 

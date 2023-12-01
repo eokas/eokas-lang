@@ -40,17 +40,39 @@ namespace eokas {
             return false;
 
         switch (node->category) {
+            case ast_category_t::BLOCK:
+                return this->encode_stmt_block(dynamic_cast<ast_node_block_t*>(node));
             case ast_category_t::SYMBOL_DEF:
                 return this->encode_stmt_symbol_def(dynamic_cast<ast_node_symbol_def_t*>(node));
+            case ast_category_t::ASSIGN:
+                return this->encode_stmt_assign(dynamic_cast<ast_node_assign_t*>(node));
             case ast_category_t::RETURN:
                 return this->encode_stmt_return(dynamic_cast<ast_node_return_t*>(node));
             case ast_category_t::IF:
                 return this->encode_stmt_if(dynamic_cast<ast_node_if_t*>(node));
+            case ast_category_t::LOOP:
+                return this->encode_stmt_loop(dynamic_cast<ast_node_loop_t*>(node));
             default:
                 return false;
         }
 
         return false;
+    }
+
+    bool omis_module_coder_t::encode_stmt_block(ast_node_block_t* node) {
+        if (node == nullptr)
+            return false;
+
+        this->push_scope();
+
+        for (auto &stmt: node->stmts) {
+            if (!this->encode_stmt(stmt))
+                return false;
+        }
+
+        this->pop_scope();
+
+        return true;
     }
 
     bool omis_module_coder_t::encode_stmt_symbol_def(ast_node_symbol_def_t* node) {
@@ -105,6 +127,24 @@ namespace eokas {
             printf("ERROR: There is a symbol named %s in this scope.\n", node->name.cstr());
             return false;
         }
+
+        return true;
+    }
+
+    bool omis_module_coder_t::encode_stmt_assign(ast_node_assign_t* node) {
+        if (node == nullptr)
+            return false;
+
+        auto func = this->scope->func;
+
+        auto left = this->encode_expr(node->left);
+        auto right = this->encode_expr(node->right);
+        if (left == nullptr || right == nullptr)
+            return false;
+
+        auto ptr = func->ref_value(left);
+        auto val = func->get_value(right);
+        func->store(ptr, val);
 
         return true;
     }
@@ -196,6 +236,66 @@ namespace eokas {
         }
 
         func->set_active_block(if_end);
+
+        return true;
+    }
+
+    bool omis_module_coder_t::encode_stmt_loop(ast_node_loop_t* node) {
+        if (node == nullptr)
+            return false;
+
+        auto func = this->scope->func;
+
+        this->push_scope();
+
+        auto loop_cond = func->create_block("loop.cond");
+        auto loop_step = func->create_block("loop.step");
+        auto loop_body = func->create_block("loop.body");
+        auto loop_end = func->create_block("loop.end");
+
+        auto old_continue_point = this->continue_point;
+        auto old_break_point = this->break_point;
+        this->continue_point = loop_step;
+        this->break_point = loop_end;
+
+        if (!this->encode_stmt(node->init))
+            return false;
+        func->jump(loop_cond);
+
+        func->set_active_block(loop_cond);
+        auto cond = this->encode_expr(node->cond);
+        if (cond == nullptr)
+            return false;
+        if(!this->equals_type(cond->get_type(), type_bool())) {
+            printf("ERROR: The label 'loop.cond' need a bool value.\n");
+            return false;
+        }
+        func->jump_cond(cond, loop_body, loop_end);
+
+        func->set_active_block(loop_body);
+        if (node->body != nullptr) {
+            if (!this->encode_stmt(node->body))
+                return false;
+            auto last_op = func->get_block_tail(loop_body);
+            if (!func->is_terminator_ins(last_op)) {
+                func->jump(loop_step);
+            }
+        }
+        if(!func->is_terminator_ins(func->get_block_tail(loop_body))) {
+            func->jump(loop_step);
+        }
+
+        func->set_active_block(loop_step);
+        if (!this->encode_stmt(node->step))
+            return false;
+        func->jump(loop_cond);
+
+        func->set_active_block(loop_end);
+
+        this->continue_point = old_continue_point;
+        this->break_point = old_break_point;
+
+        this->pop_scope();
 
         return true;
     }

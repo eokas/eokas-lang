@@ -1,9 +1,8 @@
 
 val a = 4;
-val b = 3;
 
-if(a <= b)
-    return a;
-else
-    return b;
+loop(var i = 0; i < 10; i=i+1) {
+    a = a + i;
+}
 
+return a;
