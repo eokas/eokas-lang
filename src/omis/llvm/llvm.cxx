@@ -595,13 +595,11 @@ namespace eokas
             if(func == nullptr)
                 return false;
 
-            printf("---------------- JIT RUN ----------------\n");
             std::vector<llvm::GenericValue> args;
             auto retval = ee->runFunction(func, args);
             llvm::SmallString<32> str;
             retval.IntVal.toString(str, 10, true);
-            printf("\nRET: %s \n", str.c_str());
-            printf("---------------- JIT END ----------------\n");
+            printf("RET: %s \n", str.c_str());
 
             return true;
         }

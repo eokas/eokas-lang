@@ -55,17 +55,17 @@ namespace eokas {
 
         auto exists = this->scope->get_value_symbol(node->name, false);
         if (exists != nullptr) {
-            printf("The symbol '%s' is aready defined.", node->name.cstr());
+            printf("ERROR: The symbol '%s' is aready defined.", node->name.cstr());
             return false;
         }
 
-        auto type = this->encode_type_ref(node->type);
+        auto type = node->type != nullptr ? this->encode_type_ref(node->type) : nullptr;
         auto expr = this->encode_expr(node->value);
         if (expr == nullptr)
             return false;
 
         omis_type_t* stype = nullptr;
-        omis_type_t* dtype = type != nullptr ? type : nullptr;
+        omis_type_t* dtype = type;
         omis_type_t* vtype = expr->get_type();
         if (dtype != nullptr) {
             stype = dtype;
@@ -85,7 +85,7 @@ namespace eokas {
 
                 // TODO: 校验类型合法性, 值类型是否遵循标记类型
 
-                printf("Type of value can not cast to the type of symbol.\n");
+                printf("ERROR: Type of value can not cast to the type of symbol.\n");
                 return false;
             } while (false);
         } else {
@@ -93,12 +93,12 @@ namespace eokas {
         }
 
         if (this->equals_type(stype, this->type_void())) {
-            printf("Void-Type can't assign to a symbol.\n");
+            printf("ERROR: Void-Type can't assign to a symbol.\n");
             return false;
         }
 
         if (!scope->add_value_symbol(node->name, expr)) {
-            printf("There is a symbol named %s in this scope.\n", node->name.cstr());
+            printf("ERROR: There is a symbol named %s in this scope.\n", node->name.cstr());
             return false;
         }
 
@@ -107,7 +107,7 @@ namespace eokas {
 
     omis_type_t* omis_module_coder_t::encode_type_ref(ast_node_type_t* node) {
         if (node == nullptr) {
-            printf("Type node is null. \n");
+            printf("ERROR: Type node is null. \n");
             return nullptr;
         }
 
@@ -115,7 +115,7 @@ namespace eokas {
 
         auto* symbol = this->scope->get_type_symbol(name, true);
         if (symbol == nullptr) {
-            printf("The type '%s' is undefined.\n", name.cstr());
+            printf("ERROR: The type '%s' is undefined.\n", name.cstr());
             return nullptr;
         }
 
@@ -182,7 +182,7 @@ namespace eokas {
 
         //if (!cond->getType()->isIntegerTy(1)) {
         if (!this->equals_type(cond->get_type(), this->type_i32())) {
-            printf("Condition must be a bool value.\n");
+            printf("ERROR: Condition must be a bool value.\n");
             return nullptr;
         }
 
@@ -202,7 +202,7 @@ namespace eokas {
 
         func->set_active_block(trinary_end);
         if (!this->equals_type(trueV->get_type(), falseV->get_type())) {
-            printf("Type of true-branch must be the same as false-branch.\n");
+            printf("ERROR: Type of true-branch must be the same as false-branch.\n");
             return nullptr;
         }
 
@@ -329,7 +329,7 @@ namespace eokas {
 
         auto* symbol = this->scope->get_value_symbol(node->name, true);
         if (symbol == nullptr) {
-            printf("Symbol '%s' is undefined.\n", node->name.cstr());
+            printf("ERROR: Symbol '%s' is undefined.\n", node->name.cstr());
             return nullptr;
         }
 
