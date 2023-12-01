@@ -1,4 +1,9 @@
 
-val a = 10;
+val a = 4;
+val b = 3;
 
-return a;
+if(a <= b)
+    return a;
+else
+    return b;
+

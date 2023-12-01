@@ -148,10 +148,6 @@ namespace eokas {
         return this->type(handle);
     }
 
-    bool omis_module_t::equals_type(omis_type_t* a, omis_type_t* b) {
-        return a == b || a->get_handle() == b->get_handle();
-    }
-
     bool omis_module_t::can_losslessly_bitcast(omis_type_t* a, omis_type_t* b) {
         return bridge->can_losslessly_cast(a->get_handle(), b->get_handle());
     }
@@ -215,6 +211,14 @@ namespace eokas {
         this->values.insert(std::make_pair(handle, value));
 
         return value;
+    }
+
+    bool omis_module_t::equals_type(omis_type_t* a, omis_type_t* b) {
+        return a == b || a->get_handle() == b->get_handle();
+    }
+
+    bool omis_module_t::equals_value(omis_value_t *a, omis_value_t *b) {
+        return a == b || a->get_handle() == b->get_handle();
     }
 }
 
@@ -475,6 +479,23 @@ namespace eokas {
 
     void omis_func_t::set_active_block(omis_value_t* block) {
         bridge->set_active_block(block->get_handle());
+    }
+
+    omis_value_t* omis_func_t::get_block_tail(omis_value_t* block) {
+        auto ret = bridge->get_block_tail(block->get_handle());
+        return module->value(ret);
+    }
+
+    bool omis_func_t::is_terminator_ins(omis_value_t *ins) {
+        if(ins != nullptr) {
+            return bridge->is_terminator_ins(ins->get_handle());
+        }
+        else {
+            auto block = bridge->get_active_block();
+            auto tail = bridge->get_block_tail(block);
+            return bridge->is_terminator_ins(tail);
+        }
+
     }
 
     omis_value_t* omis_func_t::load(omis_value_t *ptr) {

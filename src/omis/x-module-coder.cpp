@@ -44,6 +44,8 @@ namespace eokas {
                 return this->encode_stmt_symbol_def(dynamic_cast<ast_node_symbol_def_t*>(node));
             case ast_category_t::RETURN:
                 return this->encode_stmt_return(dynamic_cast<ast_node_return_t*>(node));
+            case ast_category_t::IF:
+                return this->encode_stmt_if(dynamic_cast<ast_node_if_t*>(node));
             default:
                 return false;
         }
@@ -138,6 +140,62 @@ namespace eokas {
         }
 
         func->ret(expr);
+
+        return true;
+    }
+
+    bool omis_module_coder_t::encode_stmt_if(struct ast_node_if_t *node) {
+        if (node == nullptr)
+            return false;
+
+        auto func = this->scope->func;
+
+        auto if_true = func->create_block("if.true");
+        auto if_false = func->create_block("if.false");
+        auto if_end = func->create_block("if.end");
+
+        auto condV = this->encode_expr(node->cond);
+        if (condV == nullptr)
+            return false;
+
+        if (!this->equals_type(condV->get_type(), type_bool())) {
+            printf("ERROR: The label 'if.cond' need a bool value.\n");
+            return false;
+        }
+
+        func->jump_cond(condV, if_true, if_false);
+
+        // if-true
+        func->set_active_block(if_true);
+        if (node->branch_true != nullptr) {
+            if (!this->encode_stmt(node->branch_true))
+                return false;
+
+            auto active_block = func->get_active_block();
+            if(!equals_value(active_block, if_true) && !func->is_terminator_ins()) {
+                func->jump(if_end);
+            }
+        }
+        if(!func->is_terminator_ins(func->get_block_tail(if_true))) {
+            func->jump(if_end);
+        }
+
+        // if-false
+        func->set_active_block(if_false);
+        if (node->branch_false != nullptr) {
+            if (!this->encode_stmt(node->branch_false))
+                return false;
+
+            auto active_block = func->get_active_block();
+            if(!equals_value(active_block, if_false) && !func->is_terminator_ins()) {
+                func->jump(if_end);
+            }
+        }
+        if(!func->is_terminator_ins(func->get_block_tail(if_false))) {
+            func->jump(if_end);
+        }
+
+        func->set_active_block(if_end);
 
         return true;
     }

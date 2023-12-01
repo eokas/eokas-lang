@@ -39,7 +39,6 @@ namespace eokas {
         omis_type_t* type_bool();
         omis_type_t* type_bytes();
         omis_type_t* type_func(omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
-        bool equals_type(omis_type_t* a, omis_type_t* b);
         bool can_losslessly_bitcast(omis_type_t* a, omis_type_t* b);
 
         omis_value_t* value(omis_type_t* type, omis_handle_t handle);
@@ -49,6 +48,9 @@ namespace eokas {
         omis_value_t* value_bool(bool val);
         omis_value_t* value_string(const String& val);
         omis_func_t* value_func(const String& name, omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
+
+        bool equals_type(omis_type_t* a, omis_type_t* b);
+        bool equals_value(omis_value_t* a, omis_value_t* b);
 
     protected:
         omis_bridge_t* bridge;
@@ -204,6 +206,9 @@ namespace eokas {
         omis_value_t* create_block(const String& name);
         omis_value_t* get_active_block();
         void set_active_block(omis_value_t* block);
+        omis_value_t* get_block_tail(omis_value_t* block);
+
+        bool is_terminator_ins(omis_value_t* ins = nullptr);
 
         omis_value_t* load(omis_value_t* ptr);
         omis_value_t* store(omis_type_t* ptr, omis_value_t* val);
