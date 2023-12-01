@@ -82,8 +82,7 @@ namespace eokas {
         virtual omis_handle_t jump_cond(omis_handle_t cond, omis_handle_t branch_true, omis_handle_t branch_false) = 0;
         virtual omis_handle_t phi(omis_handle_t type, const std::map<omis_handle_t, omis_handle_t>& incomings) = 0;
         virtual omis_handle_t call(omis_handle_t func, const std::vector<omis_handle_t>& args) = 0;
-        virtual omis_handle_t ret(omis_handle_t value) = 0;
-        virtual omis_handle_t ret_void() = 0;
+        virtual omis_handle_t ret(omis_handle_t value = nullptr) = 0;
 
         // virtual omis_handle_t make(omis_handle_t type, omis_handle_t count) = 0;
         // virtual void drop(omis_handle_t ptr) = 0;

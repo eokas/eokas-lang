@@ -568,11 +568,10 @@ namespace eokas
         }
 
         virtual omis_handle_t ret(omis_handle_t value) override {
-            return IR.CreateRet(_Val(value));
-        }
-
-        virtual omis_handle_t ret_void() override {
-            return IR.CreateRetVoid();
+            if(value == nullptr)
+                return IR.CreateRetVoid();
+            else
+                return IR.CreateRet(_Val(value));
         }
 
         // virtual omis_handle_t make(omis_handle_t type, omis_handle_t count) = 0;

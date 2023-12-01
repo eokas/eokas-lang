@@ -43,6 +43,7 @@ namespace eokas {
         bool can_losslessly_bitcast(omis_type_t* a, omis_type_t* b);
 
         omis_value_t* value(omis_type_t* type, omis_handle_t handle);
+        omis_value_t* value(omis_handle_t handle);
         omis_value_t* value_integer(u64_t val, u32_t bits);
         omis_value_t* value_float(f64_t val);
         omis_value_t* value_bool(bool val);
@@ -196,6 +197,10 @@ namespace eokas {
         omis_func_t(omis_module_t* module, omis_type_t* type, omis_handle_t handle);
         virtual ~omis_func_t();
 
+        omis_type_t* get_ret_type();
+        uint32_t get_arg_count();
+        omis_type_t* get_arg_type(uint32_t index);
+
         omis_value_t* create_block(const String& name);
         omis_value_t* get_active_block();
         void set_active_block(omis_value_t* block);
@@ -227,11 +232,14 @@ namespace eokas {
         omis_value_t* jump(omis_value_t* pos);
         omis_value_t* jump_cond(omis_value_t* cond, omis_value_t* branch_true, omis_value_t* branch_false);
         omis_value_t* phi(omis_type_t* type, const std::map<omis_value_t*, omis_value_t*>& incomings);
+        omis_value_t* call(omis_func_t* func, const std::vector<omis_value_t*>& args);
+        omis_value_t* ret(omis_value_t* val = nullptr);
 
         omis_value_t* create_local_symbol(const String& name, omis_type_t* type, omis_value_t* value);
         void ensure_tail_ret();
 
     protected:
+        omis_bridge_t* bridge;
     };
 }
 

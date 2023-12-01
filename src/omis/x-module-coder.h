@@ -12,6 +12,7 @@ namespace eokas {
         bool encode_module(ast_node_module_t *node);
         bool encode_stmt(ast_node_stmt_t* node);
         bool encode_stmt_symbol_def(ast_node_symbol_def_t* node);
+        bool encode_stmt_return(ast_node_return_t* node);
 
         omis_type_t* encode_type_ref(ast_node_type_t* node);
 

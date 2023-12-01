@@ -42,6 +42,8 @@ namespace eokas {
         switch (node->category) {
             case ast_category_t::SYMBOL_DEF:
                 return this->encode_stmt_symbol_def(dynamic_cast<ast_node_symbol_def_t*>(node));
+            case ast_category_t::RETURN:
+                return this->encode_stmt_return(dynamic_cast<ast_node_return_t*>(node));
             default:
                 return false;
         }
@@ -101,6 +103,41 @@ namespace eokas {
             printf("ERROR: There is a symbol named %s in this scope.\n", node->name.cstr());
             return false;
         }
+
+        return true;
+    }
+
+    bool omis_module_coder_t::encode_stmt_return(ast_node_return_t* node) {
+        if (node == nullptr)
+            return false;
+
+        auto func = this->scope->func;
+        auto expectedRetType = func->get_ret_type();
+
+        if (node->value == nullptr) {
+            if (this->equals_type(expectedRetType, type_void())) {
+                printf("ERROR: The function must return a value.\n");
+                return false;
+            }
+
+            func->ret();
+            return true;
+        }
+
+        auto expr = this->encode_expr(node->value);
+        if (expr == nullptr) {
+            printf("ERROR: Invalid ret value.\n");
+            return false;
+        }
+
+        auto actureRetType = expr->get_type();
+        if (!this->equals_type(actureRetType, expectedRetType) &&
+            !this->can_losslessly_bitcast(actureRetType, expectedRetType)) {
+            printf("ERROR: The type of return value can't cast to return type of function.\n");
+            return false;
+        }
+
+        func->ret(expr);
 
         return true;
     }
