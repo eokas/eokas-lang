@@ -243,6 +243,9 @@ namespace eokas {
         omis_value_t* create_local_symbol(const String& name, omis_type_t* type, omis_value_t* value);
         void ensure_tail_ret();
 
+        omis_value_t* get_ptr_val(omis_value_t* val);
+        omis_value_t* get_ptr_ref(omis_value_t* val);
+
     protected:
         omis_bridge_t* bridge;
     };

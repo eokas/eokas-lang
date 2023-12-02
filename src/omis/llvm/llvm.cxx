@@ -574,6 +574,38 @@ namespace eokas
                 return IR.CreateRet(_Val(value));
         }
 
+        virtual omis_handle_t get_ptr_val(omis_handle_t ptr) override {
+            auto value = _Val(ptr);
+            llvm::Type* type = value->getType();
+            while (type->isPointerTy()) {
+                if (llvm::isa<llvm::Function>(value))
+                    break;
+                if (type->getPointerElementType()->isFunctionTy())
+                    break;
+                if (type->getPointerElementType()->isStructTy())
+                    break;
+                if (type->getPointerElementType()->isArrayTy())
+                    break;
+                value = IR.CreateLoad(value);
+                type = value->getType();
+            }
+
+            return value;
+        }
+
+        virtual omis_handle_t get_ptr_ref(omis_handle_t ptr) override {
+            auto value = _Val(ptr);
+
+            llvm::Type* type = value->getType();
+
+            while (type->isPointerTy() && type->getPointerElementType()->isPointerTy()) {
+                value = IR.CreateLoad(value);
+                type = value->getType();
+            }
+
+            return value;
+        }
+
         // virtual omis_handle_t make(omis_handle_t type, omis_handle_t count) = 0;
         // virtual void drop(omis_handle_t ptr) = 0;
 

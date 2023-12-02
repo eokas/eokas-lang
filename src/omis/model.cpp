@@ -665,4 +665,14 @@ namespace eokas {
                 bridge->ret(bridge->get_default_value(ret_type));
         }
     }
+
+    omis_value_t* omis_func_t::get_ptr_val(omis_value_t *ptr) {
+        auto ret = bridge->get_ptr_val(ptr->get_handle());
+        return module->value(ret);
+    }
+
+    omis_value_t* omis_func_t::get_ptr_ref(omis_value_t *ptr) {
+        auto ret = bridge->get_ptr_ref(ptr->get_handle());
+        return module->value(ret);
+    }
 }
