@@ -92,7 +92,9 @@ namespace eokas
 
         virtual String dump_module(omis_handle_t mod) override {
             auto* module = _Mod(mod);
+
             // module->print(llvm::outs(), nullptr);
+            
             std::string str;
             llvm::raw_string_ostream stream(str);
             module->print(stream, nullptr);
