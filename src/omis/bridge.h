@@ -48,7 +48,7 @@ namespace eokas {
 
         virtual bool is_terminator_ins(omis_handle_t ins) = 0;
 
-        virtual omis_handle_t alloc(omis_handle_t type) = 0;
+        virtual omis_handle_t alloc(omis_handle_t type, const String& name = "") = 0;
         virtual omis_handle_t load(omis_handle_t ptr) = 0;
         virtual omis_handle_t store(omis_handle_t ptr, omis_handle_t val) = 0;
         virtual omis_handle_t gep(omis_handle_t type, omis_handle_t ptr, omis_handle_t index) = 0;

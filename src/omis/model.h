@@ -211,7 +211,7 @@ namespace eokas {
         bool is_terminator_ins(omis_value_t* ins = nullptr);
 
         omis_value_t* load(omis_value_t* ptr);
-        omis_value_t* store(omis_type_t* ptr, omis_value_t* val);
+        omis_value_t* store(omis_value_t* ptr, omis_value_t* val);
 
         omis_value_t* neg(omis_value_t* a);
         omis_value_t* add(omis_value_t* a, omis_value_t* b);

@@ -92,10 +92,12 @@ namespace eokas
 
         virtual String dump_module(omis_handle_t mod) override {
             auto* module = _Mod(mod);
+            // module->print(llvm::outs(), nullptr);
             std::string str;
             llvm::raw_string_ostream stream(str);
             module->print(stream, nullptr);
-            return String{str.c_str(), str.length()};
+            String ret = String{str.c_str(), str.length()}.replace("%", "%%");
+            return ret;
         }
 
         virtual omis_handle_t type_void() override {
@@ -247,8 +249,8 @@ namespace eokas
             return _Ins(ins)->isTerminator();
         }
 
-        virtual omis_handle_t alloc(omis_handle_t type) override {
-            return IR.CreateAlloca(_Ty(type));
+        virtual omis_handle_t alloc(omis_handle_t type, const String& name) override {
+            return IR.CreateAlloca(_Ty(type), nullptr, name.cstr());
         }
 
         virtual omis_handle_t load(omis_handle_t ptr) override {

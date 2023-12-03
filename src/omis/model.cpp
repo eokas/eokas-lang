@@ -503,7 +503,7 @@ namespace eokas {
         return module->value(ret);
     }
 
-    omis_value_t* omis_func_t::store(omis_type_t *ptr, omis_value_t *val) {
+    omis_value_t* omis_func_t::store(omis_value_t *ptr, omis_value_t *val) {
         auto ret = bridge->store(ptr->get_handle(), val->get_handle());
         return module->value(module->type_void(), ret);
     }
@@ -647,10 +647,9 @@ namespace eokas {
     }
 
     omis_value_t* omis_func_t::create_local_symbol(const String &name, omis_type_t *type, omis_value_t *value) {
-        auto symbol = bridge->alloc(type->get_handle());
-        auto ret = bridge->store(symbol, value->get_handle());
-        auto ret_type = bridge->get_value_type(ret);
-        return module->value(module->type(ret_type), ret);
+        auto ptr = bridge->alloc(type->get_handle(), name);
+        auto ret = bridge->store(ptr, value->get_handle());
+        return module->value(ret);
     }
 
     void omis_func_t::ensure_tail_ret() {

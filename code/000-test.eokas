@@ -1,8 +1,6 @@
 
-val a = 4;
-
-loop(var i = 0; i < 10; i=i+1) {
-    a = a + i;
-}
-
-return a;
+var a = 2;
+if(a > 0)
+    return 1;
+else
+    return 2;

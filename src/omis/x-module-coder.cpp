@@ -79,6 +79,8 @@ namespace eokas {
         if (node == nullptr)
             return false;
 
+        auto func = this->scope->func;
+
         auto exists = this->scope->get_value_symbol(node->name, false);
         if (exists != nullptr) {
             printf("ERROR: The symbol '%s' is aready defined.", node->name.cstr());
@@ -89,6 +91,7 @@ namespace eokas {
         auto expr = this->encode_expr(node->value);
         if (expr == nullptr)
             return false;
+        expr = func->get_ptr_val(expr);
 
         omis_type_t* stype = nullptr;
         omis_type_t* dtype = type;
@@ -128,6 +131,8 @@ namespace eokas {
             return false;
         }
 
+        func->create_local_symbol(node->name, stype, expr);
+
         return true;
     }
 
@@ -137,13 +142,13 @@ namespace eokas {
 
         auto func = this->scope->func;
 
-        auto left = this->encode_expr(node->left);
-        auto right = this->encode_expr(node->right);
-        if (left == nullptr || right == nullptr)
+        auto lhs = this->encode_expr(node->left);
+        auto rhs = this->encode_expr(node->right);
+        if (lhs == nullptr || rhs == nullptr)
             return false;
 
-        auto ptr = func->ref_value(left);
-        auto val = func->get_value(right);
+        auto ptr = func->get_ptr_ref(lhs);
+        auto val = func->get_ptr_val(rhs);
         func->store(ptr, val);
 
         return true;
@@ -154,10 +159,10 @@ namespace eokas {
             return false;
 
         auto func = this->scope->func;
-        auto expectedRetType = func->get_ret_type();
+        auto expected_ret_type = func->get_ret_type();
 
         if (node->value == nullptr) {
-            if (this->equals_type(expectedRetType, type_void())) {
+            if (this->equals_type(expected_ret_type, type_void())) {
                 printf("ERROR: The function must return a value.\n");
                 return false;
             }
@@ -171,10 +176,11 @@ namespace eokas {
             printf("ERROR: Invalid ret value.\n");
             return false;
         }
+        expr = func->get_ptr_val(expr);
 
-        auto actureRetType = expr->get_type();
-        if (!this->equals_type(actureRetType, expectedRetType) &&
-            !this->can_losslessly_bitcast(actureRetType, expectedRetType)) {
+        auto actual_ret_type = expr->get_type();
+        if (!this->equals_type(actual_ret_type, expected_ret_type) &&
+            !this->can_losslessly_bitcast(actual_ret_type, expected_ret_type)) {
             printf("ERROR: The type of return value can't cast to return type of function.\n");
             return false;
         }
@@ -194,16 +200,15 @@ namespace eokas {
         auto if_false = func->create_block("if.false");
         auto if_end = func->create_block("if.end");
 
-        auto condV = this->encode_expr(node->cond);
-        if (condV == nullptr)
+        auto cond = this->encode_expr(node->cond);
+        if (cond == nullptr)
             return false;
-
-        if (!this->equals_type(condV->get_type(), type_bool())) {
+        cond = func->get_ptr_val(cond);
+        if (!this->equals_type(cond->get_type(), type_bool())) {
             printf("ERROR: The label 'if.cond' need a bool value.\n");
             return false;
         }
-
-        func->jump_cond(condV, if_true, if_false);
+        func->jump_cond(cond, if_true, if_false);
 
         // if-true
         func->set_active_block(if_true);
@@ -266,6 +271,7 @@ namespace eokas {
         auto cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return false;
+        cond = func->get_ptr_val(cond);
         if(!this->equals_type(cond->get_type(), type_bool())) {
             printf("ERROR: The label 'loop.cond' need a bool value.\n");
             return false;
@@ -374,9 +380,8 @@ namespace eokas {
         auto* cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return nullptr;
-
-        //if (!cond->getType()->isIntegerTy(1)) {
-        if (!this->equals_type(cond->get_type(), this->type_i32())) {
+        cond = func->get_ptr_val(cond);
+        if (!this->equals_type(cond->get_type(), this->type_bool())) {
             printf("ERROR: Condition must be a bool value.\n");
             return nullptr;
         }
@@ -384,26 +389,28 @@ namespace eokas {
         func->jump_cond(cond, trinary_true, trinary_false);
 
         func->set_active_block(trinary_true);
-        auto* trueV = this->encode_expr(node->branch_true);
-        if (trueV == nullptr)
+        auto* true_val = this->encode_expr(node->branch_true);
+        if (true_val == nullptr)
             return nullptr;
+        true_val = func->get_ptr_val(true_val);
         func->jump(trinary_end);
 
         func->set_active_block(trinary_false);
-        auto falseV = this->encode_expr(node->branch_false);
-        if (falseV == nullptr)
+        auto false_val = this->encode_expr(node->branch_false);
+        if (false_val == nullptr)
             return nullptr;
+        false_val = func->get_ptr_val(false_val);
         func->jump(trinary_end);
 
         func->set_active_block(trinary_end);
-        if (!this->equals_type(trueV->get_type(), falseV->get_type())) {
+        if (!this->equals_type(true_val->get_type(), false_val->get_type())) {
             printf("ERROR: Type of true-branch must be the same as false-branch.\n");
             return nullptr;
         }
 
-        auto phi = func->phi(trueV->get_type(), {
-                {trueV,  trinary_true},
-                {falseV, trinary_false}
+        auto phi = func->phi(true_val->get_type(), {
+                {true_val,  trinary_true},
+                {false_val, trinary_false}
         });
 
         return phi;
@@ -419,6 +426,9 @@ namespace eokas {
         auto rhs = this->encode_expr(node->right);
         if (lhs == nullptr || rhs == nullptr)
             return nullptr;
+
+        lhs = func->get_ptr_val(lhs);
+        rhs = func->get_ptr_val(rhs);
 
         switch (node->op) {
             case ast_binary_oper_t::OR:
@@ -466,11 +476,14 @@ namespace eokas {
         if (node == nullptr)
             return nullptr;
 
+        auto func = this->scope->func;
+
         auto rhs = this->encode_expr(node->right);
         if (rhs == nullptr)
             return nullptr;
 
-        auto func = this->scope->func;
+        rhs = func->get_ptr_val(rhs);
+
         switch (node->op) {
             case ast_unary_oper_t::POS:
                 return rhs;
