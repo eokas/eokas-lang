@@ -126,12 +126,11 @@ namespace eokas {
             return false;
         }
 
-        if (!scope->add_value_symbol(node->name, expr)) {
+        auto symbol = func->create_local_symbol(node->name, stype, expr);
+        if (!scope->add_value_symbol(node->name, symbol)) {
             printf("ERROR: There is a symbol named %s in this scope.\n", node->name.cstr());
             return false;
         }
-
-        func->create_local_symbol(node->name, stype, expr);
 
         return true;
     }

@@ -649,7 +649,7 @@ namespace eokas {
     omis_value_t* omis_func_t::create_local_symbol(const String &name, omis_type_t *type, omis_value_t *value) {
         auto ptr = bridge->alloc(type->get_handle(), name);
         auto ret = bridge->store(ptr, value->get_handle());
-        return module->value(ret);
+        return module->value(ptr);
     }
 
     void omis_func_t::ensure_tail_ret() {
