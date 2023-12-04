@@ -154,6 +154,10 @@ namespace eokas
             return ty_bytes;
         }
 
+        virtual omis_handle_t type_pointer(omis_handle_t type) override {
+            return _Ty(type)->getPointerTo();
+        }
+
         virtual omis_handle_t type_func(omis_handle_t ret, const std::vector<omis_handle_t>& args, bool varg) override {
             llvm::Type* ret_type = _Ty(ret);
             std::vector<llvm::Type*> args_type;
@@ -162,6 +166,55 @@ namespace eokas
             }
             llvm::FunctionType* funcType = llvm::FunctionType::get(ret_type, args_type, varg);
             return funcType;
+        }
+
+        virtual bool is_type_void(omis_handle_t type) override {
+            return _Ty(type)->isVoidTy();
+        }
+
+        virtual bool is_type_i8(omis_handle_t type) override {
+            return _Ty(type)->isIntegerTy(8);
+        }
+
+        virtual bool is_type_i16(omis_handle_t type) override {
+            return _Ty(type)->isIntegerTy(16);
+        }
+
+        virtual bool is_type_i32(omis_handle_t type) override {
+            return _Ty(type)->isIntegerTy(32);
+        }
+
+        virtual bool is_type_i64(omis_handle_t type) override {
+            return _Ty(type)->isIntegerTy(64);
+        }
+
+        virtual bool is_type_f32(omis_handle_t type) override {
+            return _Ty(type)->isFloatTy();
+        }
+
+        virtual bool is_type_f64(omis_handle_t type) override {
+            return _Ty(type)->isDoubleTy();
+        }
+
+        virtual bool is_type_bool(omis_handle_t type) override {
+            return _Ty(type)->isIntegerTy(1);
+        }
+
+        virtual bool is_type_bytes(omis_handle_t type) override {
+            auto ty = _Ty(type);
+            return ty->isPointerTy() && ty->getPointerElementType()->isIntegerTy(8);
+        }
+
+        virtual bool is_type_func(omis_handle_t type) override {
+            return _Ty(type)->isFunctionTy();
+        }
+
+        virtual bool is_type_array(omis_handle_t type) override {
+            return _Ty(type)->isArrayTy();
+        }
+
+        virtual bool is_type_struct(omis_handle_t type) override {
+            return _Ty(type)->isStructTy();
         }
 
         virtual bool can_losslessly_cast(omis_handle_t a, omis_handle_t b) override {
@@ -183,6 +236,10 @@ namespace eokas
         virtual omis_handle_t get_func_arg_type(omis_handle_t type_func, uint32_t index) override {
             llvm::FunctionType* type = (llvm::FunctionType*)type_func;
             return type->getParamType(index);
+        }
+
+        virtual omis_handle_t get_func_arg_value(omis_handle_t func, uint32_t index) override {
+            return _Func(func)->getArg(index);
         }
 
         virtual omis_handle_t get_default_value(omis_handle_t type) override {
@@ -227,6 +284,10 @@ namespace eokas
 
         virtual omis_handle_t get_value_type(omis_handle_t value) override {
             return _Val(value)->getType();
+        }
+
+        virtual void set_value_name(omis_handle_t value, const String& name) override {
+            return _Val(value)->setName(name.cstr());
         }
 
         virtual omis_handle_t create_block(omis_handle_t func, const String& name) override {

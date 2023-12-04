@@ -138,14 +138,19 @@ namespace eokas {
         return type;
     }
 
+    omis_type_t* omis_module_t::type_pointer(omis_type_t *type) {
+        auto ret = bridge->type_pointer(type->get_handle());
+        return this->type(ret);
+    }
+
     omis_type_t* omis_module_t::type_func(omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg) {
         omis_handle_t ret_type = ret->get_handle();
         std::vector<omis_handle_t> args_type;
         for (auto& arg: args) {
             args_type.push_back(arg->get_handle());
         }
-        omis_handle_t handle = bridge->type_func(ret_type, args_type, varg);
-        return this->type(handle);
+        omis_handle_t ft = bridge->type_func(ret_type, args_type, varg);
+        return this->type(ft);
     }
 
     bool omis_module_t::can_losslessly_bitcast(omis_type_t* a, omis_type_t* b) {
@@ -172,20 +177,20 @@ namespace eokas {
         auto type = this->type_i64();
         if (bits == 32)
             type = this->type_i32();
-        auto handle = bridge->value_integer(val, bits);
-        return this->value(type, handle);
+        auto ret = bridge->value_integer(val, bits);
+        return this->value(type, ret);
     }
 
     omis_value_t* omis_module_t::value_float(double val) {
         auto type = this->type_f64();
-        auto handle = bridge->value_float(val);
-        return this->value(type, handle);
+        auto ret = bridge->value_float(val);
+        return this->value(type, ret);
     }
 
     omis_value_t* omis_module_t::value_bool(bool val) {
         auto type = this->type_bool();
-        auto handle = bridge->value_bool(val);
-        return this->value(type, handle);
+        auto ret = bridge->value_bool(val);
+        return this->value(type, ret);
     }
 
     omis_value_t* omis_module_t::value_string(const String& val) {
@@ -202,13 +207,13 @@ namespace eokas {
         }
 
         auto type = this->type_func(ret, args, varg);
-        auto handle = bridge->value_func(this->handle, name, type->get_handle());
+        auto func = bridge->value_func(this->handle, name, type->get_handle());
 
-        auto iter = this->values.find(handle);
+        auto iter = this->values.find(func);
         if(iter != this->values.end())
             return nullptr;
-        auto value = new omis_func_t(this, type, handle);
-        this->values.insert(std::make_pair(handle, value));
+        auto value = new omis_func_t(this, type, func);
+        this->values.insert(std::make_pair(func, value));
 
         return value;
     }
@@ -333,6 +338,27 @@ namespace eokas {
         return default_value;
     }
 
+    bool omis_type_t::is_type_func() {
+        auto bridge = module->get_bridge();
+        return bridge->is_type_func(this->handle);
+    }
+
+    bool omis_type_t::is_type_array() {
+        auto bridge = module->get_bridge();
+        return bridge->is_type_array(this->handle);
+    }
+
+    bool omis_type_t::is_type_struct() {
+        auto bridge = module->get_bridge();
+        return bridge->is_type_struct(this->handle);
+    }
+
+    omis_type_t* omis_type_t::get_pointer_type() {
+        auto bridge = module->get_bridge();
+        auto ret = bridge->type_pointer(this->handle);
+        return module->type(ret);
+    }
+
     omis_struct_t::omis_struct_t(omis_module_t* module, void* handle)
             : omis_type_t(module, handle) {
 
@@ -442,6 +468,11 @@ namespace eokas {
         return handle;
     }
 
+    void omis_value_t::set_name(const String &name) {
+        auto bridge = module->get_bridge();
+        bridge->set_value_name(this->handle, name);
+    }
+
     omis_func_t::omis_func_t(omis_module_t *module, omis_type_t *type, void *handle)
             : omis_value_t(module, type, handle) {
         this->bridge = module->get_bridge();
@@ -465,6 +496,12 @@ namespace eokas {
     omis_type_t* omis_func_t::get_arg_type(uint32_t index) {
         auto type = this->type->get_handle();
         auto ret = bridge->get_func_arg_type(type, index);
+        return module->type(ret);
+    }
+
+    omis_value_t* omis_func_t::get_arg_value(uint32_t index) {
+        auto ret = bridge->get_func_arg_value(this->handle, index);
+        return module->value(ret);
     }
 
     omis_value_t* omis_func_t::create_block(const String &name) {

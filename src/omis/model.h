@@ -38,6 +38,7 @@ namespace eokas {
         omis_type_t* type_f64();
         omis_type_t* type_bool();
         omis_type_t* type_bytes();
+        omis_type_t* type_pointer(omis_type_t* type);
         omis_type_t* type_func(omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
         bool can_losslessly_bitcast(omis_type_t* a, omis_type_t* b);
 
@@ -146,6 +147,12 @@ namespace eokas {
         omis_handle_t get_handle();
         omis_value_t* get_default_value();
 
+        bool is_type_func();
+        bool is_type_array();
+        bool is_type_struct();
+
+        omis_type_t* get_pointer_type();
+
     protected:
         omis_module_t* module;
         omis_handle_t handle;
@@ -187,6 +194,7 @@ namespace eokas {
         omis_module_t* get_module();
         omis_type_t* get_type();
         omis_handle_t get_handle();
+        void set_name(const String& name);
 
     protected:
         omis_module_t* module;
@@ -202,6 +210,7 @@ namespace eokas {
         omis_type_t* get_ret_type();
         uint32_t get_arg_count();
         omis_type_t* get_arg_type(uint32_t index);
+        omis_value_t* get_arg_value(uint32_t index);
 
         omis_value_t* create_block(const String& name);
         omis_value_t* get_active_block();

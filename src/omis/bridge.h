@@ -26,11 +26,26 @@ namespace eokas {
         virtual omis_handle_t type_f64() = 0;
         virtual omis_handle_t type_bool() = 0;
         virtual omis_handle_t type_bytes() = 0;
+        virtual omis_handle_t type_pointer(omis_handle_t type) = 0;
         virtual omis_handle_t type_func(omis_handle_t ret, const std::vector<omis_handle_t>& args, bool varg) = 0;
+        virtual bool is_type_void(omis_handle_t type) = 0;
+        virtual bool is_type_i8(omis_handle_t type) = 0;
+        virtual bool is_type_i16(omis_handle_t type) = 0;
+        virtual bool is_type_i32(omis_handle_t type) = 0;
+        virtual bool is_type_i64(omis_handle_t type) = 0;
+        virtual bool is_type_f32(omis_handle_t type) = 0;
+        virtual bool is_type_f64(omis_handle_t type) = 0;
+        virtual bool is_type_bool(omis_handle_t type) = 0;
+        virtual bool is_type_bytes(omis_handle_t type) = 0;
+        virtual bool is_type_func(omis_handle_t type) = 0;
+        virtual bool is_type_array(omis_handle_t type) = 0;
+        virtual bool is_type_struct(omis_handle_t type) = 0;
+
         virtual bool can_losslessly_cast(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t get_func_ret_type(omis_handle_t type_func) = 0;
         virtual uint32_t get_func_arg_count(omis_handle_t type_func) = 0;
         virtual omis_handle_t get_func_arg_type(omis_handle_t type_func, uint32_t index) = 0;
+        virtual omis_handle_t get_func_arg_value(omis_handle_t func, uint32_t index) = 0;
         virtual omis_handle_t get_default_value(omis_handle_t type) = 0;
 
         virtual omis_handle_t value_integer(uint64_t val, uint32_t bits) = 0;
@@ -40,6 +55,7 @@ namespace eokas {
         // virtual omis_handle_t value_array(omis_handle_t element_type) = 0;
 
         virtual omis_handle_t get_value_type(omis_handle_t value) = 0;
+        virtual void set_value_name(omis_handle_t value, const String& name) = 0;
 
         virtual omis_handle_t create_block(omis_handle_t func, const String& name) = 0;
         virtual omis_handle_t get_active_block() = 0;

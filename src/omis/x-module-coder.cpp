@@ -2,18 +2,18 @@
 #include "./model.h"
 
 namespace eokas {
-    omis_module_coder_t::omis_module_coder_t(omis_bridge_t* bridge, const String& name)
-        : omis_module_t(bridge, name){
+    omis_module_coder_t::omis_module_coder_t(omis_bridge_t *bridge, const String &name)
+            : omis_module_t(bridge, name) {
 
     }
 
-    bool omis_module_coder_t::encode_module(ast_node_module_t* node) {
+    bool omis_module_coder_t::encode_module(ast_node_module_t *node) {
         if (node == nullptr)
             return false;
 
-        omis_type_t* ret = type_i32();
-        std::vector<omis_type_t*> args = {};
-        omis_func_t* func = this->value_func("$main", ret, args, false);
+        omis_type_t *ret = type_i32();
+        std::vector<omis_type_t *> args = {};
+        omis_func_t *func = this->value_func("$main", ret, args, false);
         this->scope->add_value_symbol("$main", func);
         this->scope->func = func;
 
@@ -23,7 +23,7 @@ namespace eokas {
             // IR.SetInsertPoint(entry);
             func->set_active_block(entry);
 
-            for (auto& stmt: node->entry->body) {
+            for (auto &stmt: node->entry->body) {
                 if (!this->encode_stmt(stmt))
                     return false;
             }
@@ -35,27 +35,27 @@ namespace eokas {
         return true;
     }
 
-    bool omis_module_coder_t::encode_stmt(ast_node_stmt_t* node) {
+    bool omis_module_coder_t::encode_stmt(ast_node_stmt_t *node) {
         if (node == nullptr)
             return false;
 
         switch (node->category) {
             case ast_category_t::BLOCK:
-                return this->encode_stmt_block(dynamic_cast<ast_node_block_t*>(node));
+                return this->encode_stmt_block(dynamic_cast<ast_node_block_t *>(node));
             case ast_category_t::SYMBOL_DEF:
-                return this->encode_stmt_symbol_def(dynamic_cast<ast_node_symbol_def_t*>(node));
+                return this->encode_stmt_symbol_def(dynamic_cast<ast_node_symbol_def_t *>(node));
             case ast_category_t::ASSIGN:
-                return this->encode_stmt_assign(dynamic_cast<ast_node_assign_t*>(node));
+                return this->encode_stmt_assign(dynamic_cast<ast_node_assign_t *>(node));
             case ast_category_t::RETURN:
-                return this->encode_stmt_return(dynamic_cast<ast_node_return_t*>(node));
+                return this->encode_stmt_return(dynamic_cast<ast_node_return_t *>(node));
             case ast_category_t::IF:
-                return this->encode_stmt_if(dynamic_cast<ast_node_if_t*>(node));
+                return this->encode_stmt_if(dynamic_cast<ast_node_if_t *>(node));
             case ast_category_t::LOOP:
-                return this->encode_stmt_loop(dynamic_cast<ast_node_loop_t*>(node));
+                return this->encode_stmt_loop(dynamic_cast<ast_node_loop_t *>(node));
             case ast_category_t::BREAK:
-                return this->encode_stmt_break(dynamic_cast<ast_node_break_t*>(node));
+                return this->encode_stmt_break(dynamic_cast<ast_node_break_t *>(node));
             case ast_category_t::CONTINUE:
-                return this->encode_stmt_continue(dynamic_cast<ast_node_continue_t*>(node));
+                return this->encode_stmt_continue(dynamic_cast<ast_node_continue_t *>(node));
             default:
                 return false;
         }
@@ -63,7 +63,7 @@ namespace eokas {
         return false;
     }
 
-    bool omis_module_coder_t::encode_stmt_block(ast_node_block_t* node) {
+    bool omis_module_coder_t::encode_stmt_block(ast_node_block_t *node) {
         if (node == nullptr)
             return false;
 
@@ -79,7 +79,7 @@ namespace eokas {
         return true;
     }
 
-    bool omis_module_coder_t::encode_stmt_symbol_def(ast_node_symbol_def_t* node) {
+    bool omis_module_coder_t::encode_stmt_symbol_def(ast_node_symbol_def_t *node) {
         if (node == nullptr)
             return false;
 
@@ -97,9 +97,9 @@ namespace eokas {
             return false;
         expr = func->get_ptr_val(expr);
 
-        omis_type_t* stype = nullptr;
-        omis_type_t* dtype = type;
-        omis_type_t* vtype = expr->get_type();
+        omis_type_t *stype = nullptr;
+        omis_type_t *dtype = type;
+        omis_type_t *vtype = expr->get_type();
         if (dtype != nullptr) {
             stype = dtype;
 
@@ -139,7 +139,7 @@ namespace eokas {
         return true;
     }
 
-    bool omis_module_coder_t::encode_stmt_assign(ast_node_assign_t* node) {
+    bool omis_module_coder_t::encode_stmt_assign(ast_node_assign_t *node) {
         if (node == nullptr)
             return false;
 
@@ -157,7 +157,7 @@ namespace eokas {
         return true;
     }
 
-    bool omis_module_coder_t::encode_stmt_return(ast_node_return_t* node) {
+    bool omis_module_coder_t::encode_stmt_return(ast_node_return_t *node) {
         if (node == nullptr)
             return false;
 
@@ -220,11 +220,11 @@ namespace eokas {
                 return false;
 
             auto active_block = func->get_active_block();
-            if(!equals_value(active_block, if_true) && !func->is_terminator_ins(active_block)) {
+            if (!equals_value(active_block, if_true) && !func->is_terminator_ins(active_block)) {
                 func->jump(if_end);
             }
         }
-        if(!func->is_terminator_ins(func->get_block_tail(if_true))) {
+        if (!func->is_terminator_ins(func->get_block_tail(if_true))) {
             func->jump(if_end);
         }
 
@@ -235,11 +235,11 @@ namespace eokas {
                 return false;
 
             auto active_block = func->get_active_block();
-            if(!equals_value(active_block, if_false) && !func->is_terminator_ins(active_block)) {
+            if (!equals_value(active_block, if_false) && !func->is_terminator_ins(active_block)) {
                 func->jump(if_end);
             }
         }
-        if(!func->is_terminator_ins(func->get_block_tail(if_false))) {
+        if (!func->is_terminator_ins(func->get_block_tail(if_false))) {
             func->jump(if_end);
         }
 
@@ -248,7 +248,7 @@ namespace eokas {
         return true;
     }
 
-    bool omis_module_coder_t::encode_stmt_loop(ast_node_loop_t* node) {
+    bool omis_module_coder_t::encode_stmt_loop(ast_node_loop_t *node) {
         if (node == nullptr)
             return false;
 
@@ -275,7 +275,7 @@ namespace eokas {
         if (cond == nullptr)
             return false;
         cond = func->get_ptr_val(cond);
-        if(!this->equals_type(cond->get_type(), type_bool())) {
+        if (!this->equals_type(cond->get_type(), type_bool())) {
             printf("ERROR: The label 'loop.cond' need a bool value.\n");
             return false;
         }
@@ -291,7 +291,7 @@ namespace eokas {
                 func->jump(loop_step);
             }
         }
-        if(!func->is_terminator_ins(func->get_block_tail(loop_body))) {
+        if (!func->is_terminator_ins(func->get_block_tail(loop_body))) {
             func->jump(loop_step);
         }
 
@@ -310,7 +310,7 @@ namespace eokas {
         return true;
     }
 
-    bool omis_module_coder_t::encode_stmt_break(ast_node_break_t* node) {
+    bool omis_module_coder_t::encode_stmt_break(ast_node_break_t *node) {
         if (node == nullptr)
             return false;
 
@@ -322,7 +322,7 @@ namespace eokas {
         return true;
     }
 
-    bool omis_module_coder_t::encode_stmt_continue(ast_node_continue_t* node) {
+    bool omis_module_coder_t::encode_stmt_continue(ast_node_continue_t *node) {
         if (node == nullptr)
             return false;
 
@@ -334,15 +334,15 @@ namespace eokas {
         return true;
     }
 
-    omis_type_t* omis_module_coder_t::encode_type_ref(ast_node_type_t* node) {
+    omis_type_t *omis_module_coder_t::encode_type_ref(ast_node_type_t *node) {
         if (node == nullptr) {
             printf("ERROR: Type node is null. \n");
             return nullptr;
         }
 
-        const String& name = node->name;
+        const String &name = node->name;
 
-        auto* symbol = this->scope->get_type_symbol(name, true);
+        auto *symbol = this->scope->get_type_symbol(name, true);
         if (symbol == nullptr) {
             printf("ERROR: The type '%s' is undefined.\n", name.cstr());
             return nullptr;
@@ -351,52 +351,52 @@ namespace eokas {
         return symbol->type;
     }
 
-    omis_value_t* omis_module_coder_t::encode_expr(ast_node_expr_t* node) {
+    omis_value_t *omis_module_coder_t::encode_expr(ast_node_expr_t *node) {
         if (node == nullptr)
             return nullptr;
 
         switch (node->category) {
             case ast_category_t::EXPR_TRINARY:
-                return this->encode_expr_trinary(dynamic_cast<ast_node_expr_trinary_t*>(node));
+                return this->encode_expr_trinary(dynamic_cast<ast_node_expr_trinary_t *>(node));
             case ast_category_t::EXPR_BINARY:
-                return this->encode_expr_binary(dynamic_cast<ast_node_expr_binary_t*>(node));
+                return this->encode_expr_binary(dynamic_cast<ast_node_expr_binary_t *>(node));
             case ast_category_t::EXPR_UNARY:
-                return this->encode_expr_unary(dynamic_cast<ast_node_expr_unary_t*>(node));
+                return this->encode_expr_unary(dynamic_cast<ast_node_expr_unary_t *>(node));
             case ast_category_t::LITERAL_INT:
-                return this->encode_expr_int(dynamic_cast<ast_node_literal_int_t*>(node));
+                return this->encode_expr_int(dynamic_cast<ast_node_literal_int_t *>(node));
             case ast_category_t::LITERAL_FLOAT:
-                return this->encode_expr_float(dynamic_cast<ast_node_literal_float_t*>(node));
+                return this->encode_expr_float(dynamic_cast<ast_node_literal_float_t *>(node));
             case ast_category_t::LITERAL_BOOL:
-                return this->encode_expr_bool(dynamic_cast<ast_node_literal_bool_t*>(node));
+                return this->encode_expr_bool(dynamic_cast<ast_node_literal_bool_t *>(node));
             case ast_category_t::LITERAL_STRING:
-                return this->encode_expr_string(dynamic_cast<ast_node_literal_string_t*>(node));
+                return this->encode_expr_string(dynamic_cast<ast_node_literal_string_t *>(node));
             case ast_category_t::SYMBOL_REF:
-                return this->encode_expr_symbol_ref(dynamic_cast<ast_node_symbol_ref_t*>(node));
-                /*
+                return this->encode_expr_symbol_ref(dynamic_cast<ast_node_symbol_ref_t *>(node));
             case ast_category_t::FUNC_DEF:
                 return this->encode_expr_func_def(dynamic_cast<ast_node_func_def_t *>(node));
             case ast_category_t::FUNC_REF:
                 return this->encode_expr_func_ref(dynamic_cast<ast_node_func_ref_t *>(node));
-            case ast_category_t::ARRAY_DEF:
-                return this->encode_expr_array_def(dynamic_cast<ast_node_array_def_t *>(node));
-            case ast_category_t::ARRAY_REF:
-                return this->encode_expr_index_ref(dynamic_cast<ast_node_array_ref_t *>(node));
-            case ast_category_t::OBJECT_DEF:
-                return this->encode_expr_object_def(dynamic_cast<ast_node_object_def_t *>(node));
-            case ast_category_t::OBJECT_REF:
-                return this->encode_expr_object_ref(dynamic_cast<ast_node_object_ref_t *>(node));
-                 */
+                /*
+                case ast_category_t::ARRAY_DEF:
+                    return this->encode_expr_array_def(dynamic_cast<ast_node_array_def_t *>(node));
+                case ast_category_t::ARRAY_REF:
+                    return this->encode_expr_index_ref(dynamic_cast<ast_node_array_ref_t *>(node));
+                case ast_category_t::OBJECT_DEF:
+                    return this->encode_expr_object_def(dynamic_cast<ast_node_object_def_t *>(node));
+                case ast_category_t::OBJECT_REF:
+                    return this->encode_expr_object_ref(dynamic_cast<ast_node_object_ref_t *>(node));
+                     */
             default:
                 return nullptr;
         }
         return nullptr;
     }
 
-    omis_value_t* omis_module_coder_t::encode_expr_trinary(struct ast_node_expr_trinary_t* node) {
+    omis_value_t *omis_module_coder_t::encode_expr_trinary(struct ast_node_expr_trinary_t *node) {
         if (node == nullptr)
             return nullptr;
 
-        omis_func_t* func = this->scope->func;
+        omis_func_t *func = this->scope->func;
 
         auto trinary_begin = func->create_block("trinary.begin");
         auto trinary_true = func->create_block("trinary.true");
@@ -405,7 +405,7 @@ namespace eokas {
 
         func->jump(trinary_begin);
         func->set_active_block(trinary_begin);
-        auto* cond = this->encode_expr(node->cond);
+        auto *cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return nullptr;
         cond = func->get_ptr_val(cond);
@@ -417,7 +417,7 @@ namespace eokas {
         func->jump_cond(cond, trinary_true, trinary_false);
 
         func->set_active_block(trinary_true);
-        auto* true_val = this->encode_expr(node->branch_true);
+        auto *true_val = this->encode_expr(node->branch_true);
         if (true_val == nullptr)
             return nullptr;
         true_val = func->get_ptr_val(true_val);
@@ -444,7 +444,7 @@ namespace eokas {
         return phi;
     }
 
-    omis_value_t* omis_module_coder_t::encode_expr_binary(ast_node_expr_binary_t* node) {
+    omis_value_t *omis_module_coder_t::encode_expr_binary(ast_node_expr_binary_t *node) {
         if (node == nullptr)
             return nullptr;
 
@@ -500,7 +500,7 @@ namespace eokas {
         }
     }
 
-    omis_value_t* omis_module_coder_t::encode_expr_unary(ast_node_expr_unary_t* node) {
+    omis_value_t *omis_module_coder_t::encode_expr_unary(ast_node_expr_unary_t *node) {
         if (node == nullptr)
             return nullptr;
 
@@ -526,30 +526,30 @@ namespace eokas {
         }
     }
 
-    omis_value_t* omis_module_coder_t::encode_expr_int(ast_node_literal_int_t* node) {
+    omis_value_t *omis_module_coder_t::encode_expr_int(ast_node_literal_int_t *node) {
         if (node == nullptr)
             return nullptr;
 
-        u64_t vals = *((u64_t*) &(node->value));
+        u64_t vals = *((u64_t *) &(node->value));
         u32_t bits = vals > 0xFFFFFFFF ? 64 : 32;
 
         return this->value_integer(vals, bits);
     }
 
-    omis_value_t* omis_module_coder_t::encode_expr_float(ast_node_literal_float_t* node) {
+    omis_value_t *omis_module_coder_t::encode_expr_float(ast_node_literal_float_t *node) {
         if (node == nullptr)
             return nullptr;
 
         return this->value_float(node->value);
     }
 
-    omis_value_t* omis_module_coder_t::encode_expr_bool(ast_node_literal_bool_t* node) {
+    omis_value_t *omis_module_coder_t::encode_expr_bool(ast_node_literal_bool_t *node) {
         if (node == nullptr)
             return nullptr;
         return this->value_bool(node->value);
     }
 
-    omis_value_t* omis_module_coder_t::encode_expr_string(ast_node_literal_string_t* node) {
+    omis_value_t *omis_module_coder_t::encode_expr_string(ast_node_literal_string_t *node) {
         if (node == nullptr)
             return nullptr;
 
@@ -559,11 +559,11 @@ namespace eokas {
         return nullptr;
     }
 
-    omis_value_t* omis_module_coder_t::encode_expr_symbol_ref(ast_node_symbol_ref_t* node) {
+    omis_value_t *omis_module_coder_t::encode_expr_symbol_ref(ast_node_symbol_ref_t *node) {
         if (node == nullptr)
             return nullptr;
 
-        auto* symbol = this->scope->get_value_symbol(node->name, true);
+        auto *symbol = this->scope->get_value_symbol(node->name, true);
         if (symbol == nullptr) {
             printf("ERROR: Symbol '%s' is undefined.\n", node->name.cstr());
             return nullptr;
@@ -598,5 +598,128 @@ namespace eokas {
         */
 
         return symbol->value;
+    }
+
+    omis_value_t *omis_module_coder_t::encode_expr_func_def(ast_node_func_def_t *node) {
+        if (node == nullptr)
+            return nullptr;
+
+        auto func = this->scope->func;
+
+        auto *ret_type = this->encode_type_ref(node->rtype);
+        if (ret_type == nullptr)
+            return nullptr;
+
+        std::vector<omis_type_t *> args_types;
+        for (auto &arg: node->args) {
+            auto *arg_type = this->encode_type_ref(arg.type);
+            if (arg_type == nullptr)
+                return nullptr;
+            if (arg_type->is_type_func() || arg_type->is_type_array() || arg_type->is_type_struct())
+                args_types.push_back(arg_type->get_pointer_type());
+            else
+                args_types.push_back(arg_type);
+        }
+
+        auto newFunc = this->value_func("", ret_type, args_types, false);
+        auto oldFunc = func;;
+
+        this->push_scope(newFunc);
+        {
+            auto *entry = newFunc->create_block("entry");
+            newFunc->set_active_block(entry);
+
+            // self
+            auto self = newFunc;
+            this->scope->add_value_symbol("self", self);
+
+            // args
+            for (size_t index = 0; index < node->args.size(); index++) {
+                const char *name = node->args.at(index).name.cstr();
+                auto arg = newFunc->get_arg_value(index + 1);
+                arg->set_name(name);
+                if (!this->scope->add_value_symbol(name, arg)) {
+                    printf("ERROR: The symbol name '%s' is already existed.\n", name);
+                    return nullptr;
+                }
+            }
+
+            // body
+            for (auto &stmt: node->body) {
+                if (!this->encode_stmt(stmt))
+                    return nullptr;
+            }
+            newFunc->ensure_tail_ret();
+        }
+        this->pop_scope();
+
+        return newFunc;
+    }
+
+    omis_value_t *omis_module_coder_t::encode_expr_func_ref(ast_node_func_ref_t *node) {
+        if (node == nullptr)
+            return nullptr;
+
+        auto func = this->scope->func;
+
+        auto funcExpr = this->encode_expr(node->func);
+        if (funcExpr == nullptr) {
+            printf("The function is undefined.\n");
+            return nullptr;
+        }
+        funcExpr = func->get_ptr_val(funcExpr);
+
+        /*
+        omis_type_t* funcType = nullptr;
+        if (funcExpr->get_type()->is_type_func()) {
+            funcType = llvm::cast<llvm::FunctionType>(funcPtr->getType());
+        }
+        else if (funcExpr->getType()->isPointerTy() &&
+                   funcPtr->getType()->getPointerElementType()->isFunctionTy()) {
+            funcType = llvm::cast<llvm::FunctionType>(funcPtr->getType()->getPointerElementType());
+        }
+        else {
+            printf("ERROR: Invalid function type.\n");
+            return nullptr;
+        }
+        */
+
+        std::vector<omis_value_t *> args;
+        for (auto i = 0; i < node->args.size(); i++) {
+            auto *argT = func->get_arg_type(i);
+            auto *argV = this->encode_expr(node->args.at(i));
+            if (argV == nullptr)
+                return nullptr;
+            argV = func->get_ptr_val(argV);
+
+            if (argT != argV->get_type()) {
+                if (equals_type(argT, argV->get_type())) {
+                    /*
+                    if (argT == this->type_cstr) {
+                        argV = func->cstr_from_value(argV);
+                    }
+                    if (argT == this->type_string_ptr) {
+                        argV = func->string_from_value(argV);
+                    }
+                    else if(this->can_losslessly_bitcast(argV->get_type(), argT)) {
+                        printf("ERROR: The type of param[%d] can't cast to the param type of function.\n", i);
+                        return nullptr;
+                    }
+                    */
+                }
+
+                args.push_back(argV);
+            }
+
+            auto funcPtr = dynamic_cast<omis_func_t *>(funcExpr);
+            if (funcPtr == nullptr) {
+                printf("ERROR: Invalid function pointer.\n");
+                return nullptr;
+            }
+
+            auto retval = func->call(funcPtr, args);
+
+            return retval;
+        }
     }
 }

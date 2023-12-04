@@ -31,6 +31,8 @@ namespace eokas {
         omis_value_t *encode_expr_bool(ast_node_literal_bool_t *node);
         omis_value_t *encode_expr_string(ast_node_literal_string_t *node);
         omis_value_t *encode_expr_symbol_ref(ast_node_symbol_ref_t *node);
+        omis_value_t* encode_expr_func_def(ast_node_func_def_t* node);
+        omis_value_t* encode_expr_func_ref(ast_node_func_ref_t* node);
 
     private:
         omis_value_t* continue_point;
