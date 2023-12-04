@@ -17,6 +17,8 @@ namespace eokas {
         bool encode_stmt_return(ast_node_return_t* node);
         bool encode_stmt_if(ast_node_if_t* node);
         bool encode_stmt_loop(ast_node_loop_t* node);
+        bool encode_stmt_break(ast_node_break_t* node);
+        bool encode_stmt_continue(ast_node_continue_t* node);
 
         omis_type_t* encode_type_ref(ast_node_type_t* node);
 

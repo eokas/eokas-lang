@@ -52,6 +52,10 @@ namespace eokas {
                 return this->encode_stmt_if(dynamic_cast<ast_node_if_t*>(node));
             case ast_category_t::LOOP:
                 return this->encode_stmt_loop(dynamic_cast<ast_node_loop_t*>(node));
+            case ast_category_t::BREAK:
+                return this->encode_stmt_break(dynamic_cast<ast_node_break_t*>(node));
+            case ast_category_t::CONTINUE:
+                return this->encode_stmt_continue(dynamic_cast<ast_node_continue_t*>(node));
             default:
                 return false;
         }
@@ -301,6 +305,30 @@ namespace eokas {
         this->break_point = old_break_point;
 
         this->pop_scope();
+
+        return true;
+    }
+
+    bool omis_module_coder_t::encode_stmt_break(ast_node_break_t* node) {
+        if (node == nullptr)
+            return false;
+
+        if (this->break_point == nullptr)
+            return false;
+
+        this->scope->func->jump(this->break_point);
+
+        return true;
+    }
+
+    bool omis_module_coder_t::encode_stmt_continue(ast_node_continue_t* node) {
+        if (node == nullptr)
+            return false;
+
+        if (this->continue_point == nullptr)
+            return false;
+
+        this->scope->func->jump(this->continue_point);
 
         return true;
     }
