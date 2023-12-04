@@ -220,7 +220,7 @@ namespace eokas {
                 return false;
 
             auto active_block = func->get_active_block();
-            if(!equals_value(active_block, if_true) && !func->is_terminator_ins()) {
+            if(!equals_value(active_block, if_true) && !func->is_terminator_ins(active_block)) {
                 func->jump(if_end);
             }
         }
@@ -235,7 +235,7 @@ namespace eokas {
                 return false;
 
             auto active_block = func->get_active_block();
-            if(!equals_value(active_block, if_false) && !func->is_terminator_ins()) {
+            if(!equals_value(active_block, if_false) && !func->is_terminator_ins(active_block)) {
                 func->jump(if_end);
             }
         }
@@ -285,8 +285,9 @@ namespace eokas {
         if (node->body != nullptr) {
             if (!this->encode_stmt(node->body))
                 return false;
-            auto last_op = func->get_block_tail(loop_body);
-            if (!func->is_terminator_ins(last_op)) {
+            auto active_block = func->get_active_block();
+            if (!equals_value(active_block, loop_body) &&
+                !func->is_terminator_ins(active_block)) {
                 func->jump(loop_step);
             }
         }
