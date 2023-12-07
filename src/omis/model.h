@@ -72,11 +72,11 @@ namespace eokas {
 
         bool add_type_symbol(const String& name, omis_type_t* type);
         omis_type_symbol_t* get_type_symbol(const String& name, bool lookup);
-        omis_type_symbol_t* get_type_symbol(predicate_t<omis_type_symbol_t> predicate, bool lookup);
+        omis_type_symbol_t* get_type_symbol(omis_lambda_predicate_t<omis_type_symbol_t> predicate, bool lookup);
 
         bool add_value_symbol(const String& name, omis_value_t* value);
         omis_value_symbol_t* get_value_symbol(const String& name, bool lookup);
-        omis_value_symbol_t* get_value_symbol(predicate_t<omis_value_symbol_t> predicate, bool lookup);
+        omis_value_symbol_t* get_value_symbol(omis_lambda_predicate_t<omis_value_symbol_t> predicate, bool lookup);
     };
 
     class omis_module_t {
@@ -262,8 +262,22 @@ namespace eokas {
         omis_value_t* make(omis_type_t* type, omis_value_t* count);
         omis_value_t* drop(omis_value_t* ptr);
 
+        omis_value_t* expr(const omis_lambda_expr_t& lambda);
+        bool stmt(const omis_lambda_stmt_t& lambda);
+        bool stmt_if(const omis_lambda_expr_t& lambda_cond,
+                     const omis_lambda_stmt_t& lambda_true,
+                     const omis_lambda_stmt_t& lambda_false);
+        bool stmt_loop(const omis_lambda_stmt_t& lambda_init,
+                       const omis_lambda_expr_t& lambda_cond,
+                       const omis_lambda_stmt_t& lambda_step,
+                       const omis_lambda_stmt_t& lambda_body);
+        bool stmt_break();
+        bool stmt_continue();
+
     protected:
         omis_bridge_t* bridge;
+        omis_value_t* break_point;
+        omis_value_t* continue_point;
     };
 }
 

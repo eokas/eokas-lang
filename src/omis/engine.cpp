@@ -35,7 +35,7 @@ namespace eokas {
         return iter->second;
     }
 
-    omis_module_t* omis_engine_t::load_module(const String& name, const omis_loading_t& loading) {
+    omis_module_t* omis_engine_t::load_module(const String& name, const omis_lambda_loading_t& loading) {
         if(this->get_module(name) != nullptr)
             return nullptr;
         auto mod = loading();

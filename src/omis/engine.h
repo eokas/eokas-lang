@@ -14,7 +14,7 @@ namespace eokas {
 
         bool add_module(const String& name, omis_module_t* mod);
         omis_module_t* get_module(const String& name);
-        omis_module_t* load_module(const String& name, const omis_loading_t& loading);
+        omis_module_t* load_module(const String& name, const omis_lambda_loading_t& loading);
 
         bool jit(omis_module_t* mod);
         bool aot(omis_module_t* mod);

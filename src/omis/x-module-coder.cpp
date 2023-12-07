@@ -194,144 +194,62 @@ namespace eokas {
     }
 
     bool omis_module_coder_t::encode_stmt_if(struct ast_node_if_t *node) {
-        if (node == nullptr)
-            return false;
-
-        auto func = this->scope->func;
-
-        auto if_true = func->create_block("if.true");
-        auto if_false = func->create_block("if.false");
-        auto if_end = func->create_block("if.end");
-
-        auto cond = this->encode_expr(node->cond);
-        if (cond == nullptr)
-            return false;
-        cond = func->get_ptr_val(cond);
-        if (!this->equals_type(cond->get_type(), type_bool())) {
-            printf("ERROR: The label 'if.cond' need a bool value.\n");
-            return false;
-        }
-        func->jump_cond(cond, if_true, if_false);
-
-        // if-true
-        func->set_active_block(if_true);
-        if (node->branch_true != nullptr) {
-            if (!this->encode_stmt(node->branch_true))
-                return false;
-
-            auto active_block = func->get_active_block();
-            if (!equals_value(active_block, if_true) && !func->is_terminator_ins(active_block)) {
-                func->jump(if_end);
-            }
-        }
-        if (!func->is_terminator_ins(func->get_block_tail(if_true))) {
-            func->jump(if_end);
-        }
-
-        // if-false
-        func->set_active_block(if_false);
-        if (node->branch_false != nullptr) {
-            if (!this->encode_stmt(node->branch_false))
-                return false;
-
-            auto active_block = func->get_active_block();
-            if (!equals_value(active_block, if_false) && !func->is_terminator_ins(active_block)) {
-                func->jump(if_end);
-            }
-        }
-        if (!func->is_terminator_ins(func->get_block_tail(if_false))) {
-            func->jump(if_end);
-        }
-
-        func->set_active_block(if_end);
-
-        return true;
-    }
+		if (node == nullptr)
+			return false;
+		
+		auto func = this->scope->func;
+		return func->stmt_if([&]() -> auto {
+			return this->encode_expr(node->cond);
+		}, [&]() -> auto {
+			if (node->branch_true == nullptr)
+				return true;
+			return this->encode_stmt(node->branch_true);
+		}, [&]() -> auto {
+			if (node->branch_false == nullptr)
+				return true;
+			return this->encode_stmt(node->branch_false);
+		});
+	}
 
     bool omis_module_coder_t::encode_stmt_loop(ast_node_loop_t *node) {
-        if (node == nullptr)
-            return false;
-
-        auto func = this->scope->func;
-
-        this->push_scope();
-
-        auto loop_cond = func->create_block("loop.cond");
-        auto loop_step = func->create_block("loop.step");
-        auto loop_body = func->create_block("loop.body");
-        auto loop_end = func->create_block("loop.end");
-
-        auto old_continue_point = this->continue_point;
-        auto old_break_point = this->break_point;
-        this->continue_point = loop_step;
-        this->break_point = loop_end;
-
-        if (!this->encode_stmt(node->init))
-            return false;
-        func->jump(loop_cond);
-
-        func->set_active_block(loop_cond);
-        auto cond = this->encode_expr(node->cond);
-        if (cond == nullptr)
-            return false;
-        cond = func->get_ptr_val(cond);
-        if (!this->equals_type(cond->get_type(), type_bool())) {
-            printf("ERROR: The label 'loop.cond' need a bool value.\n");
-            return false;
-        }
-        func->jump_cond(cond, loop_body, loop_end);
-
-        func->set_active_block(loop_body);
-        if (node->body != nullptr) {
-            if (!this->encode_stmt(node->body))
-                return false;
-            auto active_block = func->get_active_block();
-            if (!equals_value(active_block, loop_body) &&
-                !func->is_terminator_ins(active_block)) {
-                func->jump(loop_step);
-            }
-        }
-        if (!func->is_terminator_ins(func->get_block_tail(loop_body))) {
-            func->jump(loop_step);
-        }
-
-        func->set_active_block(loop_step);
-        if (!this->encode_stmt(node->step))
-            return false;
-        func->jump(loop_cond);
-
-        func->set_active_block(loop_end);
-
-        this->continue_point = old_continue_point;
-        this->break_point = old_break_point;
-
-        this->pop_scope();
-
-        return true;
-    }
+		if (node == nullptr)
+			return false;
+		
+		auto func = this->scope->func;
+		return func->stmt_loop([&]() -> auto {
+								   if (node->init == nullptr)
+									   return true;
+								   return this->encode_stmt(node->init);
+							   },
+							   [&]() -> auto {
+								   if (node->cond == nullptr)
+									   return this->value_bool(true);
+								   return this->encode_expr(node->cond);
+							   },
+							   [&]() -> auto {
+								   if (node->step == nullptr)
+									   return true;
+								   return this->encode_stmt(node->step);
+							   },
+							   [&]() -> auto {
+								   if (node->body == nullptr)
+									   return true;
+								   return this->encode_stmt(node->body);
+							   });
+	}
 
     bool omis_module_coder_t::encode_stmt_break(ast_node_break_t *node) {
         if (node == nullptr)
             return false;
-
-        if (this->break_point == nullptr)
-            return false;
-
-        this->scope->func->jump(this->break_point);
-
-        return true;
+        auto func = this->scope->func;
+        return func->stmt_break();
     }
 
     bool omis_module_coder_t::encode_stmt_continue(ast_node_continue_t *node) {
         if (node == nullptr)
             return false;
-
-        if (this->continue_point == nullptr)
-            return false;
-
-        this->scope->func->jump(this->continue_point);
-
-        return true;
+        auto func = this->scope->func;
+        return func->stmt_continue();
     }
 
     omis_type_t *omis_module_coder_t::encode_type_ref(ast_node_type_t *node) {

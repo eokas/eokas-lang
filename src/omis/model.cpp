@@ -36,7 +36,7 @@ namespace eokas {
         }
     }
 
-    omis_type_symbol_t* omis_scope_t::get_type_symbol(predicate_t<omis_type_symbol_t> predicate, bool lookup) {
+    omis_type_symbol_t* omis_scope_t::get_type_symbol(omis_lambda_predicate_t<omis_type_symbol_t> predicate, bool lookup) {
         if (lookup) {
             for (auto scope = this; scope != nullptr; scope = scope->parent) {
                 auto* symbol = scope->types.get([&](auto name, auto symbol) -> auto {
@@ -72,7 +72,7 @@ namespace eokas {
         }
     }
 
-    omis_value_symbol_t* omis_scope_t::get_value_symbol(predicate_t<omis_value_symbol_t> predicate, bool lookup) {
+    omis_value_symbol_t* omis_scope_t::get_value_symbol(omis_lambda_predicate_t<omis_value_symbol_t> predicate, bool lookup) {
         if (lookup) {
             for (auto scope = this; scope != nullptr; scope = scope->parent) {
                 auto* symbol = scope->values.get([&](auto name, auto symbol) -> auto {
@@ -732,23 +732,25 @@ namespace eokas {
         return module->value(ret);
     }
 
-    omis_value_t* omis_func_t::make(omis_type_t* type)
-    {
-        auto symbol = module->get_value_symbol("mallock");
-        if(symbol == nullptr)
-            return nullptr;
-        auto func = dynamic_cast<omis_func_t*>(symbol->value);
-        if(func == nullptr)
-            return nullptr;
-
+    omis_value_t* omis_func_t::make(omis_type_t* type) {
         auto len = module->get_type_size(type);
-        auto ptr = this->call(func, {len});
+        auto ptr = this->call("malloc", {len});
+
+        this->stmt_if(
+            [&]()->auto {
+                return this->eq(ptr, module->value_integer(0, 64));
+            },
+            [&]()->auto{
+                return true;
+            },
+            nullptr
+        );
+
         auto val = this->bitcast(ptr, type);
         return val;
     }
 
-    omis_value_t* omis_func_t::make(omis_type_t* type, omis_value_t* count)
-    {
+    omis_value_t* omis_func_t::make(omis_type_t* type, omis_value_t* count) {
         auto stride = module->get_type_size(type);
         auto len = this->mul(stride, count);
         auto ptr = this->call("malloc", {len});
@@ -756,8 +758,155 @@ namespace eokas {
         return val;
     }
 
-    omis_value_t* omis_func_t::drop(omis_value_t* ptr)
-    {
+    omis_value_t* omis_func_t::drop(omis_value_t* ptr) {
         return this->call("free", {ptr});
+    }
+
+    omis_value_t* omis_func_t::expr(const omis_lambda_expr_t& lambda) {
+        return lambda();
+    }
+
+    bool omis_func_t::stmt(const omis_lambda_stmt_t& lambda) {
+        if(lambda.has_value()) {
+            if(!lambda.value()()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool omis_func_t::stmt_if(const omis_lambda_expr_t& lambda_cond,
+                              const omis_lambda_stmt_t& lambda_true,
+                              const omis_lambda_stmt_t& lambda_false) {
+
+        auto if_true = this->create_block("if.true");
+        auto if_false = this->create_block("if.false");
+        auto if_end = this->create_block("if.end");
+
+        auto cond = this->expr(lambda_cond);
+        if (cond == nullptr)
+            return false;
+        cond = this->get_ptr_val(cond);
+        if (!module->equals_type(cond->get_type(), module->type_bool())) {
+            printf("ERROR: The label 'if.cond' need a bool value.\n");
+            return false;
+        }
+        this->jump_cond(cond, if_true, if_false);
+
+        // if-true
+        this->set_active_block(if_true);
+        {
+            if (!this->stmt(lambda_true))
+                return false;
+            auto active_block = this->get_active_block();
+            if (!module->equals_value(active_block, if_true) && !this->is_terminator_ins(active_block)) {
+                this->jump(if_end);
+            }
+            if (!this->is_terminator_ins(this->get_block_tail(if_true))) {
+                this->jump(if_end);
+            }
+        }
+
+        // if-false
+        this->set_active_block(if_false);
+        {
+            if (!this->stmt(lambda_false))
+                return false;
+            auto active_block = this->get_active_block();
+            if (!module->equals_value(active_block, if_false) && !this->is_terminator_ins(active_block)) {
+                this->jump(if_end);
+            }
+            if (!this->is_terminator_ins(this->get_block_tail(if_false))) {
+                this->jump(if_end);
+            }
+        }
+
+        this->set_active_block(if_end);
+
+        return true;
+    }
+
+    bool omis_func_t::stmt_loop(const omis_lambda_stmt_t& lambda_init,
+                                const omis_lambda_expr_t& lambda_cond,
+                                const omis_lambda_stmt_t& lambda_step,
+                                const omis_lambda_stmt_t& lambda_body) {
+        module->push_scope();
+
+        auto loop_cond = this->create_block("loop.cond");
+        auto loop_step = this->create_block("loop.step");
+        auto loop_body = this->create_block("loop.body");
+        auto loop_end = this->create_block("loop.end");
+
+        auto old_continue_point = this->continue_point;
+        auto old_break_point = this->break_point;
+        this->continue_point = loop_step;
+        this->break_point = loop_end;
+
+        // init
+        {
+            if (!this->stmt(lambda_init))
+                return false;
+            this->jump(loop_cond);
+        }
+
+        // cond
+        this->set_active_block(loop_cond);
+        {
+            auto cond = this->expr(lambda_cond);
+            if (cond == nullptr)
+                return false;
+            cond = this->get_ptr_val(cond);
+            if (!module->equals_type(cond->get_type(), module->type_bool())) {
+                printf("ERROR: The label 'loop.cond' need a bool value.\n");
+                return false;
+            }
+            this->jump_cond(cond, loop_body, loop_end);
+        }
+
+        // body
+        this->set_active_block(loop_body);
+        {
+            if (!this->stmt(lambda_body))
+                return false;
+            auto active_block = this->get_active_block();
+            if (!module->equals_value(active_block, loop_body) &&
+                !this->is_terminator_ins(active_block)) {
+                this->jump(loop_step);
+            }
+            if (!this->is_terminator_ins(this->get_block_tail(loop_body))) {
+                this->jump(loop_step);
+            }
+        }
+
+        // step
+        this->set_active_block(loop_step);
+        {
+            if (!this->stmt(lambda_step))
+                return false;
+            this->jump(loop_cond);
+        }
+
+        this->set_active_block(loop_end);
+
+        this->continue_point = old_continue_point;
+        this->break_point = old_break_point;
+
+        module->pop_scope();
+
+        return true;
+    }
+
+    bool omis_func_t::stmt_break() {
+        if (this->break_point == nullptr)
+            return false;
+        this->jump(this->break_point);
+        return true;
+    }
+
+    bool omis_func_t::stmt_continue() {
+        if (this->continue_point == nullptr)
+            return false;
+        this->jump(this->continue_point);
+        return true;
     }
 }
