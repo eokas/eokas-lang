@@ -5,65 +5,6 @@
 #include "./header.h"
 
 namespace eokas {
-    class omis_module_t {
-    public:
-        omis_module_t(omis_bridge_t* bridge, const String& name);
-        virtual ~omis_module_t();
-
-        virtual bool main();
-
-        omis_bridge_t* get_bridge();
-        const String& get_name() const;
-        omis_handle_t get_handle();
-        String dump();
-
-        bool using_module(omis_module_t* other);
-
-        omis_scope_t* get_scope();
-        omis_scope_t* push_scope(omis_func_t* func = nullptr);
-        omis_scope_t* pop_scope();
-
-        omis_type_symbol_t* get_type_symbol(const String& name, bool lookup = true);
-        bool add_type_symbol(const String& name, omis_type_t* type);
-        omis_value_symbol_t* get_value_symbol(const String& name, bool lookup = true);
-        bool add_value_symbol(const String& name, omis_value_t* type);
-
-        omis_type_t* type(omis_handle_t handle);
-        omis_type_t* type_void();
-        omis_type_t* type_i8();
-        omis_type_t* type_i16();
-        omis_type_t* type_i32();
-        omis_type_t* type_f32();
-        omis_type_t* type_i64();
-        omis_type_t* type_f64();
-        omis_type_t* type_bool();
-        omis_type_t* type_bytes();
-        omis_type_t* type_pointer(omis_type_t* type);
-        omis_type_t* type_func(omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
-        bool can_losslessly_bitcast(omis_type_t* a, omis_type_t* b);
-
-        omis_value_t* value(omis_type_t* type, omis_handle_t handle);
-        omis_value_t* value(omis_handle_t handle);
-        omis_value_t* value_integer(u64_t val, u32_t bits);
-        omis_value_t* value_float(f64_t val);
-        omis_value_t* value_bool(bool val);
-        omis_value_t* value_string(const String& val);
-        omis_func_t* value_func(const String& name, omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
-
-        bool equals_type(omis_type_t* a, omis_type_t* b);
-        bool equals_value(omis_value_t* a, omis_value_t* b);
-
-    protected:
-        omis_bridge_t* bridge;
-        String name;
-        omis_handle_t handle;
-        omis_scope_t* root;
-        omis_scope_t* scope;
-        std::vector<omis_module_t*> usings;
-        std::map<omis_handle_t, omis_type_t*> types;
-        std::map<omis_handle_t, omis_value_t*> values;
-    };
-
     template<typename T, bool gc = true>
     struct omis_table_t {
         std::map<String, T *> table;
@@ -136,6 +77,66 @@ namespace eokas {
         bool add_value_symbol(const String& name, omis_value_t* value);
         omis_value_symbol_t* get_value_symbol(const String& name, bool lookup);
         omis_value_symbol_t* get_value_symbol(predicate_t<omis_value_symbol_t> predicate, bool lookup);
+    };
+
+    class omis_module_t {
+    public:
+        omis_module_t(omis_bridge_t* bridge, const String& name);
+        virtual ~omis_module_t();
+
+        virtual bool main();
+
+        omis_bridge_t* get_bridge();
+        const String& get_name() const;
+        omis_handle_t get_handle();
+        String dump();
+
+        bool using_module(omis_module_t* other);
+
+        omis_scope_t* get_scope();
+        omis_scope_t* push_scope(omis_func_t* func = nullptr);
+        omis_scope_t* pop_scope();
+
+        omis_type_symbol_t* get_type_symbol(const String& name, bool lookup = true);
+        bool add_type_symbol(const String& name, omis_type_t* type);
+        omis_value_symbol_t* get_value_symbol(const String& name, bool lookup = true);
+        bool add_value_symbol(const String& name, omis_value_t* type);
+
+        omis_type_t* type(omis_handle_t handle);
+        omis_type_t* type_void();
+        omis_type_t* type_i8();
+        omis_type_t* type_i16();
+        omis_type_t* type_i32();
+        omis_type_t* type_f32();
+        omis_type_t* type_i64();
+        omis_type_t* type_f64();
+        omis_type_t* type_bool();
+        omis_type_t* type_bytes();
+        omis_type_t* type_pointer(omis_type_t* type);
+        omis_type_t* type_func(omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
+        omis_value_t* get_type_size(omis_type_t* type);
+        bool can_losslessly_bitcast(omis_type_t* a, omis_type_t* b);
+
+        omis_value_t* value(omis_type_t* type, omis_handle_t handle);
+        omis_value_t* value(omis_handle_t handle);
+        omis_value_t* value_integer(u64_t val, u32_t bits);
+        omis_value_t* value_float(f64_t val);
+        omis_value_t* value_bool(bool val);
+        omis_value_t* value_string(const String& val);
+        omis_func_t* value_func(const String& name, omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
+
+        bool equals_type(omis_type_t* a, omis_type_t* b);
+        bool equals_value(omis_value_t* a, omis_value_t* b);
+
+    protected:
+        omis_bridge_t* bridge;
+        String name;
+        omis_handle_t handle;
+        omis_scope_t* root;
+        omis_scope_t* scope;
+        std::vector<omis_module_t*> usings;
+        std::map<omis_handle_t, omis_type_t*> types;
+        std::map<omis_handle_t, omis_value_t*> values;
     };
 
     class omis_type_t {
@@ -247,13 +248,19 @@ namespace eokas {
         omis_value_t* jump_cond(omis_value_t* cond, omis_value_t* branch_true, omis_value_t* branch_false);
         omis_value_t* phi(omis_type_t* type, const std::map<omis_value_t*, omis_value_t*>& incomings);
         omis_value_t* call(omis_func_t* func, const std::vector<omis_value_t*>& args);
-        omis_value_t* ret(omis_value_t* val = nullptr);
+        omis_value_t* call(const String& func, const std::vector<omis_value_t*>& args);
+        omis_value_t* ret(omis_value_t* value = nullptr);
+        omis_value_t* bitcast(omis_value_t* value, omis_type_t* type);
 
         omis_value_t* create_local_symbol(const String& name, omis_type_t* type, omis_value_t* value);
         void ensure_tail_ret();
 
         omis_value_t* get_ptr_val(omis_value_t* val);
         omis_value_t* get_ptr_ref(omis_value_t* val);
+
+        omis_value_t* make(omis_type_t* type);
+        omis_value_t* make(omis_type_t* type, omis_value_t* count);
+        omis_value_t* drop(omis_value_t* ptr);
 
     protected:
         omis_bridge_t* bridge;

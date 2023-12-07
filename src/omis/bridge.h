@@ -40,6 +40,7 @@ namespace eokas {
         virtual bool is_type_func(omis_handle_t type) = 0;
         virtual bool is_type_array(omis_handle_t type) = 0;
         virtual bool is_type_struct(omis_handle_t type) = 0;
+        virtual omis_handle_t get_type_size(omis_handle_t type) = 0;
 
         virtual bool can_losslessly_cast(omis_handle_t a, omis_handle_t b) = 0;
         virtual omis_handle_t get_func_ret_type(omis_handle_t type_func) = 0;
@@ -99,6 +100,8 @@ namespace eokas {
         virtual omis_handle_t phi(omis_handle_t type, const std::map<omis_handle_t, omis_handle_t>& incomings) = 0;
         virtual omis_handle_t call(omis_handle_t func, const std::vector<omis_handle_t>& args) = 0;
         virtual omis_handle_t ret(omis_handle_t value = nullptr) = 0;
+
+        virtual omis_handle_t bitcast(omis_handle_t value, omis_handle_t type) = 0;
 
         virtual omis_handle_t get_ptr_val(omis_handle_t ptr) = 0;
         virtual omis_handle_t get_ptr_ref(omis_handle_t ptr) = 0;

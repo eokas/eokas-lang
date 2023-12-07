@@ -217,6 +217,11 @@ namespace eokas
             return _Ty(type)->isStructTy();
         }
 
+        virtual omis_handle_t get_type_size(omis_handle_t type) override {
+            llvm::Constant* size = llvm::ConstantExpr::getSizeOf(_Ty(type));
+            return size;
+        }
+
         virtual bool can_losslessly_cast(omis_handle_t a, omis_handle_t b) override {
             auto* aT = (llvm::Type*)a;
             auto* bT = (llvm::Type*)b;
@@ -637,6 +642,10 @@ namespace eokas
                 return IR.CreateRetVoid();
             else
                 return IR.CreateRet(_Val(value));
+        }
+
+        virtual omis_handle_t bitcast(omis_handle_t value, omis_handle_t type) override {
+            return IR.CreateBitCast(_Val(value), _Ty(type));
         }
 
         virtual omis_handle_t get_ptr_val(omis_handle_t ptr) override {
