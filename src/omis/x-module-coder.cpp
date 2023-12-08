@@ -67,16 +67,13 @@ namespace eokas {
         if (node == nullptr)
             return false;
 
-        this->push_scope();
-
-        for (auto &stmt: node->stmts) {
-            if (!this->encode_stmt(stmt))
-                return false;
-        }
-
-        this->pop_scope();
-
-        return true;
+        return this->scope->func->stmt_block([&]()->bool{
+            for (auto &stmt: node->stmts) {
+                if (!this->encode_stmt(stmt))
+                    return false;
+            }
+            return true;
+        });
     }
 
     bool omis_module_coder_t::encode_stmt_symbol_def(ast_node_symbol_def_t *node) {
@@ -85,58 +82,18 @@ namespace eokas {
 
         auto func = this->scope->func;
 
-        auto exists = this->scope->get_value_symbol(node->name, false);
-        if (exists != nullptr) {
-            printf("ERROR: The symbol '%s' is aready defined.", node->name.cstr());
-            return false;
+        std::optional<omis_lambda_type_t> lambda_type;
+        if(node->type != nullptr) {
+            lambda_type = [&]() -> omis_type_t * {
+                return this->encode_type_ref(node->type);
+            };
         }
 
-        auto type = node->type != nullptr ? this->encode_type_ref(node->type) : nullptr;
-        auto expr = this->encode_expr(node->value);
-        if (expr == nullptr)
-            return false;
-        expr = func->get_ptr_val(expr);
+        auto lambda_value = [&]()->omis_value_t* {
+            return this->encode_expr(node->value);
+        };
 
-        omis_type_t *stype = nullptr;
-        omis_type_t *dtype = type;
-        omis_type_t *vtype = expr->get_type();
-        if (dtype != nullptr) {
-            stype = dtype;
-
-            // Check type compatibilities.
-            do {
-                if (stype == vtype)
-                    break;
-                if (this->can_losslessly_bitcast(vtype, stype))
-                    break;
-                /*
-                if (vtype->isPointerTy() && vtype->getPointerElementType() == stype) {
-                    stype = dtype = vtype;
-                    break;
-                }
-                */
-
-                // TODO: 校验类型合法性, 值类型是否遵循标记类型
-
-                printf("ERROR: Type of value can not cast to the type of symbol.\n");
-                return false;
-            } while (false);
-        } else {
-            stype = vtype;
-        }
-
-        if (this->equals_type(stype, this->type_void())) {
-            printf("ERROR: Void-Type can't assign to a symbol.\n");
-            return false;
-        }
-
-        auto symbol = func->create_local_symbol(node->name, stype, expr);
-        if (!scope->add_value_symbol(node->name, symbol)) {
-            printf("ERROR: There is a symbol named %s in this scope.\n", node->name.cstr());
-            return false;
-        }
-
-        return true;
+        return func->stmt_symbol_def(node->name, lambda_type, lambda_value);
     }
 
     bool omis_module_coder_t::encode_stmt_assign(ast_node_assign_t *node) {
@@ -145,16 +102,15 @@ namespace eokas {
 
         auto func = this->scope->func;
 
-        auto lhs = this->encode_expr(node->left);
-        auto rhs = this->encode_expr(node->right);
-        if (lhs == nullptr || rhs == nullptr)
-            return false;
+        auto left = [&]()->omis_value_t* {
+            return this->encode_expr(node->left);
+        };
 
-        auto ptr = func->get_ptr_ref(lhs);
-        auto val = func->get_ptr_val(rhs);
-        func->store(ptr, val);
+        auto right = [&]()->omis_value_t* {
+            return this->encode_expr(node->right);
+        };
 
-        return true;
+        return func->stmt_assign(left, right);
     }
 
     bool omis_module_coder_t::encode_stmt_return(ast_node_return_t *node) {
@@ -162,35 +118,15 @@ namespace eokas {
             return false;
 
         auto func = this->scope->func;
-        auto expected_ret_type = func->get_ret_type();
 
-        if (node->value == nullptr) {
-            if (this->equals_type(expected_ret_type, type_void())) {
-                printf("ERROR: The function must return a value.\n");
-                return false;
-            }
-
-            func->ret();
-            return true;
+        std::optional<omis_lambda_expr_t> value;
+        if(node->value != nullptr) {
+            value = [&]()->omis_value_t* {
+                return this->encode_expr(node->value);
+            };
         }
 
-        auto expr = this->encode_expr(node->value);
-        if (expr == nullptr) {
-            printf("ERROR: Invalid ret value.\n");
-            return false;
-        }
-        expr = func->get_ptr_val(expr);
-
-        auto actual_ret_type = expr->get_type();
-        if (!this->equals_type(actual_ret_type, expected_ret_type) &&
-            !this->can_losslessly_bitcast(actual_ret_type, expected_ret_type)) {
-            printf("ERROR: The type of return value can't cast to return type of function.\n");
-            return false;
-        }
-
-        func->ret(expr);
-
-        return true;
+        return func->stmt_return(value);
     }
 
     bool omis_module_coder_t::encode_stmt_if(struct ast_node_if_t *node) {
@@ -198,17 +134,24 @@ namespace eokas {
 			return false;
 		
 		auto func = this->scope->func;
-		return func->stmt_if([&]() -> auto {
-			return this->encode_expr(node->cond);
-		}, [&]() -> auto {
-			if (node->branch_true == nullptr)
-				return true;
-			return this->encode_stmt(node->branch_true);
-		}, [&]() -> auto {
-			if (node->branch_false == nullptr)
-				return true;
-			return this->encode_stmt(node->branch_false);
-		});
+
+        auto cond = [&]()->auto {
+            return this->encode_expr(node->cond);
+        };
+
+        auto branch_true = [&]()->bool {
+            if(node->branch_true == nullptr)
+                return true;
+            return this->encode_stmt(node->branch_true);
+        };
+
+        auto branch_false = [&]()->bool {
+            if(node->branch_false == nullptr)
+                return true;
+            return this->encode_stmt(node->branch_false);
+        };
+
+		return func->stmt_branch(cond, branch_true, branch_false);
 	}
 
     bool omis_module_coder_t::encode_stmt_loop(ast_node_loop_t *node) {
@@ -216,26 +159,32 @@ namespace eokas {
 			return false;
 		
 		auto func = this->scope->func;
-		return func->stmt_loop([&]() -> auto {
-								   if (node->init == nullptr)
-									   return true;
-								   return this->encode_stmt(node->init);
-							   },
-							   [&]() -> auto {
-								   if (node->cond == nullptr)
-									   return this->value_bool(true);
-								   return this->encode_expr(node->cond);
-							   },
-							   [&]() -> auto {
-								   if (node->step == nullptr)
-									   return true;
-								   return this->encode_stmt(node->step);
-							   },
-							   [&]() -> auto {
-								   if (node->body == nullptr)
-									   return true;
-								   return this->encode_stmt(node->body);
-							   });
+
+        auto init = [&]() -> auto {
+            if (node->init == nullptr)
+                return true;
+            return this->encode_stmt(node->init);
+        };
+
+        auto cond = [&]() -> auto {
+            if (node->cond == nullptr)
+                return this->value_bool(true);
+            return this->encode_expr(node->cond);
+        };
+
+        auto step = [&]() -> auto {
+            if (node->step == nullptr)
+                return true;
+            return this->encode_stmt(node->step);
+        };
+
+        auto body = [&]() -> auto {
+            if (node->body == nullptr)
+                return true;
+            return this->encode_stmt(node->body);
+        };
+
+		return func->stmt_loop(init, cond, step, body);
 	}
 
     bool omis_module_coder_t::encode_stmt_break(ast_node_break_t *node) {

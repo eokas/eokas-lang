@@ -736,15 +736,13 @@ namespace eokas {
         auto len = module->get_type_size(type);
         auto ptr = this->call("malloc", {len});
 
-        this->stmt_if(
-            [&]()->auto {
-                return this->eq(ptr, module->value_integer(0, 64));
-            },
-            [&]()->auto{
-                return true;
-            },
-            nullptr
-        );
+        auto cond = [&]()->omis_value_t* {
+            return this->eq(ptr, module->value_integer(0, 64));
+        };
+        auto body = [&]()->bool{
+            return true;
+        };
+        this->stmt_branch(cond, body, nullptr);
 
         auto val = this->bitcast(ptr, type);
         return val;
@@ -762,28 +760,142 @@ namespace eokas {
         return this->call("free", {ptr});
     }
 
-    omis_value_t* omis_func_t::expr(const omis_lambda_expr_t& lambda) {
-        return lambda();
-    }
+    bool omis_func_t::stmt_block(const std::optional<omis_lambda_stmt_t> &body) {
+        module->push_scope();
 
-    bool omis_func_t::stmt(const omis_lambda_stmt_t& lambda) {
-        if(lambda.has_value()) {
-            if(!lambda.value()()) {
+        if(body.has_value()) {
+            if(!body.value()()) {
                 return false;
             }
         }
+
+        module->pop_scope();
+
         return true;
     }
 
-    bool omis_func_t::stmt_if(const omis_lambda_expr_t& lambda_cond,
+    bool omis_func_t::stmt_symbol_def(const String& name, const std::optional<omis_lambda_type_t>& lambda_type, const omis_lambda_expr_t &lambda_expr) {
+        auto exists = module->get_value_symbol(name, false);
+        if (exists != nullptr) {
+            printf("ERROR: The symbol '%s' is aready defined.", name.cstr());
+            return false;
+        }
+
+        omis_type_t* type = nullptr;
+        if(lambda_type.has_value()) {
+            type = lambda_type.value()();
+            if(type == nullptr) {
+                return false;
+            }
+        }
+        omis_value_t* expr = lambda_expr();
+        if(expr == nullptr) {
+            return false;
+        }
+        expr = this->get_ptr_val(expr);
+
+        omis_type_t *stype = nullptr;
+        omis_type_t *dtype = type;
+        omis_type_t *vtype = expr->get_type();
+        if (dtype != nullptr) {
+            stype = dtype;
+
+            // Check type compatibilities.
+            do {
+                if (stype == vtype)
+                    break;
+                if (module->can_losslessly_bitcast(vtype, stype))
+                    break;
+                /*
+                if (vtype->isPointerTy() && vtype->getPointerElementType() == stype) {
+                    stype = dtype = vtype;
+                    break;
+                }
+                */
+
+                // TODO: 校验类型合法性, 值类型是否遵循标记类型
+
+                printf("ERROR: Type of value can not cast to the type of symbol.\n");
+                return false;
+            } while (false);
+        }
+        else {
+            stype = vtype;
+        }
+
+        if (module->equals_type(stype, module->type_void())) {
+            printf("ERROR: Void-Type can't assign to a symbol.\n");
+            return false;
+        }
+
+        auto symbol = this->create_local_symbol(name, stype, expr);
+        if (!module->add_value_symbol(name, symbol)) {
+            printf("ERROR: There is a symbol named %s in this scope.\n", name.cstr());
+            return false;
+        }
+
+        return true;
+    }
+
+    bool omis_func_t::stmt_assign(const omis_lambda_expr_t& lambda_left, const omis_lambda_expr_t& lambda_right) {
+        auto lhs = lambda_left();
+        auto rhs = lambda_right();
+        if (lhs == nullptr || rhs == nullptr)
+            return false;
+
+        auto ptr = this->get_ptr_ref(lhs);
+        auto val = this->get_ptr_val(rhs);
+        this->store(ptr, val);
+
+        return true;
+    }
+
+    bool omis_func_t::stmt_return(const std::optional<omis_lambda_expr_t> &lambda_expr) {
+        auto expected_ret_type = this->get_ret_type();
+
+        if (module->equals_type(expected_ret_type, module->type_void())) {
+            if(lambda_expr.has_value()) {
+                printf("ERROR: The function must return void type.\n");
+                return false;
+            }
+
+            this->ret();
+            return true;
+        }
+
+        if(!lambda_expr.has_value()) {
+            printf("ERROR: The function must return a value.\n");
+            return false;
+        }
+
+        auto expr = lambda_expr.value()();
+        if (expr == nullptr) {
+            printf("ERROR: Invalid ret value.\n");
+            return false;
+        }
+        expr = this->get_ptr_val(expr);
+
+        auto actual_ret_type = expr->get_type();
+        if (!module->equals_type(actual_ret_type, expected_ret_type) &&
+            !module->can_losslessly_bitcast(actual_ret_type, expected_ret_type)) {
+            printf("ERROR: The type of return value can't cast to return type of function.\n");
+            return false;
+        }
+
+        this->ret(expr);
+
+        return true;
+    }
+
+    bool omis_func_t::stmt_branch(const omis_lambda_expr_t& lambda_cond,
                               const omis_lambda_stmt_t& lambda_true,
                               const omis_lambda_stmt_t& lambda_false) {
 
-        auto if_true = this->create_block("if.true");
-        auto if_false = this->create_block("if.false");
-        auto if_end = this->create_block("if.end");
+        auto if_true = this->create_block("branch.true");
+        auto if_false = this->create_block("branch.false");
+        auto if_end = this->create_block("branch.end");
 
-        auto cond = this->expr(lambda_cond);
+        auto cond = lambda_cond();
         if (cond == nullptr)
             return false;
         cond = this->get_ptr_val(cond);
@@ -796,7 +908,7 @@ namespace eokas {
         // if-true
         this->set_active_block(if_true);
         {
-            if (!this->stmt(lambda_true))
+            if(!lambda_true())
                 return false;
             auto active_block = this->get_active_block();
             if (!module->equals_value(active_block, if_true) && !this->is_terminator_ins(active_block)) {
@@ -810,7 +922,7 @@ namespace eokas {
         // if-false
         this->set_active_block(if_false);
         {
-            if (!this->stmt(lambda_false))
+            if (!lambda_false())
                 return false;
             auto active_block = this->get_active_block();
             if (!module->equals_value(active_block, if_false) && !this->is_terminator_ins(active_block)) {
@@ -844,7 +956,7 @@ namespace eokas {
 
         // init
         {
-            if (!this->stmt(lambda_init))
+            if (!lambda_init())
                 return false;
             this->jump(loop_cond);
         }
@@ -852,7 +964,7 @@ namespace eokas {
         // cond
         this->set_active_block(loop_cond);
         {
-            auto cond = this->expr(lambda_cond);
+            auto cond = lambda_cond();
             if (cond == nullptr)
                 return false;
             cond = this->get_ptr_val(cond);
@@ -866,7 +978,7 @@ namespace eokas {
         // body
         this->set_active_block(loop_body);
         {
-            if (!this->stmt(lambda_body))
+            if (!lambda_body())
                 return false;
             auto active_block = this->get_active_block();
             if (!module->equals_value(active_block, loop_body) &&
@@ -881,7 +993,7 @@ namespace eokas {
         // step
         this->set_active_block(loop_step);
         {
-            if (!this->stmt(lambda_step))
+            if (!lambda_step())
                 return false;
             this->jump(loop_cond);
         }

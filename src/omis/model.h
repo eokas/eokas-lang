@@ -262,9 +262,11 @@ namespace eokas {
         omis_value_t* make(omis_type_t* type, omis_value_t* count);
         omis_value_t* drop(omis_value_t* ptr);
 
-        omis_value_t* expr(const omis_lambda_expr_t& lambda);
-        bool stmt(const omis_lambda_stmt_t& lambda);
-        bool stmt_if(const omis_lambda_expr_t& lambda_cond,
+        bool stmt_block(const std::optional<omis_lambda_stmt_t>& body);
+        bool stmt_symbol_def(const String& name, const std::optional<omis_lambda_type_t>& lambda_type, const omis_lambda_expr_t& lambda_expr);
+        bool stmt_assign(const omis_lambda_expr_t& lambda_left, const omis_lambda_expr_t& lambda_right);
+        bool stmt_return(const std::optional<omis_lambda_expr_t>& lambda_expr);
+        bool stmt_branch(const omis_lambda_expr_t& lambda_cond,
                      const omis_lambda_stmt_t& lambda_true,
                      const omis_lambda_stmt_t& lambda_false);
         bool stmt_loop(const omis_lambda_stmt_t& lambda_init,

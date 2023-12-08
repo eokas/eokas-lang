@@ -26,7 +26,7 @@ namespace eokas {
 
     using omis_lambda_expr_t = std::function<omis_value_t*()>;
     using omis_lambda_type_t = std::function<omis_type_t*()>;
-    using omis_lambda_stmt_t = std::optional<std::function<bool()>>;
+    using omis_lambda_stmt_t = std::function<bool()>;
 
     using omis_lambda_loading_t = std::function<omis_module_t*()>;
 }
