@@ -216,6 +216,45 @@ namespace eokas
         virtual bool is_type_struct(omis_handle_t type) override {
             return _Ty(type)->isStructTy();
         }
+		
+		virtual String get_type_name(omis_handle_t type) override {
+			auto ty = _Ty(type);
+			if(ty->isVoidTy()) return "void";
+			if(ty->isIntegerTy(1)) return "bool";
+			if(ty->isIntegerTy(8)) return "i8";
+			if(ty->isIntegerTy(16)) return "i16";
+			if(ty->isIntegerTy(32)) return "i32";
+			if(ty->isIntegerTy(64)) return "i64";
+			if(ty->isFloatTy()) return "f32";
+			if(ty->isDoubleTy()) return "f64";
+			if(ty->isPointerTy()) {
+				auto eleTy = ty->getPointerElementType();
+				return String::format("Pointer<%s>", this->get_type_name(eleTy).cstr());
+			}
+			if(ty->isArrayTy()) {
+				auto eleTy = ty->getArrayElementType();
+				return String::format("Array<%s>", this->get_type_name(eleTy).cstr());
+			}
+			if(ty->isFunctionTy()) {
+				String str = "func(";
+				uint32_t count = this->get_func_arg_count(ty);
+				for(uint32_t i = 0; i < count; i++) {
+					auto argTy = this->get_func_arg_type(ty, i);
+					str += this->get_type_name(argTy);
+					if(i == count-1) {
+						str += ", ";
+					}
+				}
+				str += ") : ";
+				str += this->get_type_name(this->get_func_ret_type(ty));
+				return str;
+			}
+			if(ty->isStructTy()) {
+				return ty->getStructName().data();
+			}
+			
+			return "Unknown";
+		}
 
         virtual omis_handle_t get_type_size(omis_handle_t type) override {
             llvm::Constant* size = llvm::ConstantExpr::getSizeOf(_Ty(type));
@@ -229,17 +268,29 @@ namespace eokas
         }
 
         virtual omis_handle_t get_func_ret_type(omis_handle_t type_func) override {
-            llvm::FunctionType* type = (llvm::FunctionType*)type_func;
-            return type->getReturnType();
-        }
+			auto ty = _Ty(type_func);
+			if (ty->isPointerTy() && ty->getPointerElementType()->isFunctionTy()) {
+				ty = ty->getPointerElementType();
+			}
+			auto type = (llvm::FunctionType *) ty;
+			return type->getReturnType();
+		}
 
         virtual uint32_t get_func_arg_count(omis_handle_t type_func) override {
-            llvm::FunctionType* type = (llvm::FunctionType*)type_func;
+			auto ty = _Ty(type_func);
+			if (ty->isPointerTy() && ty->getPointerElementType()->isFunctionTy()) {
+				ty = ty->getPointerElementType();
+			}
+			auto type = (llvm::FunctionType *) ty;
             return type->getNumParams();
         }
 
         virtual omis_handle_t get_func_arg_type(omis_handle_t type_func, uint32_t index) override {
-            llvm::FunctionType* type = (llvm::FunctionType*)type_func;
+			auto ty = _Ty(type_func);
+			if (ty->isPointerTy() && ty->getPointerElementType()->isFunctionTy()) {
+				ty = ty->getPointerElementType();
+			}
+			auto type = (llvm::FunctionType *) ty;
             return type->getParamType(index);
         }
 
@@ -309,8 +360,9 @@ namespace eokas
         }
 
         virtual omis_handle_t get_block_tail(omis_handle_t block) override {
-            auto& back = _Block(block)->back();
-            return &back;
+			auto blk = _Block(block);
+            auto back = blk->empty() ? nullptr : &blk->back();
+            return back;
         }
 
         virtual bool is_terminator_ins(omis_handle_t ins) override {

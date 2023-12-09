@@ -13,22 +13,22 @@ namespace eokas {
 
         omis_type_t *ret = type_i32();
         std::vector<omis_type_t *> args = {};
-        omis_func_t *func = this->value_func("$main", ret, args, false);
+        omis_value_t *func = this->value_func("$main", ret, args, false);
         this->scope->add_value_symbol("$main", func);
         this->scope->func = func;
 
         this->push_scope(func);
         {
-            auto entry = func->create_block("entry");
+            auto entry = this->create_block("entry");
             // IR.SetInsertPoint(entry);
-            func->set_active_block(entry);
+            this->set_active_block(entry);
 
             for (auto &stmt: node->entry->body) {
                 if (!this->encode_stmt(stmt))
                     return false;
             }
 
-            func->ensure_tail_ret();
+            this->ensure_tail_ret(func);
         }
         this->pop_scope();
 
@@ -67,7 +67,7 @@ namespace eokas {
         if (node == nullptr)
             return false;
 
-        return this->scope->func->stmt_block([&]()->bool{
+        return this->stmt_block([&]()->bool{
             for (auto &stmt: node->stmts) {
                 if (!this->encode_stmt(stmt))
                     return false;
@@ -79,9 +79,7 @@ namespace eokas {
     bool omis_module_coder_t::encode_stmt_symbol_def(ast_node_symbol_def_t *node) {
         if (node == nullptr)
             return false;
-
-        auto func = this->scope->func;
-
+		
         std::optional<omis_lambda_type_t> lambda_type;
         if(node->type != nullptr) {
             lambda_type = [&]() -> omis_type_t * {
@@ -93,15 +91,13 @@ namespace eokas {
             return this->encode_expr(node->value);
         };
 
-        return func->stmt_symbol_def(node->name, lambda_type, lambda_value);
+        return this->stmt_symbol_def(node->name, lambda_type, lambda_value);
     }
 
     bool omis_module_coder_t::encode_stmt_assign(ast_node_assign_t *node) {
         if (node == nullptr)
             return false;
-
-        auto func = this->scope->func;
-
+		
         auto left = [&]()->omis_value_t* {
             return this->encode_expr(node->left);
         };
@@ -110,15 +106,13 @@ namespace eokas {
             return this->encode_expr(node->right);
         };
 
-        return func->stmt_assign(left, right);
+        return this->stmt_assign(left, right);
     }
 
     bool omis_module_coder_t::encode_stmt_return(ast_node_return_t *node) {
         if (node == nullptr)
             return false;
-
-        auto func = this->scope->func;
-
+		
         std::optional<omis_lambda_expr_t> value;
         if(node->value != nullptr) {
             value = [&]()->omis_value_t* {
@@ -126,15 +120,13 @@ namespace eokas {
             };
         }
 
-        return func->stmt_return(value);
+        return this->stmt_return(value);
     }
 
     bool omis_module_coder_t::encode_stmt_if(struct ast_node_if_t *node) {
 		if (node == nullptr)
 			return false;
 		
-		auto func = this->scope->func;
-
         auto cond = [&]()->auto {
             return this->encode_expr(node->cond);
         };
@@ -151,15 +143,13 @@ namespace eokas {
             return this->encode_stmt(node->branch_false);
         };
 
-		return func->stmt_branch(cond, branch_true, branch_false);
+		return this->stmt_branch(cond, branch_true, branch_false);
 	}
 
     bool omis_module_coder_t::encode_stmt_loop(ast_node_loop_t *node) {
 		if (node == nullptr)
 			return false;
 		
-		auto func = this->scope->func;
-
         auto init = [&]() -> auto {
             if (node->init == nullptr)
                 return true;
@@ -184,21 +174,19 @@ namespace eokas {
             return this->encode_stmt(node->body);
         };
 
-		return func->stmt_loop(init, cond, step, body);
+		return this->stmt_loop(init, cond, step, body);
 	}
 
     bool omis_module_coder_t::encode_stmt_break(ast_node_break_t *node) {
         if (node == nullptr)
             return false;
-        auto func = this->scope->func;
-        return func->stmt_break();
+        return this->stmt_break();
     }
 
     bool omis_module_coder_t::encode_stmt_continue(ast_node_continue_t *node) {
         if (node == nullptr)
             return false;
-        auto func = this->scope->func;
-        return func->stmt_continue();
+        return this->stmt_continue();
     }
 
     omis_type_t *omis_module_coder_t::encode_type_ref(ast_node_type_t *node) {
@@ -262,48 +250,46 @@ namespace eokas {
     omis_value_t *omis_module_coder_t::encode_expr_trinary(struct ast_node_expr_trinary_t *node) {
         if (node == nullptr)
             return nullptr;
+		
+        auto trinary_begin = this->create_block("trinary.begin");
+        auto trinary_true = this->create_block("trinary.true");
+        auto trinary_false = this->create_block("trinary.false");
+        auto trinary_end = this->create_block("trinary.end");
 
-        omis_func_t *func = this->scope->func;
-
-        auto trinary_begin = func->create_block("trinary.begin");
-        auto trinary_true = func->create_block("trinary.true");
-        auto trinary_false = func->create_block("trinary.false");
-        auto trinary_end = func->create_block("trinary.end");
-
-        func->jump(trinary_begin);
-        func->set_active_block(trinary_begin);
+        this->jump(trinary_begin);
+        this->set_active_block(trinary_begin);
         auto *cond = this->encode_expr(node->cond);
         if (cond == nullptr)
             return nullptr;
-        cond = func->get_ptr_val(cond);
+        cond = this->get_ptr_val(cond);
         if (!this->equals_type(cond->get_type(), this->type_bool())) {
             printf("ERROR: Condition must be a bool value.\n");
             return nullptr;
         }
 
-        func->jump_cond(cond, trinary_true, trinary_false);
+        this->jump_cond(cond, trinary_true, trinary_false);
 
-        func->set_active_block(trinary_true);
+        this->set_active_block(trinary_true);
         auto *true_val = this->encode_expr(node->branch_true);
         if (true_val == nullptr)
             return nullptr;
-        true_val = func->get_ptr_val(true_val);
-        func->jump(trinary_end);
+        true_val = this->get_ptr_val(true_val);
+        this->jump(trinary_end);
 
-        func->set_active_block(trinary_false);
+        this->set_active_block(trinary_false);
         auto false_val = this->encode_expr(node->branch_false);
         if (false_val == nullptr)
             return nullptr;
-        false_val = func->get_ptr_val(false_val);
-        func->jump(trinary_end);
+        false_val = this->get_ptr_val(false_val);
+        this->jump(trinary_end);
 
-        func->set_active_block(trinary_end);
+        this->set_active_block(trinary_end);
         if (!this->equals_type(true_val->get_type(), false_val->get_type())) {
             printf("ERROR: Type of true-branch must be the same as false-branch.\n");
             return nullptr;
         }
 
-        auto phi = func->phi(true_val->get_type(), {
+        auto phi = this->phi(true_val->get_type(), {
                 {true_val,  trinary_true},
                 {false_val, trinary_false}
         });
@@ -322,46 +308,46 @@ namespace eokas {
         if (lhs == nullptr || rhs == nullptr)
             return nullptr;
 
-        lhs = func->get_ptr_val(lhs);
-        rhs = func->get_ptr_val(rhs);
+        lhs = this->get_ptr_val(lhs);
+        rhs = this->get_ptr_val(rhs);
 
         switch (node->op) {
             case ast_binary_oper_t::OR:
-                return func->l_or(lhs, rhs);
+                return this->l_or(lhs, rhs);
             case ast_binary_oper_t::AND:
-                return func->l_and(lhs, rhs);
+                return this->l_and(lhs, rhs);
             case ast_binary_oper_t::EQ:
-                return func->eq(lhs, rhs);
+                return this->eq(lhs, rhs);
             case ast_binary_oper_t::NE:
-                return func->ne(lhs, rhs);
+                return this->ne(lhs, rhs);
             case ast_binary_oper_t::LE:
-                return func->le(lhs, rhs);
+                return this->le(lhs, rhs);
             case ast_binary_oper_t::GE:
-                return func->ge(lhs, rhs);
+                return this->ge(lhs, rhs);
             case ast_binary_oper_t::LT:
-                return func->lt(lhs, rhs);
+                return this->lt(lhs, rhs);
             case ast_binary_oper_t::GT:
-                return func->gt(lhs, rhs);
+                return this->gt(lhs, rhs);
             case ast_binary_oper_t::ADD:
-                return func->add(lhs, rhs);
+                return this->add(lhs, rhs);
             case ast_binary_oper_t::SUB:
-                return func->sub(lhs, rhs);
+                return this->sub(lhs, rhs);
             case ast_binary_oper_t::MUL:
-                return func->mul(lhs, rhs);
+                return this->mul(lhs, rhs);
             case ast_binary_oper_t::DIV:
-                return func->div(lhs, rhs);
+                return this->div(lhs, rhs);
             case ast_binary_oper_t::MOD:
-                return func->mod(lhs, rhs);
+                return this->mod(lhs, rhs);
             case ast_binary_oper_t::BIT_AND:
-                return func->b_and(lhs, rhs);
+                return this->b_and(lhs, rhs);
             case ast_binary_oper_t::BIT_OR:
-                return func->b_or(lhs, rhs);
+                return this->b_or(lhs, rhs);
             case ast_binary_oper_t::BIT_XOR:
-                return func->b_xor(lhs, rhs);
+                return this->b_xor(lhs, rhs);
             case ast_binary_oper_t::SHIFT_L:
-                return func->b_shl(lhs, rhs);
+                return this->b_shl(lhs, rhs);
             case ast_binary_oper_t::SHIFT_R:
-                return func->b_shr(lhs, rhs);
+                return this->b_shr(lhs, rhs);
             default:
                 return nullptr;
         }
@@ -371,23 +357,21 @@ namespace eokas {
         if (node == nullptr)
             return nullptr;
 
-        auto func = this->scope->func;
-
         auto rhs = this->encode_expr(node->right);
         if (rhs == nullptr)
             return nullptr;
 
-        rhs = func->get_ptr_val(rhs);
+        rhs = this->get_ptr_val(rhs);
 
         switch (node->op) {
             case ast_unary_oper_t::POS:
                 return rhs;
             case ast_unary_oper_t::NEG:
-                return func->neg(rhs);
+                return this->neg(rhs);
             case ast_unary_oper_t::NOT:
-                return func->l_not(rhs);
+                return this->l_not(rhs);
             case ast_unary_oper_t::FLIP:
-                return func->b_flip(rhs);
+                return this->b_flip(rhs);
             default:
                 return nullptr;
         }
@@ -470,9 +454,7 @@ namespace eokas {
     omis_value_t *omis_module_coder_t::encode_expr_func_def(ast_node_func_def_t *node) {
         if (node == nullptr)
             return nullptr;
-
-        auto func = this->scope->func;
-
+		
         auto *ret_type = this->encode_type_ref(node->rtype);
         if (ret_type == nullptr)
             return nullptr;
@@ -489,12 +471,11 @@ namespace eokas {
         }
 
         auto newFunc = this->value_func("", ret_type, args_types, false);
-        auto oldFunc = func;;
 
         this->push_scope(newFunc);
         {
-            auto *entry = newFunc->create_block("entry");
-            newFunc->set_active_block(entry);
+            auto *entry = this->create_block("entry");
+            this->set_active_block(entry);
 
             // self
             auto self = newFunc;
@@ -503,7 +484,7 @@ namespace eokas {
             // args
             for (size_t index = 0; index < node->args.size(); index++) {
                 const char *name = node->args.at(index).name.cstr();
-                auto arg = newFunc->get_arg_value(index + 1);
+                auto arg = this->get_func_arg_value(newFunc, index + 1);
                 arg->set_name(name);
                 if (!this->scope->add_value_symbol(name, arg)) {
                     printf("ERROR: The symbol name '%s' is already existed.\n", name);
@@ -516,7 +497,8 @@ namespace eokas {
                 if (!this->encode_stmt(stmt))
                     return nullptr;
             }
-            newFunc->ensure_tail_ret();
+			
+            this->ensure_tail_ret(newFunc);
         }
         this->pop_scope();
 
@@ -526,15 +508,13 @@ namespace eokas {
     omis_value_t *omis_module_coder_t::encode_expr_func_ref(ast_node_func_ref_t *node) {
         if (node == nullptr)
             return nullptr;
-
-        auto func = this->scope->func;
-
-        auto funcExpr = this->encode_expr(node->func);
-        if (funcExpr == nullptr) {
+		
+        auto expr = this->encode_expr(node->func);
+        if (expr == nullptr) {
             printf("The function is undefined.\n");
             return nullptr;
         }
-        funcExpr = func->get_ptr_val(funcExpr);
+        auto func = this->get_ptr_val(expr);
 
         /*
         omis_type_t* funcType = nullptr;
@@ -553,11 +533,11 @@ namespace eokas {
 
         std::vector<omis_value_t *> args;
         for (auto i = 0; i < node->args.size(); i++) {
-            auto *argT = func->get_arg_type(i);
+            auto *argT = this->get_func_arg_type(func, i);
             auto *argV = this->encode_expr(node->args.at(i));
             if (argV == nullptr)
                 return nullptr;
-            argV = func->get_ptr_val(argV);
+            argV = this->get_ptr_val(argV);
 
             if (argT != argV->get_type()) {
                 if (equals_type(argT, argV->get_type())) {
@@ -578,13 +558,7 @@ namespace eokas {
                 args.push_back(argV);
             }
 
-            auto funcPtr = dynamic_cast<omis_func_t *>(funcExpr);
-            if (funcPtr == nullptr) {
-                printf("ERROR: Invalid function pointer.\n");
-                return nullptr;
-            }
-
-            auto retval = func->call(funcPtr, args);
+            auto retval = this->call(func, args);
 
             return retval;
         }

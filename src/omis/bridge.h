@@ -40,6 +40,7 @@ namespace eokas {
         virtual bool is_type_func(omis_handle_t type) = 0;
         virtual bool is_type_array(omis_handle_t type) = 0;
         virtual bool is_type_struct(omis_handle_t type) = 0;
+		virtual String get_type_name(omis_handle_t type) = 0;
         virtual omis_handle_t get_type_size(omis_handle_t type) = 0;
 
         virtual bool can_losslessly_cast(omis_handle_t a, omis_handle_t b) = 0;

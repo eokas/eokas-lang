@@ -178,7 +178,7 @@ namespace eokas {
         return true;
     }
 
-    omis_func_t* omis_module_core_t::define_func_print() {
+    omis_value_t* omis_module_core_t::define_func_print() {
         String name = "print";
         omis_type_t* ret = type_i32();
 

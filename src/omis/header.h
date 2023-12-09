@@ -19,7 +19,6 @@ namespace eokas {
     class omis_struct_t;
 
     class omis_value_t;
-    class omis_func_t;
 
     template<typename T>
     using omis_lambda_predicate_t = std::function<bool(const T&)>;

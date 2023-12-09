@@ -59,16 +59,16 @@ namespace eokas {
     struct omis_scope_t
     {
         omis_scope_t* parent;
-        omis_func_t* func;
+        omis_value_t* func;
         std::vector<omis_scope_t*> children;
 
         omis_table_t<omis_type_symbol_t> types;
         omis_table_t<omis_value_symbol_t> values;
 
-        omis_scope_t(omis_scope_t* parent, omis_func_t* func);
+        omis_scope_t(omis_scope_t* parent, omis_value_t* func);
         virtual ~omis_scope_t();
 
-        omis_scope_t* add_child(omis_func_t* f = nullptr);
+        omis_scope_t* add_child(omis_value_t* f = nullptr);
 
         bool add_type_symbol(const String& name, omis_type_t* type);
         omis_type_symbol_t* get_type_symbol(const String& name, bool lookup);
@@ -94,7 +94,7 @@ namespace eokas {
         bool using_module(omis_module_t* other);
 
         omis_scope_t* get_scope();
-        omis_scope_t* push_scope(omis_func_t* func = nullptr);
+        omis_scope_t* push_scope(omis_value_t* func = nullptr);
         omis_scope_t* pop_scope();
 
         omis_type_symbol_t* get_type_symbol(const String& name, bool lookup = true);
@@ -114,6 +114,7 @@ namespace eokas {
         omis_type_t* type_bytes();
         omis_type_t* type_pointer(omis_type_t* type);
         omis_type_t* type_func(omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
+		String get_type_name(omis_type_t* type);
         omis_value_t* get_type_size(omis_type_t* type);
         bool can_losslessly_bitcast(omis_type_t* a, omis_type_t* b);
 
@@ -123,10 +124,76 @@ namespace eokas {
         omis_value_t* value_float(f64_t val);
         omis_value_t* value_bool(bool val);
         omis_value_t* value_string(const String& val);
-        omis_func_t* value_func(const String& name, omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
+        omis_value_t* value_func(const String& name, omis_type_t* ret, const std::vector<omis_type_t*>& args, bool varg);
 
+		omis_type_t* get_func_ret_type(omis_value_t* func);
+		uint32_t get_func_arg_count(omis_value_t* func);
+		omis_type_t* get_func_arg_type(omis_value_t* func, uint32_t index);
+		omis_value_t* get_func_arg_value(omis_value_t* func, uint32_t index);
+		
         bool equals_type(omis_type_t* a, omis_type_t* b);
         bool equals_value(omis_value_t* a, omis_value_t* b);
+		
+		omis_value_t* create_block(const String& name);
+		omis_value_t* get_active_block();
+		void set_active_block(omis_value_t* block);
+		omis_value_t* get_block_tail(omis_value_t* block);
+		bool is_terminator_ins(omis_value_t* ins = nullptr);
+		
+		omis_value_t* load(omis_value_t* ptr);
+		omis_value_t* store(omis_value_t* ptr, omis_value_t* val);
+		omis_value_t* neg(omis_value_t* a);
+		omis_value_t* add(omis_value_t* a, omis_value_t* b);
+		omis_value_t* sub(omis_value_t* a, omis_value_t* b);
+		omis_value_t* mul(omis_value_t* a, omis_value_t* b);
+		omis_value_t* div(omis_value_t* a, omis_value_t* b);
+		omis_value_t* mod(omis_value_t* a, omis_value_t* b);
+		omis_value_t* eq(omis_value_t* a, omis_value_t* b);
+		omis_value_t* ne(omis_value_t* a, omis_value_t* b);
+		omis_value_t* gt(omis_value_t* a, omis_value_t* b);
+		omis_value_t* ge(omis_value_t* a, omis_value_t* b);
+		omis_value_t* lt(omis_value_t* a, omis_value_t* b);
+		omis_value_t* le(omis_value_t* a, omis_value_t* b);
+		omis_value_t* l_not(omis_value_t* a);
+		omis_value_t* l_and(omis_value_t* a, omis_value_t* b);
+		omis_value_t* l_or(omis_value_t* a, omis_value_t* b);
+		omis_value_t* b_flip(omis_value_t* a);
+		omis_value_t* b_and(omis_value_t* a, omis_value_t* b);
+		omis_value_t* b_or(omis_value_t* a, omis_value_t* b);
+		omis_value_t* b_xor(omis_value_t* a, omis_value_t* b);
+		omis_value_t* b_shl(omis_value_t* a, omis_value_t* b);
+		omis_value_t* b_shr(omis_value_t* a, omis_value_t* b);
+		omis_value_t* jump(omis_value_t* pos);
+		omis_value_t* jump_cond(omis_value_t* cond, omis_value_t* branch_true, omis_value_t* branch_false);
+		omis_value_t* phi(omis_type_t* type, const std::map<omis_value_t*, omis_value_t*>& incomings);
+		omis_value_t* call(omis_value_t* func, const std::vector<omis_value_t*>& args);
+		omis_value_t* call(const String& func, const std::vector<omis_value_t*>& args);
+		omis_value_t* ret(omis_value_t* value = nullptr);
+		omis_value_t* bitcast(omis_value_t* value, omis_type_t* type);
+		
+		omis_value_t* create_local_symbol(const String& name, omis_type_t* type, omis_value_t* value);
+		void ensure_tail_ret(omis_value_t* func);
+		
+		omis_value_t* get_ptr_val(omis_value_t* val);
+		omis_value_t* get_ptr_ref(omis_value_t* val);
+		
+		omis_value_t* make(omis_type_t* type);
+		omis_value_t* make(omis_type_t* type, omis_value_t* count);
+		omis_value_t* drop(omis_value_t* ptr);
+		
+		bool stmt_block(const std::optional<omis_lambda_stmt_t>& body);
+		bool stmt_symbol_def(const String& name, const std::optional<omis_lambda_type_t>& lambda_type, const omis_lambda_expr_t& lambda_expr);
+		bool stmt_assign(const omis_lambda_expr_t& lambda_left, const omis_lambda_expr_t& lambda_right);
+		bool stmt_return(const std::optional<omis_lambda_expr_t>& lambda_expr);
+		bool stmt_branch(const omis_lambda_expr_t& lambda_cond,
+						 const omis_lambda_stmt_t& lambda_true,
+						 const omis_lambda_stmt_t& lambda_false);
+		bool stmt_loop(const omis_lambda_stmt_t& lambda_init,
+					   const omis_lambda_expr_t& lambda_cond,
+					   const omis_lambda_stmt_t& lambda_step,
+					   const omis_lambda_stmt_t& lambda_body);
+		bool stmt_break();
+		bool stmt_continue();
 
     protected:
         omis_bridge_t* bridge;
@@ -137,6 +204,8 @@ namespace eokas {
         std::vector<omis_module_t*> usings;
         std::map<omis_handle_t, omis_type_t*> types;
         std::map<omis_handle_t, omis_value_t*> values;
+		omis_value_t* break_point;
+		omis_value_t* continue_point;
     };
 
     class omis_type_t {
@@ -158,6 +227,7 @@ namespace eokas {
         omis_module_t* module;
         omis_handle_t handle;
         omis_value_t* default_value;
+		String name;
     };
 
     class omis_struct_t :public omis_type_t {
@@ -201,85 +271,6 @@ namespace eokas {
         omis_module_t* module;
         omis_type_t* type;
         omis_handle_t handle;
-    };
-
-    class omis_func_t :public omis_value_t {
-    public:
-        omis_func_t(omis_module_t* module, omis_type_t* type, omis_handle_t handle);
-        virtual ~omis_func_t();
-
-        omis_type_t* get_ret_type();
-        uint32_t get_arg_count();
-        omis_type_t* get_arg_type(uint32_t index);
-        omis_value_t* get_arg_value(uint32_t index);
-
-        omis_value_t* create_block(const String& name);
-        omis_value_t* get_active_block();
-        void set_active_block(omis_value_t* block);
-        omis_value_t* get_block_tail(omis_value_t* block);
-
-        bool is_terminator_ins(omis_value_t* ins = nullptr);
-
-        omis_value_t* load(omis_value_t* ptr);
-        omis_value_t* store(omis_value_t* ptr, omis_value_t* val);
-
-        omis_value_t* neg(omis_value_t* a);
-        omis_value_t* add(omis_value_t* a, omis_value_t* b);
-        omis_value_t* sub(omis_value_t* a, omis_value_t* b);
-        omis_value_t* mul(omis_value_t* a, omis_value_t* b);
-        omis_value_t* div(omis_value_t* a, omis_value_t* b);
-        omis_value_t* mod(omis_value_t* a, omis_value_t* b);
-        omis_value_t* eq(omis_value_t* a, omis_value_t* b);
-        omis_value_t* ne(omis_value_t* a, omis_value_t* b);
-        omis_value_t* gt(omis_value_t* a, omis_value_t* b);
-        omis_value_t* ge(omis_value_t* a, omis_value_t* b);
-        omis_value_t* lt(omis_value_t* a, omis_value_t* b);
-        omis_value_t* le(omis_value_t* a, omis_value_t* b);
-        omis_value_t* l_not(omis_value_t* a);
-        omis_value_t* l_and(omis_value_t* a, omis_value_t* b);
-        omis_value_t* l_or(omis_value_t* a, omis_value_t* b);
-        omis_value_t* b_flip(omis_value_t* a);
-        omis_value_t* b_and(omis_value_t* a, omis_value_t* b);
-        omis_value_t* b_or(omis_value_t* a, omis_value_t* b);
-        omis_value_t* b_xor(omis_value_t* a, omis_value_t* b);
-        omis_value_t* b_shl(omis_value_t* a, omis_value_t* b);
-        omis_value_t* b_shr(omis_value_t* a, omis_value_t* b);
-        omis_value_t* jump(omis_value_t* pos);
-        omis_value_t* jump_cond(omis_value_t* cond, omis_value_t* branch_true, omis_value_t* branch_false);
-        omis_value_t* phi(omis_type_t* type, const std::map<omis_value_t*, omis_value_t*>& incomings);
-        omis_value_t* call(omis_func_t* func, const std::vector<omis_value_t*>& args);
-        omis_value_t* call(const String& func, const std::vector<omis_value_t*>& args);
-        omis_value_t* ret(omis_value_t* value = nullptr);
-        omis_value_t* bitcast(omis_value_t* value, omis_type_t* type);
-
-        omis_value_t* create_local_symbol(const String& name, omis_type_t* type, omis_value_t* value);
-        void ensure_tail_ret();
-
-        omis_value_t* get_ptr_val(omis_value_t* val);
-        omis_value_t* get_ptr_ref(omis_value_t* val);
-
-        omis_value_t* make(omis_type_t* type);
-        omis_value_t* make(omis_type_t* type, omis_value_t* count);
-        omis_value_t* drop(omis_value_t* ptr);
-
-        bool stmt_block(const std::optional<omis_lambda_stmt_t>& body);
-        bool stmt_symbol_def(const String& name, const std::optional<omis_lambda_type_t>& lambda_type, const omis_lambda_expr_t& lambda_expr);
-        bool stmt_assign(const omis_lambda_expr_t& lambda_left, const omis_lambda_expr_t& lambda_right);
-        bool stmt_return(const std::optional<omis_lambda_expr_t>& lambda_expr);
-        bool stmt_branch(const omis_lambda_expr_t& lambda_cond,
-                     const omis_lambda_stmt_t& lambda_true,
-                     const omis_lambda_stmt_t& lambda_false);
-        bool stmt_loop(const omis_lambda_stmt_t& lambda_init,
-                       const omis_lambda_expr_t& lambda_cond,
-                       const omis_lambda_stmt_t& lambda_step,
-                       const omis_lambda_stmt_t& lambda_body);
-        bool stmt_break();
-        bool stmt_continue();
-
-    protected:
-        omis_bridge_t* bridge;
-        omis_value_t* break_point;
-        omis_value_t* continue_point;
     };
 }
 
