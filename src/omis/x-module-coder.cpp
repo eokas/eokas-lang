@@ -28,7 +28,7 @@ namespace eokas {
                     return false;
             }
 
-            this->ensure_tail_ret(func);
+            this->stmt_ensure_tail_ret(func);
         }
         this->pop_scope();
 
@@ -251,50 +251,17 @@ namespace eokas {
         if (node == nullptr)
             return nullptr;
 		
-        auto trinary_begin = this->create_block("trinary.begin");
-        auto trinary_true = this->create_block("trinary.true");
-        auto trinary_false = this->create_block("trinary.false");
-        auto trinary_end = this->create_block("trinary.end");
-
-        this->jump(trinary_begin);
-        this->set_active_block(trinary_begin);
-        auto *cond = this->encode_expr(node->cond);
-        if (cond == nullptr)
-            return nullptr;
-        cond = this->get_ptr_val(cond);
-        if (!this->equals_type(cond->get_type(), this->type_bool())) {
-            printf("ERROR: Condition must be a bool value.\n");
-            return nullptr;
-        }
-
-        this->jump_cond(cond, trinary_true, trinary_false);
-
-        this->set_active_block(trinary_true);
-        auto *true_val = this->encode_expr(node->branch_true);
-        if (true_val == nullptr)
-            return nullptr;
-        true_val = this->get_ptr_val(true_val);
-        this->jump(trinary_end);
-
-        this->set_active_block(trinary_false);
-        auto false_val = this->encode_expr(node->branch_false);
-        if (false_val == nullptr)
-            return nullptr;
-        false_val = this->get_ptr_val(false_val);
-        this->jump(trinary_end);
-
-        this->set_active_block(trinary_end);
-        if (!this->equals_type(true_val->get_type(), false_val->get_type())) {
-            printf("ERROR: Type of true-branch must be the same as false-branch.\n");
-            return nullptr;
-        }
-
-        auto phi = this->phi(true_val->get_type(), {
-                {true_val,  trinary_true},
-                {false_val, trinary_false}
-        });
-
-        return phi;
+		auto lambda_cond = [&]()->omis_value_t* {
+			return this->encode_expr(node->cond);
+		};
+		auto lambda_true = [&]()->omis_value_t* {
+			return this->encode_expr(node->branch_true);
+		};
+		auto lambda_false = [&]()->omis_value_t* {
+			return this->encode_expr(node->branch_false);
+		};
+		
+		return this->expr_branch(lambda_cond, lambda_true, lambda_false);
     }
 
     omis_value_t *omis_module_coder_t::encode_expr_binary(ast_node_expr_binary_t *node) {
@@ -498,7 +465,7 @@ namespace eokas {
                     return nullptr;
             }
 			
-            this->ensure_tail_ret(newFunc);
+            this->stmt_ensure_tail_ret(newFunc);
         }
         this->pop_scope();
 

@@ -140,6 +140,7 @@ namespace eokas {
 		omis_value_t* get_block_tail(omis_value_t* block);
 		bool is_terminator_ins(omis_value_t* ins = nullptr);
 		
+		omis_value_t* alloc(const String& name, omis_type_t* type, omis_value_t* value = nullptr);
 		omis_value_t* load(omis_value_t* ptr);
 		omis_value_t* store(omis_value_t* ptr, omis_value_t* val);
 		omis_value_t* neg(omis_value_t* a);
@@ -171,17 +172,15 @@ namespace eokas {
 		omis_value_t* ret(omis_value_t* value = nullptr);
 		omis_value_t* bitcast(omis_value_t* value, omis_type_t* type);
 		
-		omis_value_t* create_local_symbol(const String& name, omis_type_t* type, omis_value_t* value);
-		void ensure_tail_ret(omis_value_t* func);
-		
 		omis_value_t* get_ptr_val(omis_value_t* val);
 		omis_value_t* get_ptr_ref(omis_value_t* val);
-		
 		omis_value_t* make(omis_type_t* type);
 		omis_value_t* make(omis_type_t* type, omis_value_t* count);
 		omis_value_t* drop(omis_value_t* ptr);
 		
-		bool stmt_block(const std::optional<omis_lambda_stmt_t>& body);
+		omis_value_t* expr_branch(const omis_lambda_expr_t& lambda_cond, const omis_lambda_expr_t& lambda_true, const omis_lambda_expr_t& lambda_false);
+		
+		bool stmt_block(const std::optional<omis_lambda_stmt_t>& lambda_body);
 		bool stmt_symbol_def(const String& name, const std::optional<omis_lambda_type_t>& lambda_type, const omis_lambda_expr_t& lambda_expr);
 		bool stmt_assign(const omis_lambda_expr_t& lambda_left, const omis_lambda_expr_t& lambda_right);
 		bool stmt_return(const std::optional<omis_lambda_expr_t>& lambda_expr);
@@ -194,8 +193,9 @@ namespace eokas {
 					   const omis_lambda_stmt_t& lambda_body);
 		bool stmt_break();
 		bool stmt_continue();
-
-    protected:
+		void stmt_ensure_tail_ret(omis_value_t* func);
+		
+	protected:
         omis_bridge_t* bridge;
         String name;
         omis_handle_t handle;

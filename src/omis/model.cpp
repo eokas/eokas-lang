@@ -499,519 +499,566 @@ namespace eokas {
 }
 
 namespace eokas {
-    omis_value_t* omis_module_t::create_block(const String &name) {
+	omis_value_t *omis_module_t::create_block(const String &name) {
 		auto func = this->scope->func;
-        auto ret = bridge->create_block(func->get_handle(), name);
-        return this->value(this->type_void(), ret);
-    }
-
-    omis_value_t* omis_module_t::get_active_block() {
-        auto ret = bridge->get_active_block();
-        return this->value(this->type_void(), ret);
-    }
-
-    void omis_module_t::set_active_block(omis_value_t* block) {
-        bridge->set_active_block(block->get_handle());
-    }
-
-    omis_value_t* omis_module_t::get_block_tail(omis_value_t* block) {
-        auto ret = bridge->get_block_tail(block->get_handle());
-		if(ret == nullptr)
+		auto ret = bridge->create_block(func->get_handle(), name);
+		return this->value(this->type_void(), ret);
+	}
+	
+	omis_value_t *omis_module_t::get_active_block() {
+		auto ret = bridge->get_active_block();
+		return this->value(this->type_void(), ret);
+	}
+	
+	void omis_module_t::set_active_block(omis_value_t *block) {
+		bridge->set_active_block(block->get_handle());
+	}
+	
+	omis_value_t *omis_module_t::get_block_tail(omis_value_t *block) {
+		auto ret = bridge->get_block_tail(block->get_handle());
+		if (ret == nullptr)
 			return nullptr;
-        return this->value(ret);
-    }
-
-    bool omis_module_t::is_terminator_ins(omis_value_t *ins) {
-        if(ins != nullptr) {
-            return bridge->is_terminator_ins(ins->get_handle());
-        }
-        else {
-            auto block = bridge->get_active_block();
-            auto tail = bridge->get_block_tail(block);
-			if(tail == nullptr)
+		return this->value(ret);
+	}
+	
+	bool omis_module_t::is_terminator_ins(omis_value_t *ins) {
+		if (ins != nullptr) {
+			return bridge->is_terminator_ins(ins->get_handle());
+		} else {
+			auto block = bridge->get_active_block();
+			auto tail = bridge->get_block_tail(block);
+			if (tail == nullptr)
 				return false;
-            return bridge->is_terminator_ins(tail);
-        }
-    }
-
-    omis_value_t* omis_module_t::load(omis_value_t *ptr) {
-        auto ret = bridge->load(ptr->get_handle());
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::store(omis_value_t *ptr, omis_value_t *val) {
-        auto ret = bridge->store(ptr->get_handle(), val->get_handle());
-        return this->value(this->type_void(), ret);
-    }
-
-    omis_value_t* omis_module_t::neg(omis_value_t *a) {
-        auto ret = bridge->neg(a->get_handle());
-        return this->value(a->get_type(), ret);
-    }
-
-    omis_value_t* omis_module_t::add(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->add(a->get_handle(), b->get_handle());
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::sub(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->sub(a->get_handle(), b->get_handle());
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::mul(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->mul(a->get_handle(), b->get_handle());
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::div(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->div(a->get_handle(), b->get_handle());
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::mod(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->mod(a->get_handle(), b->get_handle());
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::eq(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->eq(a->get_handle(), b->get_handle());
-        return this->value(this->type_bool(), ret);
-    }
-
-    omis_value_t* omis_module_t::ne(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->ne(a->get_handle(), b->get_handle());
-        return this->value(this->type_bool(), ret);
-    }
-
-    omis_value_t* omis_module_t::gt(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->gt(a->get_handle(), b->get_handle());
-        return this->value(this->type_bool(), ret);
-    }
-
-    omis_value_t* omis_module_t::ge(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->ge(a->get_handle(), b->get_handle());
-        return this->value(this->type_bool(), ret);
-    }
-
-    omis_value_t* omis_module_t::lt(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->lt(a->get_handle(), b->get_handle());
-        return this->value(this->type_bool(), ret);
-    }
-
-    omis_value_t* omis_module_t::le(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->le(a->get_handle(), b->get_handle());
-        return this->value(this->type_bool(), ret);
-    }
-
-    omis_value_t* omis_module_t::l_not(omis_value_t *a) {
-        auto ret = bridge->l_not(a->get_handle());
-        return this->value(this->type_bool(), ret);
-    }
-
-    omis_value_t* omis_module_t::l_and(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->l_and(a->get_handle(), b->get_handle());
-        return this->value(this->type_bool(), ret);
-    }
-
-    omis_value_t* omis_module_t::l_or(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->l_or(a->get_handle(), b->get_handle());
-        return this->value(this->type_bool(), ret);
-    }
-
-    omis_value_t* omis_module_t::b_flip(omis_value_t *a) {
-        auto ret = bridge->b_flip(a->get_handle());
-        return this->value(a->get_type(), ret);
-    }
-
-    omis_value_t* omis_module_t::b_and(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->b_and(a->get_handle(), b->get_handle());
-        return this->value(a->get_type(), ret);
-    }
-
-    omis_value_t* omis_module_t::b_or(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->b_or(a->get_handle(), b->get_handle());
-        return this->value(a->get_type(), ret);
-    }
-
-    omis_value_t* omis_module_t::b_xor(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->b_xor(a->get_handle(), b->get_handle());
-        return this->value(a->get_type(), ret);
-    }
-
-    omis_value_t* omis_module_t::b_shl(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->b_shl(a->get_handle(), b->get_handle());
-        return this->value(a->get_type(), ret);
-    }
-
-    omis_value_t* omis_module_t::b_shr(omis_value_t *a, omis_value_t *b) {
-        auto ret = bridge->b_shr(a->get_handle(), b->get_handle());
-        return this->value(a->get_type(), ret);
-    }
-
-    omis_value_t* omis_module_t::jump(omis_value_t *pos) {
-        auto ret = bridge->jump(pos->get_handle());
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::jump_cond(omis_value_t* cond, omis_value_t* branch_true, omis_value_t* branch_false) {
-        auto ret = bridge->jump_cond(cond->get_handle(), branch_true->get_handle(), branch_false->get_handle());
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::phi(omis_type_t *type, const std::map<omis_value_t *, omis_value_t *>& incomings) {
-        std::map<omis_handle_t, omis_handle_t> incomings_handles;
-        for(auto& pair : incomings) {
-            incomings_handles.insert(std::make_pair(pair.first->get_handle(), pair.second->get_handle()));
-        }
-        auto ret = bridge->phi(type->get_handle(), incomings_handles);
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::call(omis_value_t* func, const std::vector<omis_value_t*>& args) {
-        std::vector<omis_handle_t> args_values;
-        for(auto& arg : args) {
-            args_values.push_back(arg->get_handle());
-        }
-        auto ret = bridge->call(func->get_handle(), args_values);
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::call(const String &func_name, const std::vector<omis_value_t *> &args) {
-        auto symbol = this->get_value_symbol(func_name);
-        if(symbol == nullptr)
-            return nullptr;
-        auto func = symbol->value;
-        if(func == nullptr)
-            return nullptr;
-        return this->call(func, args);
-    }
-
-    omis_value_t* omis_module_t::ret(omis_value_t* value) {
-        auto ret = bridge->ret(value != nullptr ? value->get_handle() : nullptr);
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::bitcast(omis_value_t *value, omis_type_t *type) {
-        auto ret = bridge->bitcast(value->get_handle(), type->get_handle());
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::create_local_symbol(const String &name, omis_type_t *type, omis_value_t *value) {
-        auto ptr = bridge->alloc(type->get_handle(), name);
-        auto ret = bridge->store(ptr, value->get_handle());
-        return this->value(ptr);
-    }
-
-    void omis_module_t::ensure_tail_ret(omis_value_t* func) {
-        auto block = bridge->get_active_block();
-        auto lastOp = bridge->get_block_tail(block);
-
-        if(!bridge->is_terminator_ins(lastOp)) {
-            auto ret_type = bridge->get_func_ret_type(func->get_type()->get_handle());
-            if (ret_type == this->type_void()->get_handle())
-                bridge->ret();
-            else
-                bridge->ret(bridge->get_default_value(ret_type));
-        }
-    }
-
-    omis_value_t* omis_module_t::get_ptr_val(omis_value_t *ptr) {
-        auto ret = bridge->get_ptr_val(ptr->get_handle());
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::get_ptr_ref(omis_value_t *ptr) {
-        auto ret = bridge->get_ptr_ref(ptr->get_handle());
-        return this->value(ret);
-    }
-
-    omis_value_t* omis_module_t::make(omis_type_t* type) {
-        auto len = this->get_type_size(type);
-        auto ptr = this->call("malloc", {len});
-
-        auto cond = [&]()->omis_value_t* {
-            return this->eq(ptr, this->value_integer(0, 64));
-        };
-        auto body = [&]()->bool{
-            return true;
-        };
-        this->stmt_branch(cond, body, nullptr);
-
-        auto val = this->bitcast(ptr, type);
-        return val;
-    }
-
-    omis_value_t* omis_module_t::make(omis_type_t* type, omis_value_t* count) {
-        auto stride = this->get_type_size(type);
-        auto len = this->mul(stride, count);
-        auto ptr = this->call("malloc", {len});
-        auto val = this->bitcast(ptr, type);
-        return val;
-    }
-
-    omis_value_t* omis_module_t::drop(omis_value_t* ptr) {
-        return this->call("free", {ptr});
-    }
-
-    bool omis_module_t::stmt_block(const std::optional<omis_lambda_stmt_t> &body) {
+			return bridge->is_terminator_ins(tail);
+		}
+	}
+	
+	omis_value_t *omis_module_t::alloc(const String &name, omis_type_t *type, omis_value_t *value) {
+		auto ptr = bridge->alloc(type->get_handle(), name);
+		if(value != nullptr) {
+			auto ret = bridge->store(ptr, value->get_handle());
+		}
+		return this->value(ptr);
+	}
+	
+	omis_value_t *omis_module_t::load(omis_value_t *ptr) {
+		auto ret = bridge->load(ptr->get_handle());
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::store(omis_value_t *ptr, omis_value_t *val) {
+		auto ret = bridge->store(ptr->get_handle(), val->get_handle());
+		return this->value(this->type_void(), ret);
+	}
+	
+	omis_value_t *omis_module_t::neg(omis_value_t *a) {
+		auto ret = bridge->neg(a->get_handle());
+		return this->value(a->get_type(), ret);
+	}
+	
+	omis_value_t *omis_module_t::add(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->add(a->get_handle(), b->get_handle());
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::sub(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->sub(a->get_handle(), b->get_handle());
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::mul(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->mul(a->get_handle(), b->get_handle());
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::div(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->div(a->get_handle(), b->get_handle());
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::mod(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->mod(a->get_handle(), b->get_handle());
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::eq(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->eq(a->get_handle(), b->get_handle());
+		return this->value(this->type_bool(), ret);
+	}
+	
+	omis_value_t *omis_module_t::ne(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->ne(a->get_handle(), b->get_handle());
+		return this->value(this->type_bool(), ret);
+	}
+	
+	omis_value_t *omis_module_t::gt(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->gt(a->get_handle(), b->get_handle());
+		return this->value(this->type_bool(), ret);
+	}
+	
+	omis_value_t *omis_module_t::ge(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->ge(a->get_handle(), b->get_handle());
+		return this->value(this->type_bool(), ret);
+	}
+	
+	omis_value_t *omis_module_t::lt(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->lt(a->get_handle(), b->get_handle());
+		return this->value(this->type_bool(), ret);
+	}
+	
+	omis_value_t *omis_module_t::le(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->le(a->get_handle(), b->get_handle());
+		return this->value(this->type_bool(), ret);
+	}
+	
+	omis_value_t *omis_module_t::l_not(omis_value_t *a) {
+		auto ret = bridge->l_not(a->get_handle());
+		return this->value(this->type_bool(), ret);
+	}
+	
+	omis_value_t *omis_module_t::l_and(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->l_and(a->get_handle(), b->get_handle());
+		return this->value(this->type_bool(), ret);
+	}
+	
+	omis_value_t *omis_module_t::l_or(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->l_or(a->get_handle(), b->get_handle());
+		return this->value(this->type_bool(), ret);
+	}
+	
+	omis_value_t *omis_module_t::b_flip(omis_value_t *a) {
+		auto ret = bridge->b_flip(a->get_handle());
+		return this->value(a->get_type(), ret);
+	}
+	
+	omis_value_t *omis_module_t::b_and(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->b_and(a->get_handle(), b->get_handle());
+		return this->value(a->get_type(), ret);
+	}
+	
+	omis_value_t *omis_module_t::b_or(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->b_or(a->get_handle(), b->get_handle());
+		return this->value(a->get_type(), ret);
+	}
+	
+	omis_value_t *omis_module_t::b_xor(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->b_xor(a->get_handle(), b->get_handle());
+		return this->value(a->get_type(), ret);
+	}
+	
+	omis_value_t *omis_module_t::b_shl(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->b_shl(a->get_handle(), b->get_handle());
+		return this->value(a->get_type(), ret);
+	}
+	
+	omis_value_t *omis_module_t::b_shr(omis_value_t *a, omis_value_t *b) {
+		auto ret = bridge->b_shr(a->get_handle(), b->get_handle());
+		return this->value(a->get_type(), ret);
+	}
+	
+	omis_value_t *omis_module_t::jump(omis_value_t *pos) {
+		auto ret = bridge->jump(pos->get_handle());
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::jump_cond(omis_value_t *cond, omis_value_t *branch_true, omis_value_t *branch_false) {
+		auto ret = bridge->jump_cond(cond->get_handle(), branch_true->get_handle(), branch_false->get_handle());
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::phi(omis_type_t *type, const std::map<omis_value_t *, omis_value_t *> &incomings) {
+		std::map<omis_handle_t, omis_handle_t> incomings_handles;
+		for (auto &pair : incomings) {
+			incomings_handles.insert(std::make_pair(pair.first->get_handle(), pair.second->get_handle()));
+		}
+		auto ret = bridge->phi(type->get_handle(), incomings_handles);
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::call(omis_value_t *func, const std::vector<omis_value_t *> &args) {
+		std::vector<omis_handle_t> args_values;
+		for (auto &arg : args) {
+			args_values.push_back(arg->get_handle());
+		}
+		auto ret = bridge->call(func->get_handle(), args_values);
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::call(const String &func_name, const std::vector<omis_value_t *> &args) {
+		auto symbol = this->get_value_symbol(func_name);
+		if (symbol == nullptr)
+			return nullptr;
+		auto func = symbol->value;
+		if (func == nullptr)
+			return nullptr;
+		return this->call(func, args);
+	}
+	
+	omis_value_t *omis_module_t::ret(omis_value_t *value) {
+		auto ret = bridge->ret(value != nullptr ? value->get_handle() : nullptr);
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::bitcast(omis_value_t *value, omis_type_t *type) {
+		auto ret = bridge->bitcast(value->get_handle(), type->get_handle());
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::get_ptr_val(omis_value_t *ptr) {
+		auto ret = bridge->get_ptr_val(ptr->get_handle());
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::get_ptr_ref(omis_value_t *ptr) {
+		auto ret = bridge->get_ptr_ref(ptr->get_handle());
+		return this->value(ret);
+	}
+	
+	omis_value_t *omis_module_t::make(omis_type_t *type) {
+		auto len = this->get_type_size(type);
+		auto ptr = this->call("malloc", {len});
+		
+		auto cond = [&]() -> omis_value_t * {
+			return this->eq(ptr, this->value_integer(0, 64));
+		};
+		auto body = [&]() -> bool {
+			return true;
+		};
+		this->stmt_branch(cond, body, nullptr);
+		
+		auto val = this->bitcast(ptr, type);
+		return val;
+	}
+	
+	omis_value_t *omis_module_t::make(omis_type_t *type, omis_value_t *count) {
+		auto stride = this->get_type_size(type);
+		auto len = this->mul(stride, count);
+		auto ptr = this->call("malloc", {len});
+		auto val = this->bitcast(ptr, type);
+		return val;
+	}
+	
+	omis_value_t *omis_module_t::drop(omis_value_t *ptr) {
+		return this->call("free", {ptr});
+	}
+	
+	omis_value_t * omis_module_t::expr_branch(const omis_lambda_expr_t &lambda_cond, const omis_lambda_expr_t &lambda_true, const omis_lambda_expr_t &lambda_false) {
+		auto trinary_begin = this->create_block("trinary.begin");
+		auto trinary_true = this->create_block("trinary.true");
+		auto trinary_false = this->create_block("trinary.false");
+		auto trinary_end = this->create_block("trinary.end");
+		
+		this->jump(trinary_begin);
+		this->set_active_block(trinary_begin);
+		auto *cond = lambda_cond();
+		if (cond == nullptr)
+			return nullptr;
+		cond = this->get_ptr_val(cond);
+		if (!this->equals_type(cond->get_type(), this->type_bool())) {
+			printf("ERROR: Condition must be a bool value.\n");
+			return nullptr;
+		}
+		
+		this->jump_cond(cond, trinary_true, trinary_false);
+		
+		this->set_active_block(trinary_true);
+		auto *true_val = lambda_true();
+		if (true_val == nullptr)
+			return nullptr;
+		true_val = this->get_ptr_val(true_val);
+		this->jump(trinary_end);
+		
+		this->set_active_block(trinary_false);
+		auto false_val = lambda_false();
+		if (false_val == nullptr)
+			return nullptr;
+		false_val = this->get_ptr_val(false_val);
+		this->jump(trinary_end);
+		
+		this->set_active_block(trinary_end);
+		if (!this->equals_type(true_val->get_type(), false_val->get_type())) {
+			printf("ERROR: Type of true-branch must be the same as false-branch.\n");
+			return nullptr;
+		}
+		
+		auto phi = this->phi(true_val->get_type(), {
+			{true_val,  trinary_true},
+			{false_val, trinary_false}
+		});
+		
+		return phi;
+	}
+	
+	bool omis_module_t::stmt_block(const std::optional<omis_lambda_stmt_t> &lambda_body) {
 		this->push_scope();
-
-        if(body.has_value()) {
-            if(!body.value()()) {
-                return false;
-            }
-        }
+		
+		if (lambda_body.has_value()) {
+			if (!lambda_body.value()()) {
+				return false;
+			}
+		}
 		
 		this->pop_scope();
-
-        return true;
-    }
-
-    bool omis_module_t::stmt_symbol_def(const String& name, const std::optional<omis_lambda_type_t>& lambda_type, const omis_lambda_expr_t &lambda_expr) {
-        auto exists = this->get_value_symbol(name, false);
-        if (exists != nullptr) {
-            printf("ERROR: The symbol '%s' is aready defined.", name.cstr());
-            return false;
-        }
-
-        omis_type_t* type = nullptr;
-        if(lambda_type.has_value()) {
-            type = lambda_type.value()();
-            if(type == nullptr) {
-                return false;
-            }
-        }
-        omis_value_t* expr = lambda_expr();
-        if(expr == nullptr) {
-            return false;
-        }
-        expr = this->get_ptr_val(expr);
-
-        omis_type_t *stype = nullptr;
-        omis_type_t *dtype = type;
-        omis_type_t *vtype = expr->get_type();
-        if (dtype != nullptr) {
-            stype = dtype;
-
-            // Check type compatibilities.
-            do {
-                if (stype == vtype)
-                    break;
-                if (this->can_losslessly_bitcast(vtype, stype))
-                    break;
-                /*
-                if (vtype->isPointerTy() && vtype->getPointerElementType() == stype) {
-                    stype = dtype = vtype;
-                    break;
-                }
-                */
-
-                // TODO: 校验类型合法性, 值类型是否遵循标记类型
-
-                printf("ERROR: Type of value can not cast to the type of symbol.\n");
-                return false;
-            } while (false);
-        }
-        else {
-            stype = vtype;
-        }
-
-        if (this->equals_type(stype, this->type_void())) {
-            printf("ERROR: Void-Type can't assign to a symbol.\n");
-            return false;
-        }
-
-        auto symbol = this->create_local_symbol(name, stype, expr);
-        if (!this->add_value_symbol(name, symbol)) {
-            printf("ERROR: There is a symbol named %s in this scope.\n", name.cstr());
-            return false;
-        }
-
-        return true;
-    }
-
-    bool omis_module_t::stmt_assign(const omis_lambda_expr_t& lambda_left, const omis_lambda_expr_t& lambda_right) {
-        auto lhs = lambda_left();
-        auto rhs = lambda_right();
-        if (lhs == nullptr || rhs == nullptr)
-            return false;
-
-        auto ptr = this->get_ptr_ref(lhs);
-        auto val = this->get_ptr_val(rhs);
-        this->store(ptr, val);
-
-        return true;
-    }
-
-    bool omis_module_t::stmt_return(const std::optional<omis_lambda_expr_t> &lambda_expr) {
+		
+		return true;
+	}
+	
+	bool omis_module_t::stmt_symbol_def(const String &name, const std::optional<omis_lambda_type_t> &lambda_type, const omis_lambda_expr_t &lambda_expr) {
+		auto exists = this->get_value_symbol(name, false);
+		if (exists != nullptr) {
+			printf("ERROR: The symbol '%s' is aready defined.", name.cstr());
+			return false;
+		}
+		
+		omis_type_t *type = nullptr;
+		if (lambda_type.has_value()) {
+			type = lambda_type.value()();
+			if (type == nullptr) {
+				return false;
+			}
+		}
+		omis_value_t *expr = lambda_expr();
+		if (expr == nullptr) {
+			return false;
+		}
+		expr = this->get_ptr_val(expr);
+		
+		omis_type_t *stype = nullptr;
+		omis_type_t *dtype = type;
+		omis_type_t *vtype = expr->get_type();
+		if (dtype != nullptr) {
+			stype = dtype;
+			
+			// Check type compatibilities.
+			do {
+				if (stype == vtype)
+					break;
+				if (this->can_losslessly_bitcast(vtype, stype))
+					break;
+				/*
+				if (vtype->isPointerTy() && vtype->getPointerElementType() == stype) {
+					stype = dtype = vtype;
+					break;
+				}
+				*/
+				
+				// TODO: 校验类型合法性, 值类型是否遵循标记类型
+				
+				printf("ERROR: Type of value can not cast to the type of symbol.\n");
+				return false;
+			} while (false);
+		} else {
+			stype = vtype;
+		}
+		
+		if (this->equals_type(stype, this->type_void())) {
+			printf("ERROR: Void-Type can't assign to a symbol.\n");
+			return false;
+		}
+		
+		auto symbol = this->alloc(name, stype, expr);
+		if (!this->add_value_symbol(name, symbol)) {
+			printf("ERROR: There is a symbol named %s in this scope.\n", name.cstr());
+			return false;
+		}
+		
+		return true;
+	}
+	
+	bool omis_module_t::stmt_assign(const omis_lambda_expr_t &lambda_left, const omis_lambda_expr_t &lambda_right) {
+		auto lhs = lambda_left();
+		auto rhs = lambda_right();
+		if (lhs == nullptr || rhs == nullptr)
+			return false;
+		
+		auto ptr = this->get_ptr_ref(lhs);
+		auto val = this->get_ptr_val(rhs);
+		this->store(ptr, val);
+		
+		return true;
+	}
+	
+	bool omis_module_t::stmt_return(const std::optional<omis_lambda_expr_t> &lambda_expr) {
 		auto func = this->scope->func;
 		
-        auto expected_ret_type = this->get_func_ret_type(func);
-        if (this->equals_type(expected_ret_type, this->type_void())) {
-            if(lambda_expr.has_value()) {
-                printf("ERROR: The function must return void type.\n");
-                return false;
-            }
-
-            this->ret();
-            return true;
-        }
-
-        if(!lambda_expr.has_value()) {
-            printf("ERROR: The function must return a value.\n");
-            return false;
-        }
-
-        auto expr = lambda_expr.value()();
-        if (expr == nullptr) {
-            printf("ERROR: Invalid ret value.\n");
-            return false;
-        }
-        expr = this->get_ptr_val(expr);
-
-        auto actual_ret_type = expr->get_type();
-        if ((!this->equals_type(actual_ret_type, expected_ret_type)) &&
+		auto expected_ret_type = this->get_func_ret_type(func);
+		if (this->equals_type(expected_ret_type, this->type_void())) {
+			if (lambda_expr.has_value()) {
+				printf("ERROR: The function must return void type.\n");
+				return false;
+			}
+			
+			this->ret();
+			return true;
+		}
+		
+		if (!lambda_expr.has_value()) {
+			printf("ERROR: The function must return a value.\n");
+			return false;
+		}
+		
+		auto expr = lambda_expr.value()();
+		if (expr == nullptr) {
+			printf("ERROR: Invalid ret value.\n");
+			return false;
+		}
+		expr = this->get_ptr_val(expr);
+		
+		auto actual_ret_type = expr->get_type();
+		if ((!this->equals_type(actual_ret_type, expected_ret_type)) &&
 			(!this->can_losslessly_bitcast(actual_ret_type, expected_ret_type))) {
-            printf("ERROR: The type of return value can't cast to return type of function.\n");
-            return false;
-        }
-
-        this->ret(expr);
-
-        return true;
-    }
-
-    bool omis_module_t::stmt_branch(const omis_lambda_expr_t& lambda_cond,
-                              const omis_lambda_stmt_t& lambda_true,
-                              const omis_lambda_stmt_t& lambda_false) {
-        auto if_true = this->create_block("branch.true");
-        auto if_false = this->create_block("branch.false");
-        auto if_end = this->create_block("branch.end");
-
-        auto cond = lambda_cond();
-        if (cond == nullptr)
-            return false;
-        cond = this->get_ptr_val(cond);
-        if (!this->equals_type(cond->get_type(), this->type_bool())) {
-            printf("ERROR: The label 'if.cond' need a bool value.\n");
-            return false;
-        }
-        this->jump_cond(cond, if_true, if_false);
-
-        // if-true
-        this->set_active_block(if_true);
-        {
-            if(!lambda_true())
-                return false;
-            auto active_block = this->get_active_block();
+			printf("ERROR: The type of return value can't cast to return type of function.\n");
+			return false;
+		}
+		
+		this->ret(expr);
+		
+		return true;
+	}
+	
+	bool omis_module_t::stmt_branch(const omis_lambda_expr_t &lambda_cond,
+									const omis_lambda_stmt_t &lambda_true,
+									const omis_lambda_stmt_t &lambda_false) {
+		auto if_true = this->create_block("branch.true");
+		auto if_false = this->create_block("branch.false");
+		auto if_end = this->create_block("branch.end");
+		
+		auto cond = lambda_cond();
+		if (cond == nullptr)
+			return false;
+		cond = this->get_ptr_val(cond);
+		if (!this->equals_type(cond->get_type(), this->type_bool())) {
+			printf("ERROR: The label 'if.cond' need a bool value.\n");
+			return false;
+		}
+		this->jump_cond(cond, if_true, if_false);
+		
+		// if-true
+		this->set_active_block(if_true);
+		{
+			if (!lambda_true())
+				return false;
+			auto active_block = this->get_active_block();
 			if (!this->equals_value(active_block, if_true) && !this->is_terminator_ins()) {
 				this->jump(if_end);
 			}
-            if (!this->is_terminator_ins(this->get_block_tail(if_true))) {
-                this->jump(if_end);
-            }
-        }
-
-        // if-false
-        this->set_active_block(if_false);
-        {
-            if (!lambda_false())
-                return false;
-            auto active_block = this->get_active_block();
-            if (!this->equals_value(active_block, if_false) && !this->is_terminator_ins()) {
-                this->jump(if_end);
-            }
-            if (!this->is_terminator_ins(this->get_block_tail(if_false))) {
-                this->jump(if_end);
-            }
-        }
-
-        this->set_active_block(if_end);
-
-        return true;
-    }
-
-    bool omis_module_t::stmt_loop(const omis_lambda_stmt_t& lambda_init,
-                                const omis_lambda_expr_t& lambda_cond,
-                                const omis_lambda_stmt_t& lambda_step,
-                                const omis_lambda_stmt_t& lambda_body) {
+			if (!this->is_terminator_ins(this->get_block_tail(if_true))) {
+				this->jump(if_end);
+			}
+		}
+		
+		// if-false
+		this->set_active_block(if_false);
+		{
+			if (!lambda_false())
+				return false;
+			auto active_block = this->get_active_block();
+			if (!this->equals_value(active_block, if_false) && !this->is_terminator_ins()) {
+				this->jump(if_end);
+			}
+			if (!this->is_terminator_ins(this->get_block_tail(if_false))) {
+				this->jump(if_end);
+			}
+		}
+		
+		this->set_active_block(if_end);
+		
+		return true;
+	}
+	
+	bool omis_module_t::stmt_loop(const omis_lambda_stmt_t &lambda_init,
+								  const omis_lambda_expr_t &lambda_cond,
+								  const omis_lambda_stmt_t &lambda_step,
+								  const omis_lambda_stmt_t &lambda_body) {
 		this->push_scope();
-
-        auto loop_cond = this->create_block("loop.cond");
-        auto loop_step = this->create_block("loop.step");
-        auto loop_body = this->create_block("loop.body");
-        auto loop_end = this->create_block("loop.end");
-
-        auto old_continue_point = this->continue_point;
-        auto old_break_point = this->break_point;
-        this->continue_point = loop_step;
-        this->break_point = loop_end;
-
-        // init
-        {
-            if (!lambda_init())
-                return false;
-            this->jump(loop_cond);
-        }
-
-        // cond
-        this->set_active_block(loop_cond);
-        {
-            auto cond = lambda_cond();
-            if (cond == nullptr)
-                return false;
-            cond = this->get_ptr_val(cond);
-            if (!this->equals_type(cond->get_type(), this->type_bool())) {
-                printf("ERROR: The label 'loop.cond' need a bool value.\n");
-                return false;
-            }
-            this->jump_cond(cond, loop_body, loop_end);
-        }
-
-        // body
-        this->set_active_block(loop_body);
-        {
-            if (!lambda_body())
-                return false;
-            auto active_block = this->get_active_block();
-            if (!this->equals_value(active_block, loop_body) && !this->is_terminator_ins()) {
-                this->jump(loop_step);
-            }
-            if (!this->is_terminator_ins(this->get_block_tail(loop_body))) {
-                this->jump(loop_step);
-            }
-        }
-
-        // step
-        this->set_active_block(loop_step);
-        {
-            if (!lambda_step())
-                return false;
-            this->jump(loop_cond);
-        }
-
-        this->set_active_block(loop_end);
-
-        this->continue_point = old_continue_point;
-        this->break_point = old_break_point;
+		
+		auto loop_cond = this->create_block("loop.cond");
+		auto loop_step = this->create_block("loop.step");
+		auto loop_body = this->create_block("loop.body");
+		auto loop_end = this->create_block("loop.end");
+		
+		auto old_continue_point = this->continue_point;
+		auto old_break_point = this->break_point;
+		this->continue_point = loop_step;
+		this->break_point = loop_end;
+		
+		// init
+		{
+			if (!lambda_init())
+				return false;
+			this->jump(loop_cond);
+		}
+		
+		// cond
+		this->set_active_block(loop_cond);
+		{
+			auto cond = lambda_cond();
+			if (cond == nullptr)
+				return false;
+			cond = this->get_ptr_val(cond);
+			if (!this->equals_type(cond->get_type(), this->type_bool())) {
+				printf("ERROR: The label 'loop.cond' need a bool value.\n");
+				return false;
+			}
+			this->jump_cond(cond, loop_body, loop_end);
+		}
+		
+		// body
+		this->set_active_block(loop_body);
+		{
+			if (!lambda_body())
+				return false;
+			auto active_block = this->get_active_block();
+			if (!this->equals_value(active_block, loop_body) && !this->is_terminator_ins()) {
+				this->jump(loop_step);
+			}
+			if (!this->is_terminator_ins(this->get_block_tail(loop_body))) {
+				this->jump(loop_step);
+			}
+		}
+		
+		// step
+		this->set_active_block(loop_step);
+		{
+			if (!lambda_step())
+				return false;
+			this->jump(loop_cond);
+		}
+		
+		this->set_active_block(loop_end);
+		
+		this->continue_point = old_continue_point;
+		this->break_point = old_break_point;
 		
 		this->pop_scope();
-
-        return true;
-    }
-
-    bool omis_module_t::stmt_break() {
-        if (this->break_point == nullptr)
-            return false;
-        this->jump(this->break_point);
-        return true;
-    }
-
-    bool omis_module_t::stmt_continue() {
-        if (this->continue_point == nullptr)
-            return false;
-        this->jump(this->continue_point);
-        return true;
-    }
+		
+		return true;
+	}
+	
+	bool omis_module_t::stmt_break() {
+		if (this->break_point == nullptr)
+			return false;
+		this->jump(this->break_point);
+		return true;
+	}
+	
+	bool omis_module_t::stmt_continue() {
+		if (this->continue_point == nullptr)
+			return false;
+		this->jump(this->continue_point);
+		return true;
+	}
+	
+	void omis_module_t::stmt_ensure_tail_ret(omis_value_t *func) {
+		auto block = bridge->get_active_block();
+		auto lastOp = bridge->get_block_tail(block);
+		
+		if (!bridge->is_terminator_ins(lastOp)) {
+			auto ret_type = bridge->get_func_ret_type(func->get_type()->get_handle());
+			if (ret_type == this->type_void()->get_handle())
+				bridge->ret();
+			else
+				bridge->ret(bridge->get_default_value(ret_type));
+		}
+	}
 }
