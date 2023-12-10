@@ -361,7 +361,52 @@ namespace eokas {
     omis_value_t* omis_type_t::get_default_value() {
         return default_value;
     }
-
+	
+	bool omis_type_t::is_type_void() {
+		auto bridge = module->get_bridge();
+		return bridge->is_type_void(this->handle);
+	}
+	
+	bool omis_type_t::is_type_i8() {
+		auto bridge = module->get_bridge();
+		return bridge->is_type_i8(this->handle);
+	}
+	
+	bool omis_type_t::is_type_i16() {
+		auto bridge = module->get_bridge();
+		return bridge->is_type_i16(this->handle);
+	}
+	
+	bool omis_type_t::is_type_i32() {
+		auto bridge = module->get_bridge();
+		return bridge->is_type_i32(this->handle);
+	}
+	
+	bool omis_type_t::is_type_i64() {
+		auto bridge = module->get_bridge();
+		return bridge->is_type_i64(this->handle);
+	}
+	
+	bool omis_type_t::is_type_f32() {
+		auto bridge = module->get_bridge();
+		return bridge->is_type_f32(this->handle);
+	}
+	
+	bool omis_type_t::is_type_f64() {
+		auto bridge = module->get_bridge();
+		return bridge->is_type_f64(this->handle);
+	}
+	
+	bool omis_type_t::is_type_bool() {
+		auto bridge = module->get_bridge();
+		return bridge->is_type_bool(this->handle);
+	}
+	
+	bool omis_type_t::is_type_bytes() {
+		auto bridge = module->get_bridge();
+		return bridge->is_type_bytes(this->handle);
+	}
+	
     bool omis_type_t::is_type_func() {
         auto bridge = module->get_bridge();
         return bridge->is_type_func(this->handle);

@@ -216,7 +216,16 @@ namespace eokas {
         omis_module_t* get_module();
         omis_handle_t get_handle();
         omis_value_t* get_default_value();
-
+		
+		bool is_type_void();
+		bool is_type_i8();
+		bool is_type_i16();
+		bool is_type_i32();
+		bool is_type_i64();
+		bool is_type_f32();
+		bool is_type_f64();
+		bool is_type_bool();
+		bool is_type_bytes();
         bool is_type_func();
         bool is_type_array();
         bool is_type_struct();
