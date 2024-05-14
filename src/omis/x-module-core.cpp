@@ -150,35 +150,36 @@ namespace eokas {
 }
 
 namespace eokas {
-    omis_module_core_t::omis_module_core_t(omis_bridge_t* bridge)
-            : omis_module_t(bridge, "core") {}
+    #define _define_structtype(name, type) this->add_type_symbol(name, new type(this))
+
+    omis_module_core_t::omis_module_core_t(omis_context_t* context)
+            : omis_module_t(context, "core") {}
 
     bool omis_module_core_t::main() {
         if (!omis_module_t::main())
             return false;
-        /*
-        this->add_type_symbol("Object", this->create_type<omis_type_object_t>());
-        this->add_type_symbol("TypeInfo", this->create_type<omis_type_typeinfo_t>());
-        this->add_type_symbol("i8", this->create_type<omis_type_i8_t>());
-        this->add_type_symbol("i16", this->create_type<omis_type_i16_t>());
-        this->add_type_symbol("i32", this->create_type<omis_type_i32_t>());
-        this->add_type_symbol("i64", this->create_type<omis_type_i64_t>());
-        this->add_type_symbol("u8", this->create_type<omis_type_u8_t>());
-        this->add_type_symbol("u16", this->create_type<omis_type_u16_t>());
-        this->add_type_symbol("u32", this->create_type<omis_type_u32_t>());
-        this->add_type_symbol("u64", this->create_type<omis_type_u64_t>());
-        this->add_type_symbol("f32", this->create_type<omis_type_f32_t>());
-        this->add_type_symbol("f64", this->create_type<omis_type_f64_t>());
-        this->add_type_symbol("bool", this->create_type<omis_type_bool_t>());
-        this->add_type_symbol("String", this->create_type<omis_type_string_t>());
 
-        this->add_value_symbol("print", this->define_func_print());
-         */
+        this->add_type_symbol("Object", new omis_type_object_t(this));
+        this->add_type_symbol("TypeInfo", new omis_type_typeinfo_t(this));
+        this->add_type_symbol("i8", new omis_type_i8_t(this));
+        this->add_type_symbol("i16", new omis_type_i16_t(this));
+        this->add_type_symbol("i32", new omis_type_i32_t(this));
+        this->add_type_symbol("i64", new omis_type_i64_t(this));
+        this->add_type_symbol("u8", new omis_type_u8_t(this));
+        this->add_type_symbol("u16", new omis_type_u16_t(this));
+        this->add_type_symbol("u32", new omis_type_u32_t(this));
+        this->add_type_symbol("u64", new omis_type_u64_t(this));
+        this->add_type_symbol("f32", new omis_type_f32_t(this));
+        this->add_type_symbol("f64", new omis_type_f64_t(this));
+        this->add_type_symbol("bool", new omis_type_bool_t(this));
+        this->add_type_symbol("String", new omis_type_string_t(this));
+
+        this->define_func_print();
 
         return true;
     }
 
-    omis_value_t* omis_module_core_t::define_func_print() {
+    void omis_module_core_t::define_func_print() {
         String name = "print";
         omis_type_t* ret = type_i32();
 
@@ -197,6 +198,6 @@ namespace eokas {
             */
         }
 
-        return func;
+        this->add_value_symbol(name, func);
     }
 }

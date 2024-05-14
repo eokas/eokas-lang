@@ -5,16 +5,18 @@
 #include "./header.h"
 
 namespace eokas {
-    class omis_engine_t {
+    class omis_context_t {
     public:
-        omis_engine_t();
-        virtual ~omis_engine_t();
+        omis_context_t();
+        virtual ~omis_context_t();
 
         omis_bridge_t* get_bridge();
 
-        bool add_module(const String& name, omis_module_t* mod);
         omis_module_t* get_module(const String& name);
+        bool add_module(const String& name, omis_module_t* mod);
         omis_module_t* load_module(const String& name, const omis_lambda_loading_t& loading);
+
+        bool load_default_modules();
 
         bool jit(omis_module_t* mod);
         bool aot(omis_module_t* mod);

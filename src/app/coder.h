@@ -3,7 +3,7 @@
 #define _EOKAS_CODER_H_
 
 #include "../ast/ast.h"
-#include "../omis/engine.h"
+#include "../omis/context.h"
 
 namespace eokas {
     class coder_t {
@@ -17,7 +17,7 @@ namespace eokas {
         void aot(omis_module_t* mod);
 
     private:
-        omis_engine_t* engine;
+        omis_context_t* context;
     };
 }
 

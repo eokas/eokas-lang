@@ -2,14 +2,15 @@
 #include "./model.h"
 
 namespace eokas {
-    omis_module_coder_t::omis_module_coder_t(omis_bridge_t *bridge, const String &name)
-            : omis_module_t(bridge, name) {
-
+    omis_module_coder_t::omis_module_coder_t(omis_context_t* context, const String &name)
+            : omis_module_t(context, name) {
     }
 
     bool omis_module_coder_t::encode_module(ast_node_module_t *node) {
         if (node == nullptr)
             return false;
+
+        this->using_module("core");
 
         omis_type_t *ret = type_i32();
         std::vector<omis_type_t *> args = {};
@@ -489,7 +490,7 @@ namespace eokas {
             funcType = llvm::cast<llvm::FunctionType>(funcPtr->getType());
         }
         else if (funcExpr->getType()->isPointerTy() &&
-                   funcPtr->getType()->getPointerElementType()->isFunctionTy()) {
+            funcPtr->getType()->getPointerElementType()->isFunctionTy()) {
             funcType = llvm::cast<llvm::FunctionType>(funcPtr->getType()->getPointerElementType());
         }
         else {

@@ -1,5 +1,6 @@
 #include "./model.h"
 #include "./bridge.h"
+#include "context.h"
 
 namespace eokas {
     omis_scope_t::omis_scope_t(omis_scope_t* parent, omis_value_t* func)
@@ -24,33 +25,34 @@ namespace eokas {
     }
 
     omis_type_symbol_t* omis_scope_t::get_type_symbol(const String& name, bool lookup) {
-        if (lookup) {
-            for (auto scope = this; scope != nullptr; scope = scope->parent) {
-                auto* symbol = scope->types.get(name);
-                if (symbol != nullptr)
-                    return symbol;
-            }
-            return nullptr;
-        } else {
-            return this->types.get(name);
-        }
+	    if (lookup) {
+	    	for (auto scope = this; scope != nullptr; scope = scope->parent) {
+	    		auto* symbol = scope->types.get(name);
+	    		if (symbol != nullptr)
+	    			return symbol;
+	    	}
+	    	return nullptr;
+	    }
+
+    	return this->types.get(name);
     }
 
     omis_type_symbol_t* omis_scope_t::get_type_symbol(omis_lambda_predicate_t<omis_type_symbol_t> predicate, bool lookup) {
-        if (lookup) {
-            for (auto scope = this; scope != nullptr; scope = scope->parent) {
-                auto* symbol = scope->types.get([&](auto name, auto symbol) -> auto {
-                    return predicate(symbol);
-                });
-                if (symbol != nullptr)
-                    return symbol;
-            }
-            return nullptr;
-        } else {
-            return this->types.get([&](auto name, auto symbol) -> auto {
-                return predicate(symbol);
-            });
-        }
+	    if (lookup) {
+	    	for (auto scope = this; scope != nullptr; scope = scope->parent) {
+	    		auto* symbol = scope->types.get([&](auto name, auto symbol) -> auto {
+					return predicate(symbol);
+				});
+	    		if (symbol != nullptr) {
+	    			return symbol;
+	    		}
+	    	}
+	    	return nullptr;
+	    }
+
+    	return this->types.get([&](auto name, auto symbol) -> auto {
+			return predicate(symbol);
+		});
     }
 
     bool omis_scope_t::add_value_symbol(const String& name, omis_value_t* value) {
@@ -60,46 +62,53 @@ namespace eokas {
     }
 
     omis_value_symbol_t* omis_scope_t::get_value_symbol(const String& name, bool lookup) {
-        if (lookup) {
-            for (auto scope = this; scope != nullptr; scope = scope->parent) {
-                auto symbol = scope->values.get(name);
-                if (symbol != nullptr)
-                    return symbol;
-            }
-            return nullptr;
-        } else {
-            return this->values.get(name);
-        }
+	    if (lookup) {
+	    	for (auto scope = this; scope != nullptr; scope = scope->parent) {
+	    		auto symbol = scope->values.get(name);
+	    		if (symbol != nullptr) {
+	    			return symbol;
+	    		}
+	    	}
+	    	return nullptr;
+	    }
+
+    	return this->values.get(name);
     }
 
     omis_value_symbol_t* omis_scope_t::get_value_symbol(omis_lambda_predicate_t<omis_value_symbol_t> predicate, bool lookup) {
-        if (lookup) {
-            for (auto scope = this; scope != nullptr; scope = scope->parent) {
-                auto* symbol = scope->values.get([&](auto name, auto symbol) -> auto {
-                    return predicate(symbol);
-                });
-                if (symbol != nullptr)
-                    return symbol;
-            }
-            return nullptr;
-        } else {
-            return this->values.get([&](auto name, auto symbol) -> auto {
-                return predicate(symbol);
-            });
-        }
+	    if (lookup) {
+	    	for (auto scope = this; scope != nullptr; scope = scope->parent) {
+	    		auto* symbol = scope->values.get([&](auto name, auto symbol) -> auto {
+					return predicate(symbol);
+				});
+	    		if (symbol != nullptr) {
+	    			return symbol;
+	    		}
+	    	}
+	    	return nullptr;
+	    }
+
+    	return this->values.get([&](auto name, auto symbol) -> auto {
+			return predicate(symbol);
+		});
     }
 }
 
 namespace eokas {
-    omis_module_t::omis_module_t(omis_bridge_t* bridge, const String& name)
-        : bridge(bridge)
-        , name(name)
-        , handle(nullptr)
-        , root(new omis_scope_t(nullptr, nullptr))
-        , scope(this->root)
-        , usings()
-        , types()
-        , values() {
+    omis_module_t::omis_module_t(omis_context_t* context, const String& name)
+	        : context(context)
+			, bridge(context->get_bridge())
+	        , name(name)
+	        , handle(nullptr)
+	        , root(new omis_scope_t(nullptr, nullptr))
+	        , scope(this->root)
+	        , dependencies()
+			, imports(this->root->add_child())
+			, exports(this->root->add_child())
+	        , types()
+	        , values()
+			, break_point()
+			, continue_point() {
         this->handle = bridge->make_module(name.cstr());
     }
 
@@ -117,27 +126,52 @@ namespace eokas {
         return true;
     }
 
-    const String& omis_module_t::get_name() const {
-        return name;
-    }
+	omis_context_t* omis_module_t::get_context() const {
+		return context;
+	}
 
-    omis_bridge_t* omis_module_t::get_bridge() {
+    omis_bridge_t* omis_module_t::get_bridge() const {
         return bridge;
     }
 
-    omis_handle_t omis_module_t::get_handle() {
+	const String& omis_module_t::get_name() const {
+    	return name;
+    }
+
+    omis_handle_t omis_module_t::get_handle() const {
         return handle;
     }
 
-    String omis_module_t::dump() {
+    String omis_module_t::dump() const {
         return bridge->dump_module(handle);
     }
 
-    bool omis_module_t::using_module(omis_module_t* other) {
-        auto iter = std::find(usings.begin(), usings.end(), other);
-        if (iter != usings.end())
-            return false;
-        usings.push_back(other);
+    bool omis_module_t::using_module(const String& name) {
+    	auto dep = this->context->get_module(name);
+    	if(dep == nullptr) {
+    		return false;
+    	}
+
+    	auto iter = this->dependencies.find(name);
+    	if(iter != this->dependencies.end()) {
+    		return false;
+    	}
+
+    	this->dependencies.insert(std::make_pair(name, dep));
+
+    	for(const auto& pair : dep->exports->types) {
+    		const auto& symbol = pair.second;
+    		if(!this->imports->add_type_symbol(symbol->name, symbol->type)) {
+    			return false;
+    		}
+    	}
+    	for(const auto& pair : dep->exports->values) {
+    		const auto& symbol = pair.second;
+    		if(!this->imports->add_value_symbol(symbol->name, symbol->value)) {
+    			return false;
+    		}
+    	}
+
         return true;
     }
 

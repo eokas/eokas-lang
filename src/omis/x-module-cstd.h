@@ -8,7 +8,7 @@ namespace eokas
 {
 	struct omis_module_cstd_t : omis_module_t
 	{
-        omis_module_cstd_t(omis_bridge_t* bridge);
+        omis_module_cstd_t(omis_context_t* context);
 		
 		virtual bool main() override;
 		

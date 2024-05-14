@@ -93,11 +93,11 @@ namespace eokas {
     };
 
     struct omis_module_core_t : omis_module_t {
-        omis_module_core_t(omis_bridge_t* bridge);
+        omis_module_core_t(omis_context_t* context);
 
         virtual bool main() override;
 
-        omis_value_t* define_func_print();
+        void define_func_print();
     };
 }
 

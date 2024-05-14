@@ -7,7 +7,7 @@
 namespace eokas {
     class omis_module_coder_t :public omis_module_t {
     public:
-        omis_module_coder_t(omis_bridge_t* bridge, const String& name);
+        omis_module_coder_t(omis_context_t* context, const String& name);
 
         bool encode_module(ast_node_module_t *node);
         bool encode_stmt(ast_node_stmt_t* node);
@@ -33,10 +33,6 @@ namespace eokas {
         omis_value_t *encode_expr_symbol_ref(ast_node_symbol_ref_t *node);
         omis_value_t* encode_expr_func_def(ast_node_func_def_t* node);
         omis_value_t* encode_expr_func_ref(ast_node_func_ref_t* node);
-
-    private:
-        omis_value_t* continue_point;
-        omis_value_t* break_point;
     };
 }
 

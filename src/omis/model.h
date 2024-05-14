@@ -7,40 +7,60 @@
 namespace eokas {
     template<typename T, bool gc = true>
     struct omis_table_t {
-        std::map<String, T *> table;
+    	using container_t = std::map<String, T*>;
+    	using iterator_t = typename container_t::iterator;
+    	using const_iterator_t = typename container_t::const_iterator;
 
-        explicit omis_table_t() : table() {
-        }
+    	container_t table;
 
-        ~omis_table_t() {
-            if (gc && !this->table.empty()) {
-                _DeleteMap(this->table);
-            }
-            this->table.clear();
-        }
+    	explicit omis_table_t() : table() {
+    	}
 
-        bool add(const String &name, T *object) {
-            if (this->table.find(name) != this->table.end())
-                return false;
-            this->table.insert(std::make_pair(name, object));
-            return true;
-        }
+    	~omis_table_t() {
+    		if (gc && !this->table.empty()) {
+    			_DeleteMap(this->table);
+    		}
+    		this->table.clear();
+    	}
 
-        T *get(const String &name) {
-            auto iter = this->table.find(name);
-            if (iter == this->table.end())
-                return nullptr;
-            return iter->second;
-        }
+    	iterator_t begin() {
+    		return table.begin();
+    	}
 
-        T *get(const std::function<bool(const String&, const T&)>& predicate) {
-            for(auto& pair : this->table) {
-                if(predicate(pair.first, *pair.second)) {
-                    return pair.second;
-                }
-            }
-            return nullptr;
-        }
+    	const_iterator_t begin() const {
+    		return table.begin();
+    	}
+
+    	iterator_t end() {
+    		return table.end();
+    	}
+
+    	const_iterator_t end() const {
+    		return table.end();
+    	}
+
+    	bool add(const String &name, T *object) {
+    		if (this->table.find(name) != this->table.end())
+    			return false;
+    		this->table.insert(std::make_pair(name, object));
+    		return true;
+    	}
+
+    	T *get(const String &name) {
+    		auto iter = this->table.find(name);
+    		if (iter == this->table.end())
+    			return nullptr;
+    		return iter->second;
+    	}
+
+    	T *get(const std::function<bool(const String&, const T&)>& predicate) {
+    		for(auto& pair : this->table) {
+    			if(predicate(pair.first, *pair.second)) {
+    				return pair.second;
+    			}
+    		}
+    		return nullptr;
+    	}
     };
 
     struct omis_value_symbol_t
@@ -81,17 +101,18 @@ namespace eokas {
 
     class omis_module_t {
     public:
-        omis_module_t(omis_bridge_t* bridge, const String& name);
+        omis_module_t(omis_context_t* context, const String& name);
         virtual ~omis_module_t();
 
         virtual bool main();
 
-        omis_bridge_t* get_bridge();
+    	omis_context_t* get_context() const;
+        omis_bridge_t* get_bridge() const;
         const String& get_name() const;
-        omis_handle_t get_handle();
-        String dump();
+        omis_handle_t get_handle() const;
+        String dump() const;
 
-        bool using_module(omis_module_t* other);
+        bool using_module(const String& name);
 
         omis_scope_t* get_scope();
         omis_scope_t* push_scope(omis_value_t* func = nullptr);
@@ -196,12 +217,17 @@ namespace eokas {
 		void stmt_ensure_tail_ret(omis_value_t* func);
 		
 	protected:
+    	omis_context_t* context;
         omis_bridge_t* bridge;
         String name;
         omis_handle_t handle;
         omis_scope_t* root;
-        omis_scope_t* scope;
-        std::vector<omis_module_t*> usings;
+    	omis_scope_t* scope;
+
+    	std::map<String, omis_module_t*> dependencies;
+    	omis_scope_t* imports;
+    	omis_scope_t* exports;
+
         std::map<omis_handle_t, omis_type_t*> types;
         std::map<omis_handle_t, omis_value_t*> values;
 		omis_value_t* break_point;
