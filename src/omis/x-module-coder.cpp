@@ -10,21 +10,27 @@ namespace eokas {
         if (node == nullptr)
             return false;
 
+        // Imports
         this->using_module("core");
+        for(auto& imp : node->imports) {
+            if(!this->using_module(imp.second->target)) {
+                return false;
+            }
+        }
 
+        // Body
         omis_type_t *ret = type_i32();
         std::vector<omis_type_t *> args = {};
         omis_value_t *func = this->value_func("$main", ret, args, false);
         this->scope->add_value_symbol("$main", func);
         this->scope->func = func;
-
         this->push_scope(func);
         {
             auto entry = this->create_block("entry");
             // IR.SetInsertPoint(entry);
             this->set_active_block(entry);
 
-            for (auto &stmt: node->entry->body) {
+            for (auto& stmt: node->entry->body) {
                 if (!this->encode_stmt(stmt))
                     return false;
             }
@@ -33,7 +39,33 @@ namespace eokas {
         }
         this->pop_scope();
 
+        // Exports
+        for(auto& exp : node->exports) {
+            omis_type_symbol_t* symbol = this->get_type_symbol(exp.second->name, true);
+            if(symbol == nullptr) {
+                return false;
+            }
+            this->exports->add_type_symbol(symbol->name, symbol->type);
+        }
+
         return true;
+    }
+
+    bool omis_module_coder_t::encode_import(ast_node_import_t* node) {
+        if(node == nullptr)
+            return false;
+        return this->using_module(node->target);
+    }
+
+    bool omis_module_coder_t::encode_export(ast_node_export_t* node) {
+        if(node == nullptr)
+            return false;
+        omis_type_symbol_t* symbol = this->get_type_symbol(name, true);
+        if(symbol == nullptr) {
+            printf("The symbol named '%s' is undefined.", node->name.cstr());
+            return false;
+        }
+        return this->exports->add_type_symbol(node->name, symbol->type);
     }
 
     bool omis_module_coder_t::encode_stmt(ast_node_stmt_t *node) {

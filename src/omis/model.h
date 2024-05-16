@@ -118,10 +118,10 @@ namespace eokas {
         omis_scope_t* push_scope(omis_value_t* func = nullptr);
         omis_scope_t* pop_scope();
 
+    	bool add_type_symbol(const String& name, omis_type_t* type);
         omis_type_symbol_t* get_type_symbol(const String& name, bool lookup = true);
-        bool add_type_symbol(const String& name, omis_type_t* type);
+    	bool add_value_symbol(const String& name, omis_value_t* type);
         omis_value_symbol_t* get_value_symbol(const String& name, bool lookup = true);
-        bool add_value_symbol(const String& name, omis_value_t* type);
 
         omis_type_t* type(omis_handle_t handle);
         omis_type_t* type_void();

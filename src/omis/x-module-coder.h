@@ -10,6 +10,8 @@ namespace eokas {
         omis_module_coder_t(omis_context_t* context, const String& name);
 
         bool encode_module(ast_node_module_t *node);
+        bool encode_import(ast_node_import_t* node);
+        bool encode_export(ast_node_export_t* node);
         bool encode_stmt(ast_node_stmt_t* node);
         bool encode_stmt_block(ast_node_block_t* node);
         bool encode_stmt_symbol_def(ast_node_symbol_def_t* node);

@@ -189,20 +189,28 @@ namespace eokas {
         this->scope = this->scope->parent;
     }
 
-    omis_type_symbol_t* omis_module_t::get_type_symbol(const String& name, bool lookup) {
-        return this->get_scope()->get_type_symbol(name, lookup);
+	bool omis_module_t::add_type_symbol(const String& name, omis_type_t* type) {
+    	return this->get_scope()->add_type_symbol(name, type);
     }
 
-    bool omis_module_t::add_type_symbol(const String& name, omis_type_t* type) {
-        return this->get_scope()->add_type_symbol(name, type);
+    omis_type_symbol_t* omis_module_t::get_type_symbol(const String& name, bool lookup) {
+        omis_type_symbol_t* symbol = this->get_scope()->get_type_symbol(name, lookup);
+    	if(symbol != nullptr) {
+    		return symbol;
+    	}
+    	return this->imports->get_type_symbol(name, lookup);
+    }
+
+	bool omis_module_t::add_value_symbol(const String& name, omis_value_t* type) {
+    	return this->get_scope()->add_value_symbol(name, type);
     }
 
     omis_value_symbol_t* omis_module_t::get_value_symbol(const String& name, bool lookup) {
-        return this->get_scope()->get_value_symbol(name, lookup);
-    }
-
-    bool omis_module_t::add_value_symbol(const String& name, omis_value_t* type) {
-        return this->get_scope()->add_value_symbol(name, type);
+        omis_value_symbol_t* symbol = this->get_scope()->get_value_symbol(name, lookup);
+    	if(symbol != nullptr) {
+    		return symbol;
+    	}
+    	return this->imports->get_value_symbol(name, lookup);
     }
 
     omis_type_t* omis_module_t::type(omis_handle_t handle) {
