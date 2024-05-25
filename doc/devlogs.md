@@ -11,6 +11,9 @@
 
 #### 注意事项
 * 目前 export 只支持导出 type symbol，但 import 已经支持将 dependencty 中的 type-symbol 与 value-symbol 一起导入。
+* 目前 module 的 name 从哪里来，目前有两种方案：
+  * 使用文件名称作为 module name。这样的问题是一个文件只能定义一个 module，一个 module 只能定义在一个文件中。import 后面接文件路径。
+  * 设计专门的 module 语法结构。文件名称和 module 名称可以不一样，一个文件可以定义多个 module。也可以实现将一个 module 定义到多个文件中（类似于 C# 的 partial class）。
 
 #### 后续计划
 * 测试当前版本下的 import/export 特性。
