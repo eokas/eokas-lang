@@ -97,19 +97,22 @@ namespace eokas {
 		node->name = name;
 		node->target = target->value;
 		
-		return nullptr;
+		return node;
 	}
 	
-	ast_node_export_t* parser_t::parse_export(ast_node_t* p)
-	{
-		if(p->category != ast_category_t::MODULE)
+	ast_node_export_t* parser_t::parse_export(ast_node_t* p) {
+		if(p->category != ast_category_t::MODULE) {
 			return nullptr;
+		}
 		
-		if(!this->check_token(token_t::EXPORT))
+		if(!this->check_token(token_t::EXPORT)) {
 			return nullptr;
+		}
 		
-		if(!this->check_token(token_t::ID, true, false))
+		if(!this->check_token(token_t::ID, true, false)) {
 			return nullptr;
+		}
+
 		String name = this->token().value;
 		this->next_token();
 		

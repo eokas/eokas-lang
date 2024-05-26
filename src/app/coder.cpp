@@ -15,7 +15,7 @@ namespace eokas {
 
     omis_module_t* coder_t::encode(ast_node_module_t* node) {
         return context->load_module(node->name, [&]() -> omis_module_t* {
-            omis_module_coder_t* mod = new omis_module_coder_t(context, node->name);
+            auto mod = new omis_module_coder_t(context, node->name);
             if(!mod->encode_module(node)) {
                 _DeletePointer(mod);
                 return nullptr;

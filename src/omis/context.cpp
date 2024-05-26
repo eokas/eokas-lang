@@ -51,11 +51,15 @@ namespace eokas {
     bool omis_context_t::load_default_modules() {
         #define _load_default_module(type) {\
             auto mod = new type(this); \
-            this->add_module(mod->get_name(), mod); \
+            if(!this->add_module(mod->get_name(), mod)) { \
+                return false; \
+            } \
         }
 
         _load_default_module(omis_module_core_t);
         _load_default_module(omis_module_cstd_t);
+
+        return true;
     }
 
     bool omis_context_t::jit(eokas::omis_module_t *mod) {
